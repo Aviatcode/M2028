@@ -7,6 +7,11 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="M2028">
 <title>M2028</title>
 <!-- INSTANT LOAD: runs before body renders, no flicker for returning users -->
 <script>
@@ -3612,5 +3617,9 @@ if(!_cloudOK){
 setInterval(()=>{if(_user)pull();},5*60*1000);
 </script>
 
-</body>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW failed:',e));
+}
+</script></body>
 </html>

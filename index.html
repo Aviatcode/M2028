@@ -2484,14 +2484,14 @@ function handleChecklistKeydown(e,wid,itemId){
   }
 }
 // Pointer Events based drag-and-drop reordering (drag the ⠿ handle on any
-// top-level row). Native HTML5 drag-and-drop (the old implementation) only
-// fires from mouse events, so on a phone/tablet it silently did nothing —
-// that's the "checklist / nested checklist not working" bug. Pointer Events
-// fire identically for touch and mouse, so this works on both.
-// Dragging a top-level row also carries every nested (indent:1) row directly
-// under it along as one group, instead of leaving them behind — previously,
-// dropping a parent elsewhere silently orphaned its sub-items.
-let _cliDrag=null; // {wid, groupIds:[...], wrap, listEl}
+// top-level row). Uses a floating clone that follows the finger/cursor freely
+// (position:absolute, no layout impact) plus a lightweight placeholder that
+// marks the drop slot in the real list — this is what keeps it smooth instead
+// of jerky: the previous version physically yanked the real rows in and out
+// of the list on every pointermove, forcing a full reflow each time.
+// Dragging a top-level row carries its nested (indent:1) rows with it as one
+// group instead of leaving them behind.
+let _cliDrag=null;
 function cliPointerStart(e,wid,itemId){
   if(e.pointerType==='mouse'&&e.button!==0)return;
   const{w}=getCWWidget(wid);if(!w)return;
@@ -2505,48 +2505,62 @@ function cliPointerStart(e,wid,itemId){
   const rows=groupIds.map(id=>listEl.querySelector(`.cli[data-id="${id}"]`)).filter(Boolean);
   if(!rows.length)return;
   e.preventDefault();
-  const wrap=document.createElement('div');
-  wrap.className='cli-drag-wrap';
-  wrap.style.cssText='background:var(--s2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);position:relative;z-index:50;';
-  rows[0].parentNode.insertBefore(wrap,rows[0]);
-  rows.forEach(r=>wrap.appendChild(r));
-  _cliDrag={wid,groupIds,wrap,listEl,startY:e.clientY};
+
+  const listRect=listEl.getBoundingClientRect();
+  const firstRect=rows[0].getBoundingClientRect();
+  const totalHeight=rows.reduce((h,r)=>h+r.getBoundingClientRect().height,0);
+
+  const floater=document.createElement('div');
+  floater.style.cssText=`position:absolute;left:0;right:0;top:${firstRect.top-listRect.top}px;pointer-events:none;z-index:100;background:var(--s2);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:.96;`;
+  rows.forEach(r=>{const clone=r.cloneNode(true);clone.style.pointerEvents='none';floater.appendChild(clone);});
+  listEl.style.position='relative';
+  listEl.appendChild(floater);
+
+  const placeholder=document.createElement('div');
+  placeholder.className='cli-placeholder';
+  placeholder.style.cssText=`height:${totalHeight}px;`;
+  rows[0].parentNode.insertBefore(placeholder,rows[0]);
+  rows.forEach(r=>{r.style.display='none';});
+
+  document.body.style.userSelect='none';
+  _cliDrag={wid,rows,floater,placeholder,listEl,startY:e.clientY,baseTop:firstRect.top-listRect.top};
   try{e.target.setPointerCapture(e.pointerId);}catch(err){}
-  document.addEventListener('pointermove',cliPointerMove);
+  document.addEventListener('pointermove',cliPointerMove,{passive:false});
   document.addEventListener('pointerup',cliPointerEnd,{once:true});
   document.addEventListener('pointercancel',cliPointerEnd,{once:true});
 }
 function cliPointerMove(e){
   if(!_cliDrag)return;
-  const{wrap,listEl}=_cliDrag;
-  wrap.style.transform='translateY('+(e.clientY-_cliDrag.startY)+'px)';
-  const others=Array.from(listEl.children).filter(c=>c!==wrap&&c.classList&&c.classList.contains('cli')&&c.dataset.indent!=='1');
-  const wrapRect=wrap.getBoundingClientRect();
-  const wrapMid=wrapRect.top+wrapRect.height/2;
-  for(const sib of others){
+  e.preventDefault();
+  const d=_cliDrag;
+  d.floater.style.top=(d.baseTop+(e.clientY-d.startY))+'px';
+  const floaterRect=d.floater.getBoundingClientRect();
+  const floaterMid=floaterRect.top+floaterRect.height/2;
+  const siblings=Array.from(d.listEl.children).filter(c=>c!==d.floater&&c!==d.placeholder&&c.classList&&c.classList.contains('cli')&&c.dataset.indent!=='1'&&c.style.display!=='none');
+  for(const sib of siblings){
     const r=sib.getBoundingClientRect();
     const mid=r.top+r.height/2;
-    if(wrapMid<mid&&wrap.nextElementSibling!==sib){
-      listEl.insertBefore(wrap,sib);wrap.style.transform='translateY(0px)';_cliDrag.startY=e.clientY;break;
-    } else if(wrapMid>mid){
+    if(floaterMid<mid&&d.placeholder.nextElementSibling!==sib){
+      d.listEl.insertBefore(d.placeholder,sib);break;
+    } else if(floaterMid>mid){
       let after=sib;
       while(after.nextElementSibling&&after.nextElementSibling.dataset&&after.nextElementSibling.dataset.indent==='1')after=after.nextElementSibling;
-      if(after.nextElementSibling!==wrap&&after!==wrap){
-        listEl.insertBefore(wrap,after.nextElementSibling);wrap.style.transform='translateY(0px)';_cliDrag.startY=e.clientY;break;
-      }
+      if(after.nextElementSibling!==d.placeholder){d.listEl.insertBefore(d.placeholder,after.nextElementSibling);}
+      break;
     }
   }
 }
 function cliPointerEnd(){
   if(!_cliDrag)return;
-  const{wid,wrap,listEl}=_cliDrag;
-  const parent=wrap.parentNode;
-  while(wrap.firstChild)parent.insertBefore(wrap.firstChild,wrap);
-  parent.removeChild(wrap);
+  const d=_cliDrag;
+  d.rows.forEach(r=>{r.style.display='';d.listEl.insertBefore(r,d.placeholder);});
+  d.placeholder.remove();
+  d.floater.remove();
+  document.body.style.userSelect='';
   document.removeEventListener('pointermove',cliPointerMove);
-  const{cw,w}=getCWWidget(wid);
+  const{cw,w}=getCWWidget(d.wid);
   if(w){
-    const idOrder=Array.from(listEl.querySelectorAll('.cli')).map(el=>el.dataset.id);
+    const idOrder=Array.from(d.listEl.querySelectorAll('.cli')).map(el=>el.dataset.id);
     const map={};w.items.forEach(it=>map[it.id]=it);
     const reordered=idOrder.map(id=>map[id]).filter(Boolean);
     if(reordered.length===w.items.length){w.items=reordered;saveAndRerenderChecklist(cw);}

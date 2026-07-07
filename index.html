@@ -298,6 +298,12 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
 .wd{flex:1;text-align:center;}
 .wdc{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 3px;font-size:11px;font-weight:600;}
 .wc{background:var(--s1);border:1px solid var(--b);border-radius:16px;padding:16px;margin-bottom:10px;}
+.cli{border-bottom:1px solid var(--b);}
+.cli:last-of-type{border-bottom:none;}
+.cli>span:first-child{opacity:0;transition:opacity .15s;}
+.cli:hover>span:first-child{opacity:1;}
+.cli>button:last-child{opacity:0;transition:opacity .15s;}
+.cli:hover>button:last-child,.cli>.cli-inp:focus~button:last-child{opacity:1;}
 .bnb{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(12,12,15,.97);backdrop-filter:blur(20px);border-top:1px solid var(--b);z-index:100;padding-bottom:env(safe-area-inset-bottom,0px);}
 .bni{display:flex;height:64px;align-items:stretch;}
 .bnbt{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--mt);font-size:10px;cursor:pointer;padding:8px 4px;min-width:0;}
@@ -855,17 +861,6 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
       <button class="btn b-gh" onclick="closeMo('schedMo')">Cancel</button>
       <button class="btn b-rd sm" id="schedDelBtn" onclick="delSchedRow()" style="margin-left:auto">Delete</button>
     </div>
-  </div>
-</div>
-<div class="ov" id="tskEditMo" onclick="if(event.target===this)closeMo('tskEditMo')">
-  <div class="mo"><div class="mot">Edit Task</div>
-    <input type="hidden" id="tskEditId">
-    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Task</label><input type="text" id="tskEditTxt" class="inp" style="margin-top:4px"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-      <div><label style="font-size:11px;color:var(--m2)">Date</label><input type="date" id="tskEditDate" class="inp" style="margin-top:4px"></div>
-      <div><label style="font-size:11px;color:var(--m2)">Time</label><input type="time" id="tskEditTime" class="inp" style="margin-top:4px"></div>
-    </div>
-    <div style="display:flex;gap:7px"><button class="btn b-ai" onclick="saveTskEdit()">Save</button><button class="btn b-gh" onclick="closeMo('tskEditMo')">Cancel</button><button class="btn b-rd sm" style="margin-left:auto" onclick="delTask()">Delete</button></div>
   </div>
 </div>
 <div class="ov" id="qTaskMo" onclick="if(event.target===this)closeMo('qTaskMo')">
@@ -1554,7 +1549,7 @@ function renderDash(){
       <button onclick="togTask('${t.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b2);background:none;cursor:pointer;flex-shrink:0"></button>
       <div style="flex:1;min-width:0"><div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.text}</div>
       <div style="font-size:10px;color:${col};margin-top:2px">${lbl}${t.time?' at '+t.time:''}</div></div>
-      <button onclick="openTskEdit('${t.id}')" style="background:none;border:none;color:var(--mt);font-size:16px;cursor:pointer">›</button>
+      <button onclick="toggleTasksExpand()" style="background:none;border:none;color:var(--mt);font-size:16px;cursor:pointer">›</button>
     </div>`;
   });}
   document.getElementById('wTasks').innerHTML=tw;
@@ -2387,120 +2382,216 @@ function saveCWNote(id,val){
   if(w){w.note=val;S.s('customWidgets',cw);}
 }
 
-// ═══ NESTED CHECKLISTS ═══
-// Each checklist widget's `items` is a tree: [{id,text,done,children:[...]}, ...]
-// Checked state is persistent (not reset daily) — suited to project/packing-style lists.
-// Every mutation below saves via S.s('customWidgets',...) immediately, which is the same
-// call that pushes to the cloud when signed in — so multi-device sync stays in lockstep
-// with what's on screen rather than batching changes for a manual save.
-function newChecklistItem(text){
-  return{id:'ci'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),text,done:false,children:[]};
+// ═══ CHECKLISTS (Google-Keep style) ═══
+// Each checklist widget's `items` is a FLAT array: [{id,text,done,indent}, ...]
+// indent is 0 (top-level) or 1 (nested one level under the item above it) — this
+// matches Keep's own model, which is why drag-reorder/indent/outdent are simple
+// array operations instead of tree surgery.
+// Everything here is inline — no window.prompt()/confirm() popups anywhere —
+// and every mutation saves immediately via S.s('customWidgets',...), the same
+// call that pushes to the cloud when signed in, so multi-device sync stays in
+// lockstep with what's on screen.
+function newChecklistItem(text,indent){
+  return{id:'ci'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),text:text||'',done:false,indent:indent||0};
 }
-function findCWItem(items,id){
-  for(const it of items||[]){
-    if(it.id===id)return it;
-    if(it.children&&it.children.length){const f=findCWItem(it.children,id);if(f)return f;}
-  }
-  return null;
-}
-function findCWItemLocation(items,id){
-  for(let i=0;i<(items||[]).length;i++){
-    if(items[i].id===id)return{arr:items,idx:i};
-    if(items[i].children&&items[i].children.length){
-      const r=findCWItemLocation(items[i].children,id);
-      if(r)return r;
-    }
-  }
-  return null;
-}
-function setChecklistDoneRecursive(item,val){
-  item.done=val;
-  (item.children||[]).forEach(c=>setChecklistDoneRecursive(c,val));
-}
+function getCWWidget(wid){const cw=S.go('customWidgets',[]);const w=cw.find(x=>x.id===wid);return{cw,w};}
 function countChecklistProgress(items){
-  let total=0,done=0;
-  (items||[]).forEach(it=>{
-    total++;if(it.done)done++;
-    if(it.children&&it.children.length){const r=countChecklistProgress(it.children);total+=r.total;done+=r.done;}
-  });
-  return{total,done};
+  const list=items||[];
+  return{total:list.length,done:list.filter(it=>it.done).length};
 }
-function addChecklistItem(wid,parentId,text){
-  text=(text||'').trim();if(!text)return;
-  const cw=S.go('customWidgets',[]);
-  const w=cw.find(x=>x.id===wid);if(!w)return;
-  if(!w.items)w.items=[];
-  const node=newChecklistItem(text);
-  if(!parentId){w.items.push(node);}
-  else{
-    const parent=findCWItem(w.items,parentId);
-    if(!parent)return;
-    if(!parent.children)parent.children=[];
-    parent.children.push(node);
-  }
-  S.s('customWidgets',cw);
-  applyDashCfg();
+// Structural changes (add/toggle/delete/indent/reorder) re-render the widget's HTML.
+function saveAndRerenderChecklist(cw){S.s('customWidgets',cw);applyDashCfg();}
+// Plain text edits save silently WITHOUT re-rendering — re-rendering mid-keystroke
+// would blow away the cursor position and steal focus out from under the user.
+function saveChecklistSilently(cw){S.s('customWidgets',cw);}
+
+function focusChecklistItem(id,atEnd){
+  setTimeout(()=>{
+    const el=document.getElementById('cli-'+id);
+    if(!el)return;
+    el.focus();
+    if(atEnd){const len=el.value.length;el.setSelectionRange(len,len);}
+  },20);
 }
+
 function addTopChecklistItem(wid){
-  const inp=document.getElementById('cwadd-'+wid);
-  if(!inp)return;
-  const text=inp.value.trim();
-  if(!text)return;
-  addChecklistItem(wid,null,text);
-  inp.value='';
-  inp.focus();
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  if(!w.items)w.items=[];
+  const node=newChecklistItem('',0);
+  w.items.push(node);
+  saveAndRerenderChecklist(cw);
+  focusChecklistItem(node.id,false);
 }
-function promptAddSubItem(wid,parentId){
-  const text=prompt('Add sub-item:');
-  if(text&&text.trim())addChecklistItem(wid,parentId,text.trim());
+function insertChecklistItemAfter(wid,itemId){
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  const idx=w.items.findIndex(x=>x.id===itemId);if(idx<0)return;
+  const indent=w.items[idx].indent||0;
+  const node=newChecklistItem('',indent);
+  w.items.splice(idx+1,0,node);
+  saveAndRerenderChecklist(cw);
+  focusChecklistItem(node.id,false);
+}
+function updateChecklistText(wid,itemId,val){
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  const it=w.items.find(x=>x.id===itemId);if(!it)return;
+  it.text=val;
+  saveChecklistSilently(cw);
 }
 function toggleChecklistItem(wid,itemId){
-  const cw=S.go('customWidgets',[]);
-  const w=cw.find(x=>x.id===wid);if(!w)return;
-  const item=findCWItem(w.items||[],itemId);if(!item)return;
-  // Checking a parent checks all of its sub-items too; unchecking clears them.
-  setChecklistDoneRecursive(item,!item.done);
-  S.s('customWidgets',cw);
-  applyDashCfg();
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  const it=w.items.find(x=>x.id===itemId);if(!it)return;
+  it.done=!it.done;
+  saveAndRerenderChecklist(cw);
 }
 function deleteChecklistItem(wid,itemId){
-  const cw=S.go('customWidgets',[]);
-  const w=cw.find(x=>x.id===wid);if(!w)return;
-  const loc=findCWItemLocation(w.items||[],itemId);
-  if(loc)loc.arr.splice(loc.idx,1);
-  S.s('customWidgets',cw);
-  applyDashCfg();
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  const idx=w.items.findIndex(x=>x.id===itemId);if(idx<0)return;
+  const focusId=idx>0?w.items[idx-1].id:null;
+  w.items.splice(idx,1);
+  saveAndRerenderChecklist(cw);
+  if(focusId)focusChecklistItem(focusId,true);
 }
-function renderChecklistItems(items,wid,depth){
-  if(!items||!items.length)return depth===0?'<div style="font-size:11px;color:var(--mt);padding:6px 0">No items yet — add one below.</div>':'';
-  return items.map(it=>{
-    const kids=renderChecklistItems(it.children||[],wid,depth+1);
-    return `<div style="margin-left:${depth*16}px">
-      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--b)">
-        <button onclick="toggleChecklistItem('${wid}','${it.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${it.done?'var(--ai)':'var(--b2)'};background:${it.done?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#000">${it.done?'✓':''}</button>
-        <span style="flex:1;font-size:13px;color:${it.done?'var(--m2)':'var(--tx)'};text-decoration:${it.done?'line-through':'none'}">${escAttr(it.text)}</span>
-        <button onclick="promptAddSubItem('${wid}','${it.id}')" title="Add sub-item" style="background:none;border:none;color:var(--ai);cursor:pointer;font-size:15px;padding:0 3px;flex-shrink:0">+</button>
-        <button onclick="if(confirm('Delete this item and any sub-items?'))deleteChecklistItem('${wid}','${it.id}')" title="Delete" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;padding:0 3px;flex-shrink:0">×</button>
-      </div>
-      ${kids}
+function indentChecklistItem(wid,itemId){
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  const idx=w.items.findIndex(x=>x.id===itemId);if(idx<=0)return; // first item can't nest under anything
+  const it=w.items[idx];
+  if(it.indent>=1)return; // Keep supports one level of nesting
+  it.indent=1;
+  saveAndRerenderChecklist(cw);
+  focusChecklistItem(itemId,true);
+}
+function outdentChecklistItem(wid,itemId){
+  const{cw,w}=getCWWidget(wid);if(!w)return;
+  const it=w.items.find(x=>x.id===itemId);if(!it||!it.indent)return;
+  it.indent=0;
+  saveAndRerenderChecklist(cw);
+  focusChecklistItem(itemId,true);
+}
+function handleChecklistKeydown(e,wid,itemId){
+  if(e.key==='Enter'){
+    e.preventDefault();
+    insertChecklistItemAfter(wid,itemId);
+  } else if(e.key==='Tab'){
+    e.preventDefault();
+    if(e.shiftKey)outdentChecklistItem(wid,itemId);
+    else indentChecklistItem(wid,itemId);
+  } else if(e.key==='Backspace'){
+    const inp=e.target;
+    if(inp.selectionStart===0&&inp.selectionEnd===0){
+      e.preventDefault();
+      deleteChecklistItem(wid,itemId);
+    }
+  }
+}
+// Pointer Events based drag-and-drop reordering (drag the ⠿ handle on any
+// top-level row). Native HTML5 drag-and-drop (the old implementation) only
+// fires from mouse events, so on a phone/tablet it silently did nothing —
+// that's the "checklist / nested checklist not working" bug. Pointer Events
+// fire identically for touch and mouse, so this works on both.
+// Dragging a top-level row also carries every nested (indent:1) row directly
+// under it along as one group, instead of leaving them behind — previously,
+// dropping a parent elsewhere silently orphaned its sub-items.
+let _cliDrag=null; // {wid, groupIds:[...], wrap, listEl}
+function cliPointerStart(e,wid,itemId){
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  const{w}=getCWWidget(wid);if(!w)return;
+  const startIdx=w.items.findIndex(x=>x.id===itemId);if(startIdx<0)return;
+  const baseIndent=w.items[startIdx].indent||0;
+  const groupIds=[w.items[startIdx].id];
+  for(let k=startIdx+1;k<w.items.length;k++){
+    if((w.items[k].indent||0)>baseIndent)groupIds.push(w.items[k].id);else break;
+  }
+  const listEl=document.getElementById('clw-'+wid);if(!listEl)return;
+  const rows=groupIds.map(id=>listEl.querySelector(`.cli[data-id="${id}"]`)).filter(Boolean);
+  if(!rows.length)return;
+  e.preventDefault();
+  const wrap=document.createElement('div');
+  wrap.className='cli-drag-wrap';
+  wrap.style.cssText='background:var(--s2);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.35);position:relative;z-index:50;';
+  rows[0].parentNode.insertBefore(wrap,rows[0]);
+  rows.forEach(r=>wrap.appendChild(r));
+  _cliDrag={wid,groupIds,wrap,listEl,startY:e.clientY};
+  try{e.target.setPointerCapture(e.pointerId);}catch(err){}
+  document.addEventListener('pointermove',cliPointerMove);
+  document.addEventListener('pointerup',cliPointerEnd,{once:true});
+  document.addEventListener('pointercancel',cliPointerEnd,{once:true});
+}
+function cliPointerMove(e){
+  if(!_cliDrag)return;
+  const{wrap,listEl}=_cliDrag;
+  wrap.style.transform='translateY('+(e.clientY-_cliDrag.startY)+'px)';
+  const others=Array.from(listEl.children).filter(c=>c!==wrap&&c.classList&&c.classList.contains('cli')&&c.dataset.indent!=='1');
+  const wrapRect=wrap.getBoundingClientRect();
+  const wrapMid=wrapRect.top+wrapRect.height/2;
+  for(const sib of others){
+    const r=sib.getBoundingClientRect();
+    const mid=r.top+r.height/2;
+    if(wrapMid<mid&&wrap.nextElementSibling!==sib){
+      listEl.insertBefore(wrap,sib);wrap.style.transform='translateY(0px)';_cliDrag.startY=e.clientY;break;
+    } else if(wrapMid>mid){
+      let after=sib;
+      while(after.nextElementSibling&&after.nextElementSibling.dataset&&after.nextElementSibling.dataset.indent==='1')after=after.nextElementSibling;
+      if(after.nextElementSibling!==wrap&&after!==wrap){
+        listEl.insertBefore(wrap,after.nextElementSibling);wrap.style.transform='translateY(0px)';_cliDrag.startY=e.clientY;break;
+      }
+    }
+  }
+}
+function cliPointerEnd(){
+  if(!_cliDrag)return;
+  const{wid,wrap,listEl}=_cliDrag;
+  const parent=wrap.parentNode;
+  while(wrap.firstChild)parent.insertBefore(wrap.firstChild,wrap);
+  parent.removeChild(wrap);
+  document.removeEventListener('pointermove',cliPointerMove);
+  const{cw,w}=getCWWidget(wid);
+  if(w){
+    const idOrder=Array.from(listEl.querySelectorAll('.cli')).map(el=>el.dataset.id);
+    const map={};w.items.forEach(it=>map[it.id]=it);
+    const reordered=idOrder.map(id=>map[id]).filter(Boolean);
+    if(reordered.length===w.items.length){w.items=reordered;saveAndRerenderChecklist(cw);}
+  }
+  _cliDrag=null;
+}
+function renderChecklistItems(items,wid){
+  if(!items||!items.length)return '';
+  return items.map((it)=>{
+    const nested=it.indent===1;
+    return `<div class="cli" data-id="${it.id}" data-indent="${it.indent||0}" style="display:flex;align-items:center;gap:7px;padding:5px 0;${nested?'margin-left:34px':''}">
+      ${nested?'':`<span onpointerdown="cliPointerStart(event,'${wid}','${it.id}')" style="cursor:grab;touch-action:none;color:var(--mt);font-size:14px;flex-shrink:0;user-select:none;letter-spacing:-2px;line-height:1;padding:4px 2px">⠿⠿</span>`}
+      <button onclick="toggleChecklistItem('${wid}','${it.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${it.done?'var(--ai)':'var(--b2)'};background:${it.done?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${it.done?'✓':''}</button>
+      <input type="text" id="cli-${it.id}" class="cli-inp" value="${escAttr(it.text)}" placeholder="List item"
+        oninput="updateChecklistText('${wid}','${it.id}',this.value)"
+        onkeydown="handleChecklistKeydown(event,'${wid}','${it.id}')"
+        style="flex:1;min-width:0;background:none;border:none;outline:none;font-size:14px;font-family:inherit;padding:5px 0;color:${it.done?'var(--m2)':'var(--tx)'};text-decoration:${it.done?'line-through':'none'}">
+      <button onclick="deleteChecklistItem('${wid}','${it.id}')" title="Delete" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;line-height:1">×</button>
     </div>`;
   }).join('');
 }
-// One-time migration: older checklist widgets stored items as flat strings with a
-// day-keyed `checks` map. That model reset daily; the new model is a persistent,
-// nestable tree. We convert on load — old per-day check history can't be mapped
-// onto a persistent flag, so migrated items start unchecked.
+// One-time migration: older checklist widgets used either plain strings, or a
+// nested {children:[]} tree. Both get flattened into the new flat indent model —
+// nested children become indent:1 rows directly under their old parent.
 function migrateChecklistWidgets(){
   const cw=S.go('customWidgets',[]);
   let changed=false;
   cw.forEach(w=>{
     if(w.type!=='checklist')return;
-    if(Array.isArray(w.items)&&w.items.length&&typeof w.items[0]==='string'){
-      w.items=w.items.map(t=>newChecklistItem(t));
+    if(!Array.isArray(w.items)){w.items=[];changed=true;return;}
+    if(!w.items.length)return;
+    if(typeof w.items[0]==='string'){
+      w.items=w.items.map(t=>newChecklistItem(t,0));
       delete w.checks;
       changed=true;
-    } else if(!Array.isArray(w.items)){
-      w.items=[];
+    } else if(w.items.some(it=>Array.isArray(it.children))){
+      const flat=[];
+      w.items.forEach(it=>{
+        flat.push({id:it.id||newChecklistItem('').id,text:it.text||'',done:!!it.done,indent:0});
+        (it.children||[]).forEach(c=>flat.push({id:c.id||newChecklistItem('').id,text:c.text||'',done:!!c.done,indent:1}));
+      });
+      w.items=flat;
+      changed=true;
+    } else if(w.items.some(it=>it.indent===undefined)){
+      w.items=w.items.map(it=>({...it,indent:it.indent||0}));
       changed=true;
     }
   });
@@ -2525,12 +2616,12 @@ function renderCWWidget(w){
   if(w.type==='checklist'){
     const items=w.items||[];
     const{total,done}=countChecklistProgress(items);
-    const tree=renderChecklistItems(items,w.id,0);
+    const rows=renderChecklistItems(items,w.id);
     return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title} <span style="font-size:11px;font-weight:400;color:var(--m2)">${done}/${total}</span></div>
-      <div style="margin-bottom:8px">${tree}</div>
-      <div style="display:flex;gap:6px">
-        <input type="text" id="cwadd-${w.id}" class="inp" placeholder="Add item..." style="flex:1;font-size:12px;padding:7px 9px" onkeydown="if(event.key==='Enter'){addTopChecklistItem('${w.id}');event.preventDefault();}">
-        <button onclick="addTopChecklistItem('${w.id}')" class="btn b-ai sm">+ Add</button>
+      <div id="clw-${w.id}">${rows}</div>
+      <div onclick="addTopChecklistItem('${w.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 0 2px;cursor:text;color:var(--mt)">
+        <span style="font-size:16px;width:20px;text-align:center;flex-shrink:0">+</span>
+        <span style="font-size:14px">List item</span>
       </div>
     </div>`;
   }
@@ -2947,6 +3038,7 @@ function toggleTasksExpand(){
   }
 }
 function renderTasks(){
+  try{updateLiveNotification();}catch(e){}
   const tasks=getTasks();const tk=TK();const now=new Date();
   let active=[], done=[];
 
@@ -2977,21 +3069,18 @@ function renderTasks(){
   }
 
   function taskCard(t){
-    const hasDue=t.date||t.time;let dstr='',ov=false,isT=false;
+    let ov=false,isT=false;
     if(t.date){
-      if(t.date===tk){isT=true;dstr=t.time?'Today at '+t.time:'Today';}
-      else if(t.date<tk){ov=true;dstr=t.time?t.date+' '+t.time:t.date;}
-      else{dstr=t.time?t.date+' at '+t.time:t.date;}
-    } else if(t.time){dstr='Today at '+t.time;isT=true;}
-    const col=ov?'var(--rd)':isT?'var(--bd)':'var(--m2)';
-    const border=ov&&!t.done?'rgba(232,96,96,.3)':isT&&!t.done?'rgba(232,150,90,.3)':'var(--b)';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--s1);border:1px solid ${border};border-radius:10px;margin-bottom:7px">
-      <button onclick="togTask('${t.id}')" style="width:24px;height:24px;border-radius:50%;border:1.5px solid ${t.done?'var(--ai)':'var(--b2)'};background:${t.done?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#000">${t.done?'✓':''}</button>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;color:${t.done?'var(--m2)':'var(--tx)'};text-decoration:${t.done?'line-through':'none'};word-break:break-word">${t.text}</div>
-        ${hasDue?`<div style="font-size:11px;color:${col};margin-top:2px">⏰ ${dstr}${ov&&!t.done?' — overdue':''}</div>`:''}
-      </div>
-      <button onclick="openTskEdit('${t.id}')" style="background:var(--s2);border:1px solid var(--b);border-radius:7px;color:var(--tx);font-size:12px;cursor:pointer;padding:5px 10px;flex-shrink:0;white-space:nowrap">✏️ Edit</button>
+      if(t.date===tk)isT=true;
+      else if(t.date<tk&&!t.done)ov=true;
+    } else if(t.time)isT=true;
+    const border=ov?'rgba(232,96,96,.35)':isT&&!t.done?'rgba(232,150,90,.35)':'var(--b)';
+    return `<div class="tsk-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid ${border}">
+      <button onclick="togTask('${t.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${t.done?'var(--ai)':'var(--b2)'};background:${t.done?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${t.done?'✓':''}</button>
+      <input type="text" value="${escAttr(t.text)}" oninput="updateTaskText('${t.id}',this.value)" onblur="renderDash()" style="flex:1;min-width:80px;background:none;border:none;outline:none;font-size:13px;font-family:inherit;padding:4px 0;color:${t.done?'var(--m2)':'var(--tx)'};text-decoration:${t.done?'line-through':'none'}">
+      <input type="date" value="${t.date||''}" onchange="updateTaskDate('${t.id}',this.value)" title="Due date" style="background:none;border:none;outline:none;font-size:11px;color:${ov?'var(--rd)':'var(--m2)'};width:118px;flex-shrink:0">
+      <input type="time" value="${t.time||''}" onchange="updateTaskTime('${t.id}',this.value)" title="Due time" style="background:none;border:none;outline:none;font-size:11px;color:var(--m2);width:82px;flex-shrink:0">
+      <button onclick="deleteTaskInline('${t.id}')" title="Delete" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;line-height:1">×</button>
     </div>`;
   }
 
@@ -3010,20 +3099,12 @@ function renderTasks(){
   document.getElementById('tskList').innerHTML=h;
 }
 function togTask(id){const tasks=getTasks();const t=tasks.find(x=>x.id===id);if(t)t.done=!t.done;saveTasks(tasks);renderTasks();renderDash();}
-function openTskEdit(id){
-  const tasks=getTasks();const t=tasks.find(x=>x.id===id);if(!t)return;
-  document.getElementById('tskEditId').value=id;document.getElementById('tskEditTxt').value=t.text;
-  document.getElementById('tskEditDate').value=t.date||'';document.getElementById('tskEditTime').value=t.time||'';
-  openMo('tskEditMo');
-}
-function saveTskEdit(){
-  const id=document.getElementById('tskEditId').value;const txt=document.getElementById('tskEditTxt').value.trim();if(!txt)return;
-  const date=document.getElementById('tskEditDate').value;const time=document.getElementById('tskEditTime').value;
-  const tasks=getTasks();const t=tasks.find(x=>x.id===id);
-  if(t){t.text=txt;t.date=date||null;t.time=time||null;if(date&&time)schedTN(t);}
-  saveTasks(tasks);closeMo('tskEditMo');renderTasks();
-}
-function delTask(){const id=document.getElementById('tskEditId').value;saveTasks(getTasks().filter(x=>x.id!==id));closeMo('tskEditMo');renderTasks();renderDash();}
+// Text edits save silently without re-rendering the list (re-rendering mid-keystroke
+// would steal focus/cursor position) — the compact dashboard preview catches up onblur.
+function updateTaskText(id,val){const tasks=getTasks();const t=tasks.find(x=>x.id===id);if(t){t.text=val;saveTasks(tasks);}}
+function updateTaskDate(id,val){const tasks=getTasks();const t=tasks.find(x=>x.id===id);if(t){t.date=val||null;if(t.date&&t.time)schedTN(t);}saveTasks(tasks);renderTasks();renderDash();}
+function updateTaskTime(id,val){const tasks=getTasks();const t=tasks.find(x=>x.id===id);if(t){t.time=val||null;if(t.date&&t.time)schedTN(t);}saveTasks(tasks);renderTasks();renderDash();}
+function deleteTaskInline(id){saveTasks(getTasks().filter(x=>x.id!==id));renderTasks();renderDash();}
 function clearDone(){if(!confirm('Clear all completed tasks?'))return;saveTasks(getTasks().filter(t=>!t.done));renderTasks();}
 function saveQTask(){
   const txt=document.getElementById('qTskTxt').value.trim();if(!txt)return;
@@ -3034,57 +3115,71 @@ function saveQTask(){
 }
 
 // ═══ POMODORO ═══
-let _pomState={mode:'focus',rem:50*60,run:false,done:0,tot:4,sub:null};
-function updatePomUI(){
-  const m=Math.floor(_pomState.rem/60);const s=_pomState.rem%60;
-  document.getElementById('pomM').textContent=String(m).padStart(2,'0');
-  document.getElementById('pomS').textContent=':'+String(s).padStart(2,'0');
-  const tot=_pomState.mode==='focus'?PF:PB;const pct=((tot-_pomState.rem)/tot)*100;
-  document.getElementById('pomRing').style.background=`conic-gradient(var(--ai) ${pct}%,var(--s3) ${pct}%)`;
-  document.getElementById('pomLbl').textContent=_pomState.mode==='focus'?'FOCUS SESSION':'☕ BREAK TIME';
-  document.getElementById('pomSess').textContent=_pomState.done+1;
-  document.getElementById('pomTot').textContent=_pomState.tot;
-  document.getElementById('pomBtn').textContent=_pomState.run?(_pomState.mode==='focus'?'⏸ Pause':'⏸ Break'):(_pomState.mode==='focus'?'▶ Start Focus':'▶ Start Break');
-  const pd=S.go('pd',{});document.getElementById('pomToday').textContent=pd[TK()]||0;
-}
-function adjS(d){_pomState.tot=Math.max(1,Math.min(12,_pomState.tot+d));updatePomUI();}
-function setSub(sub,btn){document.querySelectorAll('.sj').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');_pomState.sub=sub;document.getElementById('subDisp').textContent=sub;}
+// NOTE: the timer's real state lives in the pomRun/pomMode/pomRem/pomTot/pomCur
+// variables and updatePomUI() further below (timestamp-based, survives phone
+// lock/tab switches). adjS/setSub just adjust that shared state directly.
+function adjS(d){pomTot=Math.max(1,Math.min(12,pomTot+d));savePomState();updatePomUI();}
+function setSub(sub,btn){document.querySelectorAll('.sj').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');_sub=sub;document.getElementById('subDisp').textContent=sub;savePomState();}
 // ═══ POMODORO SOUNDS (Web Audio API — no files needed) ═══
-function pomSound(type){
+// IMPORTANT: a fresh AudioContext used to be created on every single call. On
+// mobile, a context created from a background/timer callback (not a direct tap)
+// starts life "suspended" by the browser's autoplay policy — so the sound either
+// didn't play at all or let through a tiny glitch/click before suspending. We now
+// keep ONE shared context alive for the whole session and explicitly resume() it
+// every time before scheduling notes, which fixes silent/glitchy end sounds when
+// the phone comes back from a locked screen.
+let _sharedAudioCtx=null;
+function getAudioCtx(){
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    if(type==='session'){
-      // Rising bell chord — plays 3 times over 3 seconds (session done)
-      const notes=[523,659,784]; // C E G
-      [0, 1.0, 2.0].forEach(rep=>{
-        notes.forEach((freq,i)=>{
-          const t=rep+(i*0.18);
-          const o=ctx.createOscillator();const g=ctx.createGain();
-          o.connect(g);g.connect(ctx.destination);
-          o.frequency.value=freq;o.type='sine';
-          g.gain.setValueAtTime(0,ctx.currentTime+t);
-          g.gain.linearRampToValueAtTime(0.4,ctx.currentTime+t+0.05);
-          g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.75);
-          o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.8);
-        });
-      });
-    } else {
-      // Gentle descending chime — plays 4 times over 3 seconds (break over)
-      const pairs=[[880,660],[800,600],[720,540],[660,500]];
-      pairs.forEach(([f1,f2],rep)=>{
-        const base=rep*0.75;
-        [0,0.25].forEach((t,i)=>{
-          const o=ctx.createOscillator();const g=ctx.createGain();
-          o.connect(g);g.connect(ctx.destination);
-          o.frequency.value=i===0?f1:f2;o.type='triangle';
-          g.gain.setValueAtTime(0,ctx.currentTime+base+t);
-          g.gain.linearRampToValueAtTime(0.35,ctx.currentTime+base+t+0.04);
-          g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+base+t+0.65);
-          o.start(ctx.currentTime+base+t);o.stop(ctx.currentTime+base+t+0.7);
-        });
-      });
+    if(!_sharedAudioCtx||_sharedAudioCtx.state==='closed'){
+      _sharedAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
     }
-  }catch(e){}
+    return _sharedAudioCtx;
+  }catch(e){return null;}
+}
+function pomSound(type){
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  const play=()=>{
+    try{
+      if(type==='session'){
+        // Rising bell chord — plays 3 times over 3 seconds (session done)
+        const notes=[523,659,784]; // C E G
+        [0, 1.0, 2.0].forEach(rep=>{
+          notes.forEach((freq,i)=>{
+            const t=rep+(i*0.18);
+            const o=ctx.createOscillator();const g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.frequency.value=freq;o.type='sine';
+            g.gain.setValueAtTime(0,ctx.currentTime+t);
+            g.gain.linearRampToValueAtTime(0.4,ctx.currentTime+t+0.05);
+            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.75);
+            o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.8);
+          });
+        });
+      } else {
+        // Gentle descending chime — plays 4 times over 3 seconds (break over)
+        const pairs=[[880,660],[800,600],[720,540],[660,500]];
+        pairs.forEach(([f1,f2],rep)=>{
+          const base=rep*0.75;
+          [0,0.25].forEach((t,i)=>{
+            const o=ctx.createOscillator();const g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.frequency.value=i===0?f1:f2;o.type='triangle';
+            g.gain.setValueAtTime(0,ctx.currentTime+base+t);
+            g.gain.linearRampToValueAtTime(0.35,ctx.currentTime+base+t+0.04);
+            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+base+t+0.65);
+            o.start(ctx.currentTime+base+t);o.stop(ctx.currentTime+base+t+0.7);
+          });
+        });
+      }
+    }catch(e){}
+  };
+  if(ctx.state==='suspended'){
+    ctx.resume().then(play).catch(play);
+  } else {
+    play();
+  }
 }
 function pomFlash(color){
   const r=document.getElementById('pomRing');if(!r)return;
@@ -3132,6 +3227,10 @@ function loadPomState(){
       pomRun = false;
     }
   } catch(e){}
+  // Re-apply the "selected" highlight to whichever subject button matches the restored subject
+  if(_sub){
+    document.querySelectorAll('.sj').forEach(b=>{if(b.textContent.trim().endsWith(_sub))b.classList.add('sel');else b.classList.remove('sel');});
+  }
 }
 
 function startPomInterval(){
@@ -3153,6 +3252,7 @@ function pomToggle(){
     savePomState();
   }
   updatePomUI();
+  updateLiveNotification();
 }
 
 function pomTick(){
@@ -3174,9 +3274,17 @@ function pomTick(){
 function handlePomComplete(){
   if(pomMode === 'focus'){
     pomCur++;
-    const sess = S.go('ps', []);
-    sess.push({d: TK(), sub: _sub || 'General', dur: PF});
-    S.s('ps', sess);
+    // NOTE: this used to be saved under the key 'ps', which collided with the
+    // unrelated AI-course-progress object also stored under 'ps' — whichever
+    // wrote last would silently corrupt the other. Renamed to 'pomSessions'.
+    const sess = S.go('pomSessions', []);
+    sess.push({d: TK(), sub: _sub || 'General', dur: PF, t: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});
+    S.s('pomSessions', sess);
+    const pd = S.go('pd', {});
+    pd[TK()] = (pd[TK()] || 0) + 1;
+    S.s('pd', pd);
+    const logEl = document.getElementById('pomLog');
+    if(logEl) logEl.innerHTML = sess.slice(-8).reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--ai)">${e.t||''}</span> · ${e.sub}</div>`).join('');
     pomSound('session');
     sendNotif('✅ Session done!', 'Take a ' + (pomCur % pomTot === 0 ? '30' : '10') + '-min break.');
     pomFlash('#4fd8a0');
@@ -3191,6 +3299,7 @@ function handlePomComplete(){
   }
   savePomState();
   updatePomUI();
+  updateLiveNotification();
 }
 
 function pomReset(){
@@ -3201,15 +3310,17 @@ function pomReset(){
   pomCur  = 0;
   savePomState();
   updatePomUI();
+  updateLiveNotification();
 }
 
 function updatePomUI(){
   const m = Math.floor(pomRem / 60);
   const s2 = Math.floor(pomRem % 60);
-  const txt = String(m).padStart(2,'0') + ':' + String(s2).padStart(2,'0');
-  const el = document.getElementById('pomM');
-  if(el) el.textContent = txt;
-  document.title = pomRun ? txt + ' — M2028' : 'M2028';
+  const mEl = document.getElementById('pomM');
+  if(mEl) mEl.textContent = String(m).padStart(2,'0');
+  const sEl = document.getElementById('pomS');
+  if(sEl) sEl.textContent = ':' + String(s2).padStart(2,'0');
+  document.title = pomRun ? (String(m).padStart(2,'0')+':'+String(s2).padStart(2,'0')) + ' — M2028' : 'M2028';
   const pct = pomMode === 'focus'
     ? ((PF - pomRem) / PF * 100)
     : ((PB - pomRem) / PB * 100);
@@ -3218,10 +3329,17 @@ function updatePomUI(){
     `conic-gradient(${pomMode==='focus'?'var(--ai)':'var(--bd)'} ${pct}%, var(--s3) 0%)`;
   const btn = document.getElementById('pomBtn');
   if(btn) btn.textContent = pomRun ? '⏸ Pause' : (pomRem < (pomMode==='focus'?PF:PB) ? '▶ Resume' : '▶ Start');
-  const modeEl = document.getElementById('pomMode');
-  if(modeEl) modeEl.textContent = pomMode === 'focus' ? 'Focus' : 'Break';
-  const subEl = document.getElementById('pomSub');
-  if(subEl) subEl.textContent = _sub ? '📚 ' + _sub : 'No subject set';
+  const lblEl = document.getElementById('pomLbl');
+  if(lblEl) lblEl.textContent = pomMode === 'focus' ? 'FOCUS SESSION' : '☕ BREAK TIME';
+  const sessEl = document.getElementById('pomSess');
+  if(sessEl) sessEl.textContent = (pomCur % pomTot) + 1;
+  const totEl = document.getElementById('pomTot');
+  if(totEl) totEl.textContent = pomTot;
+  const subDispEl = document.getElementById('subDisp');
+  if(subDispEl) subDispEl.textContent = _sub || 'Not set';
+  const pd = S.go('pd', {});
+  const todayEl = document.getElementById('pomToday');
+  if(todayEl) todayEl.textContent = pd[TK()] || 0;
 }
 
 // Recalculate after phone unlock or tab switch back
@@ -3237,12 +3355,14 @@ document.addEventListener('visibilitychange', () => {
       }
     }
     updatePomUI();
+    updateLiveNotification();
   }
 });
 
 window.addEventListener('pageshow', () => {
   loadPomState();
   updatePomUI();
+  updateLiveNotification();
 });
 // ═══ NOTIFICATIONS ═══
 // ═══ UPSC CUSTOM BOOKS ═══
@@ -3469,6 +3589,50 @@ function testNotif(){
   },3000);
 }
 function sendNotif(title,body){if(Notification.permission==='granted')new Notification(title,{body,icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%234fd8a0"/></svg>'});}
+
+// ═══ LIVE NOTIFICATION (timer + today's tasks) ═══
+// Shows one always-updating notification — like a music player's ongoing
+// notification — with the Pomodoro countdown and today's task list. It goes
+// through the service worker (registration.showNotification, not `new
+// Notification()`) with a fixed tag so each refresh replaces the same
+// notification instead of stacking new ones. Note: the mobile web platform
+// does not give a page true background execution — while the SCREEN IS OFF
+// the browser process itself is usually still alive for a while so this still
+// refreshes, but browsers can suspend it after a longer period, same as any
+// website. It is not a substitute for a native app's guaranteed background
+// service.
+function getTodayTaskLines(limit){
+  const tk=TK();
+  return getTasks().filter(t=>!t.done&&t.date===tk).slice(0,limit||3).map(t=>t.text);
+}
+function updateLiveNotification(){
+  if(!('Notification'in window)||Notification.permission!=='granted')return;
+  if(!('serviceWorker'in navigator))return;
+  const m=Math.floor(pomRem/60),s2=Math.floor(pomRem%60);
+  const timeStr=String(m).padStart(2,'0')+':'+String(s2).padStart(2,'0');
+  const modeLabel=pomMode==='focus'?'Focus':'Break';
+  const status=pomRun?`⏱ ${timeStr} — ${modeLabel}`:`⏸ ${timeStr} — ${modeLabel} (paused)`;
+  const tasks=getTodayTaskLines(3);
+  const body='Today: '+(tasks.length?tasks.join(' • '):'no tasks scheduled');
+  const icon='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%234fd8a0"/></svg>';
+  navigator.serviceWorker.ready.then(reg=>{
+    reg.showNotification(status,{body,tag:'m2028-live',renotify:false,silent:true,icon,badge:icon}).catch(()=>{});
+  }).catch(()=>{});
+}
+let _liveNotifTimer=null;
+function startLiveNotifLoop(){
+  if(Notification.permission!=='granted')return;
+  updateLiveNotification();
+  clearInterval(_liveNotifTimer);
+  _liveNotifTimer=setInterval(updateLiveNotification,20000);
+}
+function stopLiveNotifLoop(){clearInterval(_liveNotifTimer);_liveNotifTimer=null;}
+function closeLiveNotification(){
+  if(!('serviceWorker'in navigator))return;
+  navigator.serviceWorker.ready.then(reg=>{
+    reg.getNotifications({tag:'m2028-live'}).then(list=>list.forEach(n=>n.close()));
+  }).catch(()=>{});
+}
 function reqNotif(){
   if(!('Notification'in window)){banner('Notifications not supported.');return;}
   if(Notification.permission==='granted'){banner('🔔 Notifications already on!');schedNotifs();return;}
@@ -3479,6 +3643,7 @@ function reqNotif(){
       banner('🔔 Notifications enabled!');
       if(b)b.textContent='🔔✓';
       schedNotifs(); // schedule daily reminders immediately after grant
+      startLiveNotifLoop();
     } else {
       banner('Notifications blocked.');
       if(b)b.textContent='🔕';
@@ -3525,26 +3690,38 @@ function onNewDay(){
   sendNotif('🌅 Good morning!','New day — habits reset. Let\'s go!');
 }
 
-// Warm up AudioContext on first user gesture so iOS Safari allows sound
-let _audioCtxReady=false;
+// Warm up AudioContext on first user gesture so iOS Safari allows sound.
+// Uses the SAME shared context that pomSound() plays through, and stays
+// listening (not {once:true}) so we can silently re-resume it on every
+// tap — mobile browsers re-suspend the context after the screen locks.
 function warmAudio(){
-  if(_audioCtxReady)return;
+  const ctx=getAudioCtx();
+  if(!ctx)return;
+  if(ctx.state==='suspended')ctx.resume().catch(()=>{});
   try{
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
     const o=ctx.createOscillator();const g=ctx.createGain();
     o.connect(g);g.connect(ctx.destination);
     g.gain.setValueAtTime(0,ctx.currentTime);
     o.start();o.stop(ctx.currentTime+0.001);
-    _audioCtxReady=true;
   }catch(e){}
 }
-document.addEventListener('click',warmAudio,{once:true});
+document.addEventListener('click',warmAudio);
+document.addEventListener('touchend',warmAudio);
+// Re-resume audio the instant the tab/screen becomes visible again. pomSound()
+// itself also calls resume() before playing, so this is a belt-and-braces extra
+// nudge — no harm firing twice.
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden){
+    const ctx=getAudioCtx();
+    if(ctx&&ctx.state==='suspended')ctx.resume().catch(()=>{});
+  }
+});
 
 // ═══ INIT (called after login) ═══
 function init(){
   document.getElementById('bfDate').value=TK();
   document.getElementById('qTskDate').value=TK();
-  if('Notification'in window&&Notification.permission==='granted'){document.getElementById('nBtn').textContent='🔔✓';schedNotifs();}
+  if('Notification'in window&&Notification.permission==='granted'){document.getElementById('nBtn').textContent='🔔✓';schedNotifs();startLiveNotifLoop();}
   // Midnight tick — always recalculates time to NEXT midnight so it never drifts
   function scheduleMidnightTick(){
     const now=new Date();
@@ -3587,7 +3764,8 @@ try{
 // All storage keys to sync
 function getAllKeys(){
   const keys=['habs','hd','us','as','ps','bfLog','ml','plans','hl','cd','scheds','tasks','pd','plog','bestSt',
-    'customWidgets','dashCfg','miles','aic','phases','upscTitle','customBooks','theme','guestMode'];
+    'customWidgets','dashCfg','miles','aic','phases','upscTitle','customBooks','theme','guestMode',
+    'navHidden','navLabels','pomSessions'];
   for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('m_ch_'))keys.push(k.replace('m_',''));}
   return keys;
 }
@@ -3601,14 +3779,57 @@ async function push(key){
   }catch(e){console.warn('Push failed:',e);}
 }
 
-// Pull all data from cloud → local
+// Pull all data from cloud → local.
+// FIX: this used to blindly overwrite every local key with whatever was in the
+// cloud, no matter how fresh the local copy was. That's what caused the
+// Pomodoro bug: finish a session while the phone is locked → local 'pd'
+// (today's counts) and 'pomSessions' (the log) update instantly → but before
+// that update reaches the cloud, the app reopens/reloads → pull() runs → the
+// OLDER cloud copy stomps the just-earned session right back to 0 and wipes
+// the log — while flashing "✓ Synced from cloud", which is exactly what was
+// being seen. Now: 'pd' and 'pomSessions' are merged (never lose data from
+// either side) and every other key uses last-write-wins based on a local
+// modified-timestamp, so a local change made after the last push is protected
+// instead of being clobbered.
 async function pull(){
   if(!_user||!_cloudOK)return;
   try{
-    const{data,error}=await supa.from('user_data').select('data_key,data_value').eq('user_id',_user.id);
+    const{data,error}=await supa.from('user_data').select('data_key,data_value,updated_at').eq('user_id',_user.id);
     if(error)throw error;
-    if(data&&data.length){data.forEach(r=>S.s(r.data_key,r.data_value));banner('✓ Synced from cloud');}
+    if(data&&data.length){data.forEach(r=>mergeCloudValue(r.data_key,r.data_value,r.updated_at));banner('✓ Synced from cloud');}
   }catch(e){console.warn('Pull failed:',e);}
+}
+function sessionSig(s){return (s&&s.d||'')+'|'+(s&&s.t||'')+'|'+(s&&s.sub||'')+'|'+(s&&s.dur||'');}
+function mergeCloudValue(key,cloudVal,updatedAt){
+  if(key==='pd'){
+    // Daily Pomodoro-session counts: {date: count}. Take the max per date so
+    // a session logged on either device is never lost.
+    const local=S.g(key)||{};
+    const merged={...local};
+    Object.keys(cloudVal||{}).forEach(d=>{merged[d]=Math.max(merged[d]||0,cloudVal[d]||0);});
+    S.s(key,merged);
+    return;
+  }
+  if(key==='pomSessions'){
+    // Session log: union both lists, de-duped by date+time+subject+duration.
+    const local=S.g(key)||[];
+    const seen=new Set(local.map(sessionSig));
+    const merged=local.slice();
+    (cloudVal||[]).forEach(s=>{const sig=sessionSig(s);if(!seen.has(sig)){merged.push(s);seen.add(sig);}});
+    merged.sort((a,b)=>((a.d||'')+(a.t||'')).localeCompare((b.d||'')+(b.t||'')));
+    S.s(key,merged);
+    return;
+  }
+  const cloudTs=updatedAt?new Date(updatedAt).getTime():0;
+  const localTs=_getLocalTs(key);
+  if(localTs&&localTs>cloudTs){
+    // Local copy is newer than what's in the cloud (probably hasn't been
+    // pushed yet) — push it up instead of letting the stale cloud copy win.
+    push(key);
+    return;
+  }
+  _origS(key,cloudVal);
+  _setLocalTs(key,cloudTs||Date.now());
 }
 
 // Push all local data to cloud
@@ -3621,9 +3842,14 @@ async function pushAll(){
   }catch(e){banner('Sync failed — data still saved locally.');console.warn('pushAll error:',e);}
 }
 
+// Local write-timestamp tracking (used by pull()'s merge logic above, so a
+// recent local change never gets clobbered by a stale cloud read).
+function _getLocalTs(k){try{return(JSON.parse(localStorage.getItem('m_sync_ts')||'{}'))[k]||0;}catch(e){return 0;}}
+function _setLocalTs(k,ts){try{const t=JSON.parse(localStorage.getItem('m_sync_ts')||'{}');t[k]=ts||Date.now();localStorage.setItem('m_sync_ts',JSON.stringify(t));}catch(e){}}
+
 // Override S.s to also push to cloud on every save
 const _origS=S.s.bind(S);
-S.s=(k,v)=>{_origS(k,v);if(_user&&_cloudOK)push(k);};
+S.s=(k,v)=>{_origS(k,v);_setLocalTs(k,Date.now());if(_user&&_cloudOK)push(k);};
 
 // ═══ AUTH ═══
 function togglePw(){const i=document.getElementById('liPw');const b=document.getElementById('pwEye');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈';}

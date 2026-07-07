@@ -2555,15 +2555,27 @@ function cliPointerEnd(){
 }
 function renderChecklistItems(items,wid){
   if(!items||!items.length)return '';
-  return items.map((it)=>{
+  return items.map((it,idx)=>{
     const nested=it.indent===1;
-    return `<div class="cli" data-id="${it.id}" data-indent="${it.indent||0}" style="display:flex;align-items:center;gap:7px;padding:5px 0;${nested?'margin-left:34px':''}">
+    const canIndent=!nested&&idx>0; // Keep rule: first item can never nest
+    const canOutdent=nested;
+    // Indent/outdent buttons: Tab/Shift+Tab still work with a physical
+    // keyboard, but most phone on-screen keyboards have NO Tab key at all —
+    // that made nesting completely impossible to trigger on mobile. These
+    // small ⇥ / ⇤ buttons are the touch-friendly way to do the same thing.
+    const nestBtn = canIndent
+      ? `<button onclick="indentChecklistItem('${wid}','${it.id}')" title="Make sub-item" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:14px;padding:0 3px;flex-shrink:0;line-height:1">⇥</button>`
+      : canOutdent
+        ? `<button onclick="outdentChecklistItem('${wid}','${it.id}')" title="Un-nest" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:14px;padding:0 3px;flex-shrink:0;line-height:1">⇤</button>`
+        : `<span style="width:19px;flex-shrink:0"></span>`;
+    return `<div class="cli" data-id="${it.id}" data-indent="${it.indent||0}" style="display:flex;align-items:center;gap:5px;padding:5px 0;${nested?'margin-left:34px':''}">
       ${nested?'':`<span onpointerdown="cliPointerStart(event,'${wid}','${it.id}')" style="cursor:grab;touch-action:none;color:var(--mt);font-size:14px;flex-shrink:0;user-select:none;letter-spacing:-2px;line-height:1;padding:4px 2px">⠿⠿</span>`}
       <button onclick="toggleChecklistItem('${wid}','${it.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${it.done?'var(--ai)':'var(--b2)'};background:${it.done?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${it.done?'✓':''}</button>
-      <input type="text" id="cli-${it.id}" class="cli-inp" value="${escAttr(it.text)}" placeholder="List item"
+      <input type="text" id="cli-${it.id}" class="cli-inp" value="${escAttr(it.text||'')}" placeholder="List item"
         oninput="updateChecklistText('${wid}','${it.id}',this.value)"
         onkeydown="handleChecklistKeydown(event,'${wid}','${it.id}')"
         style="flex:1;min-width:0;background:none;border:none;outline:none;font-size:14px;font-family:inherit;padding:5px 0;color:${it.done?'var(--m2)':'var(--tx)'};text-decoration:${it.done?'line-through':'none'}">
+      ${nestBtn}
       <button onclick="deleteChecklistItem('${wid}','${it.id}')" title="Delete" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;line-height:1">×</button>
     </div>`;
   }).join('');

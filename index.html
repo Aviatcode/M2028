@@ -2537,17 +2537,25 @@ function cliPointerMove(e){
   const floaterRect=d.floater.getBoundingClientRect();
   const floaterMid=floaterRect.top+floaterRect.height/2;
   const siblings=Array.from(d.listEl.children).filter(c=>c!==d.floater&&c!==d.placeholder&&c.classList&&c.classList.contains('cli')&&c.dataset.indent!=='1'&&c.style.display!=='none');
+  // Scan the WHOLE list to find the first top-level row the floater is still
+  // above; that's where the placeholder belongs. If the floater is below
+  // every remaining row (dragging toward the bottom), fall through and drop
+  // the placeholder at the very end. The old version stopped at the first
+  // row it happened to be below and never looked further down the list,
+  // which made it impossible to drag an item past the 2nd slot.
+  let target=null;
   for(const sib of siblings){
     const r=sib.getBoundingClientRect();
     const mid=r.top+r.height/2;
-    if(floaterMid<mid&&d.placeholder.nextElementSibling!==sib){
-      d.listEl.insertBefore(d.placeholder,sib);break;
-    } else if(floaterMid>mid){
-      let after=sib;
-      while(after.nextElementSibling&&after.nextElementSibling.dataset&&after.nextElementSibling.dataset.indent==='1')after=after.nextElementSibling;
-      if(after.nextElementSibling!==d.placeholder){d.listEl.insertBefore(d.placeholder,after.nextElementSibling);}
-      break;
-    }
+    if(floaterMid<mid){target=sib;break;}
+  }
+  if(target){
+    if(d.placeholder.nextElementSibling!==target)d.listEl.insertBefore(d.placeholder,target);
+  } else if(siblings.length){
+    const lastSib=siblings[siblings.length-1];
+    let after=lastSib;
+    while(after.nextElementSibling&&after.nextElementSibling.dataset&&after.nextElementSibling.dataset.indent==='1')after=after.nextElementSibling;
+    if(after.nextElementSibling!==d.placeholder)d.listEl.insertBefore(d.placeholder,after.nextElementSibling||null);
   }
 }
 function cliPointerEnd(){

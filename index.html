@@ -590,18 +590,7 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
     </div>
     <!-- Audio player -->
     <div style="padding:14px 16px;background:rgba(10,20,35,.95)">
-      <!--
-        AUDIO QUALITY NOTE:
-        The current file (susurrus-audio.mp3) is a low-bitrate (~64kbps) MP3.
-        We intentionally did NOT apply fake "enhancement" (EQ boosts, volume
-        normalization, etc.) since that cannot add back detail that was lost
-        to compression and would just distort or color the sound.
-        To genuinely improve quality: obtain a 320kbps MP3 (or a lossless
-        FLAC/WAV converted to a high-bitrate MP3 for browser compatibility)
-        and replace the file at susurrus-audio.mp3 in the same folder as
-        this HTML file — no code changes needed, the <source> tag below
-        just points to that filename.
-      -->
+    
       <audio id="nsdraudio" preload="none" style="display:none">
         <source src="susurrus1.mp3" type="audio/mpeg">
       </audio>

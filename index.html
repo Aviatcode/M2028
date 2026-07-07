@@ -3092,56 +3092,158 @@ function pomFlash(color){
   r.style.transition='background 0.1s';r.style.background=color;
   setTimeout(()=>{r.style.background=orig;},300);
 }
+// ── Timestamp-based Pomodoro (survives phone lock/tab switch) ──
+const POM_KEY = 'pom_state';
+
+function savePomState(){
+  localStorage.setItem(POM_KEY, JSON.stringify({
+    run: pomRun,
+    mode: pomMode,
+    endTs: pomRun ? Date.now() + pomRem * 1000 : null,
+    rem: pomRem,
+    tot: pomTot,
+    cur: pomCur,
+    sub: _sub
+  }));
+}
+
+function loadPomState(){
+  try{
+    const s = JSON.parse(localStorage.getItem(POM_KEY));
+    if(!s) return;
+    pomMode = s.mode || 'focus';
+    pomTot  = s.tot  || 4;
+    pomCur  = s.cur  || 0;
+    _sub    = s.sub  || null;
+    if(s.run && s.endTs){
+      const rem = Math.round((s.endTs - Date.now()) / 1000);
+      if(rem > 0){
+        pomRem = rem;
+        pomRun = true;
+        startPomInterval();
+      } else {
+        // Session ended while phone was locked — handle completion
+        pomRem = 0;
+        pomRun = false;
+        handlePomComplete();
+      }
+    } else {
+      pomRem = s.rem || (pomMode === 'focus' ? PF : PB);
+      pomRun = false;
+    }
+  } catch(e){}
+}
+
+function startPomInterval(){
+  clearInterval(pomInt);
+  pomInt = setInterval(pomTick, 500);
+}
 
 function pomToggle(){
-  if(_pomState.run){
-    clearInterval(pomInt);pomInt=null;_pomState.run=false;
-    document.getElementById('pomBtn').textContent='▶ Resume';
+  warmAudio();
+  if(pomRun){
+    // Pause
+    pomRun = false;
+    clearInterval(pomInt);
+    savePomState();
   } else {
-    _pomState.run=true;
-    document.getElementById('pomBtn').textContent='⏸ Pause';
-    pomInt=setInterval(()=>{
-      if(_pomState.rem<=0){
-        clearInterval(pomInt);pomInt=null;_pomState.run=false;
-        if(_pomState.mode==='focus'){
-          // Session complete
-          _pomState.done++;
-          const k=TK();const pd=S.go('pd',{});pd[k]=(pd[k]||0)+1;S.s('pd',pd);
-          const log=S.go('plog',[]);
-          log.push({t:new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),s:_pomState.sub||'—'});
-          S.s('plog',log);
-          const le=document.getElementById('pomLog');
-          if(le)le.innerHTML=log.slice(-8).reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--ai)">${e.t}</span> · ${e.s}</div>`).join('');
-          pomSound('session');
-          pomFlash('#4fd8a0');
-          sendNotif('✅ Session done!',`Session ${_pomState.done}/${_pomState.tot} complete. Break time — 10 min.`);
-          if(_pomState.done>=_pomState.tot){
-            document.getElementById('pomLbl').textContent='🎉 All sessions done! Take a 30 min break.';
-            _pomState={..._pomState,mode:'focus',rem:PF,done:0,run:false};
-            updatePomUI();return;
-          }
-          // Auto-start break
-          _pomState.mode='break';_pomState.rem=PB;_pomState.run=true;
-          updatePomUI();
-          pomInt=setInterval(()=>{
-            if(_pomState.rem<=0){
-              clearInterval(pomInt);pomInt=null;_pomState.run=false;
-              _pomState.mode='focus';_pomState.rem=PF;
-              pomSound('break');
-              pomFlash('#e8965a');
-              sendNotif('☕ Break over!','Time to focus — start your next session.');
-              updatePomUI();
-            } else {_pomState.rem--;updatePomUI();}
-          },1000);
-        }
-        updatePomUI();return;
-      }
-      _pomState.rem--;updatePomUI();
-    },1000);
+    // Start / resume
+    pomRun = true;
+    startPomInterval();
+    savePomState();
+  }
+  updatePomUI();
+}
+
+function pomTick(){
+  if(!pomRun) return;
+  const s = JSON.parse(localStorage.getItem(POM_KEY) || '{}');
+  if(s.endTs){
+    pomRem = Math.max(0, Math.round((s.endTs - Date.now()) / 1000));
+  } else {
+    pomRem = Math.max(0, pomRem - 0.5);
+  }
+  updatePomUI();
+  if(pomRem <= 0){
+    clearInterval(pomInt);
+    pomRun = false;
+    handlePomComplete();
   }
 }
-function pomReset(){clearInterval(pomInt);pomInt=null;_pomState={mode:'focus',rem:PF,run:false,done:0,tot:_pomState.tot,sub:_pomState.sub};document.getElementById('pomBtn').textContent='▶ Start';updatePomUI();}
 
+function handlePomComplete(){
+  if(pomMode === 'focus'){
+    pomCur++;
+    const sess = S.go('ps', []);
+    sess.push({d: TK(), sub: _sub || 'General', dur: PF});
+    S.s('ps', sess);
+    pomSound('session');
+    sendNotif('✅ Session done!', 'Take a ' + (pomCur % pomTot === 0 ? '30' : '10') + '-min break.');
+    pomFlash('#4fd8a0');
+    pomMode = 'break';
+    pomRem  = PB;
+  } else {
+    pomSound('break');
+    sendNotif('☕ Break over!', 'Start your next focus session.');
+    pomFlash('#e8965a');
+    pomMode = 'focus';
+    pomRem  = PF;
+  }
+  savePomState();
+  updatePomUI();
+}
+
+function pomReset(){
+  pomRun = false;
+  clearInterval(pomInt);
+  pomMode = 'focus';
+  pomRem  = PF;
+  pomCur  = 0;
+  savePomState();
+  updatePomUI();
+}
+
+function updatePomUI(){
+  const m = Math.floor(pomRem / 60);
+  const s2 = Math.floor(pomRem % 60);
+  const txt = String(m).padStart(2,'0') + ':' + String(s2).padStart(2,'0');
+  const el = document.getElementById('pomM');
+  if(el) el.textContent = txt;
+  document.title = pomRun ? txt + ' — M2028' : 'M2028';
+  const pct = pomMode === 'focus'
+    ? ((PF - pomRem) / PF * 100)
+    : ((PB - pomRem) / PB * 100);
+  const ring = document.getElementById('pomRing');
+  if(ring) ring.style.background =
+    `conic-gradient(${pomMode==='focus'?'var(--ai)':'var(--bd)'} ${pct}%, var(--s3) 0%)`;
+  const btn = document.getElementById('pomBtn');
+  if(btn) btn.textContent = pomRun ? '⏸ Pause' : (pomRem < (pomMode==='focus'?PF:PB) ? '▶ Resume' : '▶ Start');
+  const modeEl = document.getElementById('pomMode');
+  if(modeEl) modeEl.textContent = pomMode === 'focus' ? 'Focus' : 'Break';
+  const subEl = document.getElementById('pomSub');
+  if(subEl) subEl.textContent = _sub ? '📚 ' + _sub : 'No subject set';
+}
+
+// Recalculate after phone unlock or tab switch back
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && pomRun){
+    const s = JSON.parse(localStorage.getItem(POM_KEY) || '{}');
+    if(s.endTs){
+      pomRem = Math.max(0, Math.round((s.endTs - Date.now()) / 1000));
+      if(pomRem <= 0){
+        clearInterval(pomInt);
+        pomRun = false;
+        handlePomComplete();
+      }
+    }
+    updatePomUI();
+  }
+});
+
+window.addEventListener('pageshow', () => {
+  loadPomState();
+  updatePomUI();
+});
 // ═══ NOTIFICATIONS ═══
 // ═══ UPSC CUSTOM BOOKS ═══
 function openEditUpscTitle(){
@@ -3306,6 +3408,35 @@ function initNSDR(){
     const dur=document.getElementById('nsdrDur');
     if(dur)dur.textContent=nsdrFmt(audio.duration);
   });
+  // Media Session — shows player on lock screen while NSDR plays
+  if('mediaSession' in navigator){
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: 'Susurrus — NSDR',
+      artist: 'Dr. Andrew Huberman',
+      album: '10-Minute Non-Sleep Deep Rest',
+      artwork: [{
+        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%231a1040'/><ellipse cx='256' cy='310' rx='120' ry='70' fill='%234fd8a0' opacity='.6'/><circle cx='256' cy='290' r='40' fill='%23fff5c0'/><rect y='310' width='512' height='202' fill='%230d3d5a'/></svg>",
+        sizes: '512x512',
+        type: 'image/svg+xml'
+      }]
+    });
+    navigator.mediaSession.setActionHandler('play', () => {
+      audio.play();
+      const btn = document.getElementById('nsdrPlayBtn');
+      if(btn) btn.textContent = '⏸';
+    });
+    navigator.mediaSession.setActionHandler('pause', () => {
+      audio.pause();
+      const btn = document.getElementById('nsdrPlayBtn');
+      if(btn) btn.textContent = '▶';
+    });
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
+      audio.currentTime = Math.max(0, audio.currentTime - 10);
+    });
+    navigator.mediaSession.setActionHandler('seekforward', () => {
+      audio.currentTime = Math.min(audio.duration, audio.currentTime + 10);
+    });
+  }
 }
 function testSound(type){
   const el=document.getElementById('testNotifStatus');
@@ -3434,6 +3565,7 @@ function init(){
   applyUpscTitle();
   initNSDR();
   renderNavAll();
+  loadPomState();
   renderDash();renderHabits();renderUpsc();renderCustomBooks();renderAi();showSched('mwf');renderCal();renderRoad();renderBody();renderTasks();updatePomUI();
 }
 setInterval(()=>{const e=document.getElementById('quoteEl');if(e)e.textContent=getQuote();},60000);

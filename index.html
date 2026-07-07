@@ -2440,8 +2440,17 @@ function updateChecklistText(wid,itemId,val){
 }
 function toggleChecklistItem(wid,itemId){
   const{cw,w}=getCWWidget(wid);if(!w)return;
-  const it=w.items.find(x=>x.id===itemId);if(!it)return;
+  const idx=w.items.findIndex(x=>x.id===itemId);if(idx<0)return;
+  const it=w.items[idx];
   it.done=!it.done;
+  // If this is a top-level item (a "heading"), cascade its new state down to
+  // every nested sub-item directly under it, so checking the parent crosses
+  // off the whole group in one tap — matches Google Keep's behavior.
+  if((it.indent||0)===0){
+    for(let k=idx+1;k<w.items.length;k++){
+      if((w.items[k].indent||0)>0)w.items[k].done=it.done;else break;
+    }
+  }
   saveAndRerenderChecklist(cw);
 }
 function deleteChecklistItem(wid,itemId){

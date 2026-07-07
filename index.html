@@ -940,7 +940,7 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
 
       <div style="padding-top:12px;border-top:1px solid var(--b)">
         <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:4px">🧭 Navigation Tabs</div>
-        <div style="font-size:11px;color:var(--m2);margin-bottom:9px">Show/hide each tab, or rename it (type a new name — it's saved automatically). Hidden tabs disappear from both desktop and mobile navigation, but their data is kept.</div>
+        <div style="font-size:11px;color:var(--m2);margin-bottom:9px">Show/hide each tab, or rename it (type a new name — it's saved automatically). Hidden tabs disappear from both desktop and mobile navigation, but their data is kept. Home is always visible and isn't listed here.</div>
         <div id="navCfgList"></div>
       </div>
 
@@ -986,13 +986,7 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
           <input type="hidden" id="cw-links">
         </div>
         <div id="cwf-checklist" style="display:none;margin-bottom:9px">
-          <label style="font-size:11px;color:var(--m2)">Add an item</label>
-          <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:6px">
-            <input type="text" id="cw-check-inp" class="inp" placeholder="e.g. Read The Hindu" style="flex:1" onkeydown="if(event.key==='Enter'){addCheckItem();event.preventDefault();}">
-            <button onclick="addCheckItem()" class="btn b-ai sm">+ Add</button>
-          </div>
-          <div id="cw-checklist-list" style="min-height:30px"></div>
-          <input type="hidden" id="cw-checklist">
+          <div style="font-size:11px;color:var(--m2);padding:8px 10px;background:var(--s2);border-radius:7px">Give it a title — you'll add items (and sub-items) directly on the checklist card after creating it. You can create as many separate checklists as you like.</div>
         </div>
       </div>
     </div>
@@ -1080,8 +1074,7 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
           <option value="tasks">☑️ Tasks</option>
           <option value="upsc">📚 UPSC</option>
           <option value="ai">🤖 AI</option>
-          <option value="sched">🗓 Timetable</option>
-          <option value="cal">📆 Calendar</option>
+          <option value="sched">🗓 Timetable & Cal</option>
           <option value="road">🗺 Roadmap</option>
           <option value="body">💪 Body</option>
         </select>
@@ -1089,14 +1082,9 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
       <button onclick="addEditLinkItem()" class="btn b-gh sm" style="width:100%;margin-bottom:8px">+ Add Button</button>
       <div id="cwef-links-list"></div>
     </div>
-    <!-- Checklist fields -->
+    <!-- Checklist: only the title is edited here — items/sub-items are managed directly on the card -->
     <div id="cwef-checklist" style="display:none;margin-bottom:11px">
-      <label style="font-size:11px;color:var(--m2)">Items</label>
-      <div style="display:flex;gap:6px;margin-top:6px;margin-bottom:6px">
-        <input type="text" id="cwEdit-check-inp" class="inp" placeholder="Add item" style="flex:1" onkeydown="if(event.key==='Enter'){addEditCheckItem();event.preventDefault();}">
-        <button onclick="addEditCheckItem()" class="btn b-ai sm">+ Add</button>
-      </div>
-      <div id="cwef-checklist-list"></div>
+      <div style="font-size:11px;color:var(--m2);padding:8px 10px;background:var(--s2);border-radius:7px">Items and sub-items for this checklist are managed directly on its card on the dashboard.</div>
     </div>
     <div style="display:flex;gap:7px;margin-top:6px">
       <button class="btn b-ai" style="flex:1" onclick="saveEditCW()">Save Changes</button>
@@ -1429,7 +1417,7 @@ function openMo(id){
   if(id==='dashCfgMo'){
     // Reset form state only on fresh open
     _cwType=null;
-    _cwLinkItems=[];_cwCheckItems=[];
+    _cwLinkItems=[];
     ['cwTitle','cw-date','cw-note'].forEach(k=>{const el=document.getElementById(k);if(el)el.value='';});
     ['countdown','note','links','checklist'].forEach(t=>{
       const f=document.getElementById('cwf-'+t);if(f)f.style.display='none';
@@ -1781,7 +1769,6 @@ function resetHabDefs(){if(!confirm('Reset all habits to default?'))return;S.d('
 
 // ═══ WIDGET ITEM-BY-ITEM HELPERS ═══
 let _cwLinkItems=[];
-let _cwCheckItems=[];
 
 function addLinkItem(){
   const label=document.getElementById('cw-link-label').value.trim();
@@ -1812,36 +1799,6 @@ function renderLinkItems(){
 function updateHiddenLinks(){
   const el=document.getElementById('cw-links');
   if(el)el.value=_cwLinkItems.map(l=>l.label+'|'+l.tab).join('\n');
-}
-
-function addCheckItem(){
-  const inp=document.getElementById('cw-check-inp');
-  const val=(inp?inp.value:'').trim();
-  if(!val){banner('Enter an item.');return;}
-  _cwCheckItems.push(val);
-  if(inp)inp.value='';
-  renderCheckItems();updateHiddenChecklist();
-  setTimeout(()=>inp&&inp.focus(),50);
-}
-
-function removeCheckItem(i){
-  _cwCheckItems.splice(i,1);
-  renderCheckItems();updateHiddenChecklist();
-}
-
-function renderCheckItems(){
-  const el=document.getElementById('cw-checklist-list');if(!el)return;
-  if(!_cwCheckItems.length){el.innerHTML='<div style="font-size:11px;color:var(--mt);padding:4px 0">No items yet.</div>';return;}
-  el.innerHTML=_cwCheckItems.map((item,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--s2);border-radius:8px;margin-bottom:5px">
-      <span style="flex:1;font-size:13px;color:var(--tx)">${item}</span>
-      <button onclick="removeCheckItem(${i})" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;padding:0 2px">×</button>
-    </div>`).join('');
-}
-
-function updateHiddenChecklist(){
-  const el=document.getElementById('cw-checklist');
-  if(el)el.value=_cwCheckItems.join('\n');
 }
 
 // ═══ UPSC BOOKS ═══
@@ -2074,7 +2031,6 @@ function delMilestone(){
 const NAV_TABS=[
   {id:'dash',  label:'Home',                 icon:'🏠', group:'Today', primary:true,  shortLabel:'Home'},
   {id:'pomo',  label:'Pomodoro',              icon:'⏱', group:'Today', primary:true,  shortLabel:'Pomo'},
-  {id:'tasks', label:'Tasks',                 icon:'☑️', group:'Today', primary:false, pseudo:true},
   {id:'upsc',  label:'UPSC Books',            icon:'📚', group:'Study', primary:true,  shortLabel:'UPSC'},
   {id:'ai',    label:'AI Courses',            icon:'🤖', group:'Study', primary:true,  shortLabel:'AI'},
   {id:'sched', label:'Timetable & Calendar',  icon:'🗓', group:'Study', primary:false},
@@ -2168,7 +2124,7 @@ function renderNavCfgList(){
   const hidden=getNavHidden();
   const labels=getNavLabels();
   let h='';
-  NAV_TABS.forEach(t=>{
+  NAV_TABS.filter(t=>t.id!=='dash').forEach(t=>{
     const on=!hidden[t.id];
     const val=labels[t.id]||'';
     h+=`<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--b)">
@@ -2265,16 +2221,16 @@ function switchDCTab(tab){/* no-op - tabs removed */}
 function setCWType(type){
   _cwType=type;
   // Reset item-by-item lists
-  _cwLinkItems=[];_cwCheckItems=[];
-  renderLinkItems();renderCheckItems();
-  updateHiddenLinks();updateHiddenChecklist();
+  _cwLinkItems=[];
+  renderLinkItems();
+  updateHiddenLinks();
   ['cwTitle','cw-date','cw-note'].forEach(k=>{const el=document.getElementById(k);if(el)el.value='';});
   ['countdown','note','links','checklist'].forEach(t=>{
     const f=document.getElementById('cwf-'+t);if(f)f.style.display=t===type?'block':'none';
     const b=document.getElementById('cwt-'+t);
     if(b){b.style.border=t===type?'1px solid var(--ai)':'1px solid var(--b)';b.style.background=t===type?'var(--a2)':'var(--s2)';b.style.color=t===type?'var(--ai)':'var(--m2)';}
   });
-  const hints={countdown:'Enter title + date.',note:'Enter title. Editable pad on dashboard.',links:'Enter a label + pick a tab for each button.',checklist:'Add items one by one — press Enter or tap + Add.'};
+  const hints={countdown:'Enter title + date.',note:'Enter title. Editable pad on dashboard.',links:'Enter a label + pick a tab for each button.',checklist:'Enter a title — add items (and sub-items) on the card after creating it. Make as many separate checklists as you like.'};
   const hint=document.getElementById('cwTypeHint');
   if(hint){hint.textContent=hints[type]||'';hint.style.color='var(--ai)';}
 }
@@ -2302,11 +2258,7 @@ function addCustomWidget(){
     if(!links.length){banner('Format: Label | tab-id  e.g. UPSC | upsc');return;}
     widget={id,type:'links',title,links,enabled:true};
   } else if(_cwType==='checklist'){
-    const rawEl=document.getElementById('cw-checklist');
-    const raw=(rawEl?rawEl.value:'').trim();
-    const items=raw.split('\n').map(l=>l.trim()).filter(Boolean);
-    if(!items.length){banner('Add at least one item.');return;}
-    widget={id,type:'checklist',title,items,checks:{},enabled:true};
+    widget={id,type:'checklist',title,items:[],enabled:true};
   }
 
   if(!widget){banner('Something went wrong. Try again.');return;}
@@ -2362,7 +2314,6 @@ function delCustomWidget(id){delCW(id);}
 
 // ─── EDIT WIDGET ───
 let _editLinkItems=[];
-let _editCheckItems=[];
 
 function openEditCW(id){
   const cw=S.go('customWidgets',[]);
@@ -2388,8 +2339,6 @@ function openEditCW(id){
     renderEditLinkItems();
   } else if(w.type==='checklist'){
     document.getElementById('cwef-checklist').style.display='block';
-    _editCheckItems=[...(w.items||[])];
-    renderEditCheckItems();
   }
   // Open edit modal on top (don't close customize — stack modals)
   document.getElementById('cwEditMo').classList.add('op');
@@ -2411,8 +2360,7 @@ function saveEditCW(){
     if(!_editLinkItems.length){banner('Add at least one button.');return;}
     w.links=_editLinkItems;
   } else if(type==='checklist'){
-    if(!_editCheckItems.length){banner('Add at least one item.');return;}
-    w.items=_editCheckItems;
+    // Items/sub-items are managed on the card itself; nothing else to save here.
   }
   S.s('customWidgets',cw);
   applyDashCfg();
@@ -2439,40 +2387,130 @@ function renderEditLinkItems(){
     :'<div style="font-size:11px;color:var(--mt);padding:4px 0">No buttons yet.</div>';
 }
 
-function addEditCheckItem(){
-  const inp=document.getElementById('cwEdit-check-inp');
-  const val=(inp?inp.value:'').trim();
-  if(!val){banner('Enter an item.');return;}
-  _editCheckItems.push(val);
-  if(inp)inp.value='';
-  renderEditCheckItems();
-  setTimeout(()=>inp&&inp.focus(),50);
-}
-
-function removeEditCheckItem(i){_editCheckItems.splice(i,1);renderEditCheckItems();}
-
-function renderEditCheckItems(){
-  const el=document.getElementById('cwef-checklist-list');if(!el)return;
-  el.innerHTML=_editCheckItems.length
-    ?_editCheckItems.map((item,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:var(--s2);border-radius:8px;margin-bottom:4px"><span style="flex:1;font-size:13px;color:var(--tx)">${item}</span><button onclick="removeEditCheckItem(${i})" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px">×</button></div>`).join('')
-    :'<div style="font-size:11px;color:var(--mt);padding:4px 0">No items yet.</div>';
-}
-
 function saveCWNote(id,val){
   const cw=S.go('customWidgets',[]);
   const w=cw.find(x=>x.id===id);
   if(w){w.note=val;S.s('customWidgets',cw);}
 }
 
-function togCWCheck(wid,idx){
+// ═══ NESTED CHECKLISTS ═══
+// Each checklist widget's `items` is a tree: [{id,text,done,children:[...]}, ...]
+// Checked state is persistent (not reset daily) — suited to project/packing-style lists.
+// Every mutation below saves via S.s('customWidgets',...) immediately, which is the same
+// call that pushes to the cloud when signed in — so multi-device sync stays in lockstep
+// with what's on screen rather than batching changes for a manual save.
+function newChecklistItem(text){
+  return{id:'ci'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),text,done:false,children:[]};
+}
+function findCWItem(items,id){
+  for(const it of items||[]){
+    if(it.id===id)return it;
+    if(it.children&&it.children.length){const f=findCWItem(it.children,id);if(f)return f;}
+  }
+  return null;
+}
+function findCWItemLocation(items,id){
+  for(let i=0;i<(items||[]).length;i++){
+    if(items[i].id===id)return{arr:items,idx:i};
+    if(items[i].children&&items[i].children.length){
+      const r=findCWItemLocation(items[i].children,id);
+      if(r)return r;
+    }
+  }
+  return null;
+}
+function setChecklistDoneRecursive(item,val){
+  item.done=val;
+  (item.children||[]).forEach(c=>setChecklistDoneRecursive(c,val));
+}
+function countChecklistProgress(items){
+  let total=0,done=0;
+  (items||[]).forEach(it=>{
+    total++;if(it.done)done++;
+    if(it.children&&it.children.length){const r=countChecklistProgress(it.children);total+=r.total;done+=r.done;}
+  });
+  return{total,done};
+}
+function addChecklistItem(wid,parentId,text){
+  text=(text||'').trim();if(!text)return;
   const cw=S.go('customWidgets',[]);
   const w=cw.find(x=>x.id===wid);if(!w)return;
-  const today=TK();
-  if(!w.checks)w.checks={};
-  if(!w.checks[today])w.checks[today]={};
-  w.checks[today][idx]=!w.checks[today][idx];
+  if(!w.items)w.items=[];
+  const node=newChecklistItem(text);
+  if(!parentId){w.items.push(node);}
+  else{
+    const parent=findCWItem(w.items,parentId);
+    if(!parent)return;
+    if(!parent.children)parent.children=[];
+    parent.children.push(node);
+  }
   S.s('customWidgets',cw);
   applyDashCfg();
+}
+function addTopChecklistItem(wid){
+  const inp=document.getElementById('cwadd-'+wid);
+  if(!inp)return;
+  const text=inp.value.trim();
+  if(!text)return;
+  addChecklistItem(wid,null,text);
+  inp.value='';
+  inp.focus();
+}
+function promptAddSubItem(wid,parentId){
+  const text=prompt('Add sub-item:');
+  if(text&&text.trim())addChecklistItem(wid,parentId,text.trim());
+}
+function toggleChecklistItem(wid,itemId){
+  const cw=S.go('customWidgets',[]);
+  const w=cw.find(x=>x.id===wid);if(!w)return;
+  const item=findCWItem(w.items||[],itemId);if(!item)return;
+  // Checking a parent checks all of its sub-items too; unchecking clears them.
+  setChecklistDoneRecursive(item,!item.done);
+  S.s('customWidgets',cw);
+  applyDashCfg();
+}
+function deleteChecklistItem(wid,itemId){
+  const cw=S.go('customWidgets',[]);
+  const w=cw.find(x=>x.id===wid);if(!w)return;
+  const loc=findCWItemLocation(w.items||[],itemId);
+  if(loc)loc.arr.splice(loc.idx,1);
+  S.s('customWidgets',cw);
+  applyDashCfg();
+}
+function renderChecklistItems(items,wid,depth){
+  if(!items||!items.length)return depth===0?'<div style="font-size:11px;color:var(--mt);padding:6px 0">No items yet — add one below.</div>':'';
+  return items.map(it=>{
+    const kids=renderChecklistItems(it.children||[],wid,depth+1);
+    return `<div style="margin-left:${depth*16}px">
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--b)">
+        <button onclick="toggleChecklistItem('${wid}','${it.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${it.done?'var(--ai)':'var(--b2)'};background:${it.done?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#000">${it.done?'✓':''}</button>
+        <span style="flex:1;font-size:13px;color:${it.done?'var(--m2)':'var(--tx)'};text-decoration:${it.done?'line-through':'none'}">${escAttr(it.text)}</span>
+        <button onclick="promptAddSubItem('${wid}','${it.id}')" title="Add sub-item" style="background:none;border:none;color:var(--ai);cursor:pointer;font-size:15px;padding:0 3px;flex-shrink:0">+</button>
+        <button onclick="if(confirm('Delete this item and any sub-items?'))deleteChecklistItem('${wid}','${it.id}')" title="Delete" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;padding:0 3px;flex-shrink:0">×</button>
+      </div>
+      ${kids}
+    </div>`;
+  }).join('');
+}
+// One-time migration: older checklist widgets stored items as flat strings with a
+// day-keyed `checks` map. That model reset daily; the new model is a persistent,
+// nestable tree. We convert on load — old per-day check history can't be mapped
+// onto a persistent flag, so migrated items start unchecked.
+function migrateChecklistWidgets(){
+  const cw=S.go('customWidgets',[]);
+  let changed=false;
+  cw.forEach(w=>{
+    if(w.type!=='checklist')return;
+    if(Array.isArray(w.items)&&w.items.length&&typeof w.items[0]==='string'){
+      w.items=w.items.map(t=>newChecklistItem(t));
+      delete w.checks;
+      changed=true;
+    } else if(!Array.isArray(w.items)){
+      w.items=[];
+      changed=true;
+    }
+  });
+  if(changed)S.s('customWidgets',cw);
 }
 
 function renderCWWidget(w){
@@ -2491,10 +2529,16 @@ function renderCWWidget(w){
     return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><div style="display:flex;flex-wrap:wrap;gap:7px">${btns}</div></div>`;
   }
   if(w.type==='checklist'){
-    const today=TK();const checks=(w.checks&&w.checks[today])||{};
-    const done=(w.items||[]).filter((_,i)=>checks[i]).length;
-    const items=(w.items||[]).map((item,i)=>{const ck=!!checks[i];return `<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--b)"><button onclick="togCWCheck('${w.id}',${i})" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${ck?'var(--ai)':'var(--b2)'};background:${ck?'var(--ai)':'none'};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${ck?'✓':''}</button><span style="font-size:13px;color:${ck?'var(--m2)':'var(--tx)'};text-decoration:${ck?'line-through':'none'}">${item}</span></div>`;}).join('');
-    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title} <span style="font-size:11px;font-weight:400;color:var(--m2)">${done}/${(w.items||[]).length}</span></div>${items}</div>`;
+    const items=w.items||[];
+    const{total,done}=countChecklistProgress(items);
+    const tree=renderChecklistItems(items,w.id,0);
+    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title} <span style="font-size:11px;font-weight:400;color:var(--m2)">${done}/${total}</span></div>
+      <div style="margin-bottom:8px">${tree}</div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="cwadd-${w.id}" class="inp" placeholder="Add item..." style="flex:1;font-size:12px;padding:7px 9px" onkeydown="if(event.key==='Enter'){addTopChecklistItem('${w.id}');event.preventDefault();}">
+        <button onclick="addTopChecklistItem('${w.id}')" class="btn b-ai sm">+ Add</button>
+      </div>
+    </div>`;
   }
   return '';
 }
@@ -3391,6 +3435,7 @@ function init(){
   }
   scheduleMidnightTick();
   applyTheme();
+  migrateChecklistWidgets();
   applyDashCfg();
   applyUpscTitle();
   initNSDR();

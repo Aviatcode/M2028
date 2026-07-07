@@ -1,0 +1,17 @@
+{
+  "name": "M2028 — Personal Master Planner",
+  "short_name": "M2028",
+  "description": "UPSC + AI Engineering + Fitness tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0f",
+  "theme_color": "#4fd8a0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%234fd8a0'/><text x='50%' y='58%' font-size='80' text-anchor='middle' dominant-baseline='middle' fill='%23000'>M</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

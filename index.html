@@ -510,7 +510,7 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
 
 <!-- POMODORO -->
 <div id="v-pomo" class="vw">
-  <div class="ph"><div class="ph-t">Pomodoro Timer</div><div class="ph-s">50 min focus · 10 min break · phone away</div></div>
+  <div class="ph"><div class="ph-t">Pomodoro Timer</div><div class="ph-s">50 min focus · 10 min break (30 min every full round) · phone away</div></div>
   <div class="g2">
     <div class="card" style="text-align:center">
       <div id="pomLbl" style="font-size:10px;color:var(--m2);letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px">FOCUS SESSION</div>
@@ -3418,8 +3418,7 @@ function handlePomComplete(){
     const pd = S.go('pd', {});
     pd[TK()] = (pd[TK()] || 0) + 1;
     S.s('pd', pd);
-    const logEl = document.getElementById('pomLog');
-    if(logEl) logEl.innerHTML = sess.slice(-8).reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--ai)">${e.t||''}</span> · ${e.sub}</div>`).join('');
+    renderPomLog();
     pomSound('session');
     pomFlash('#4fd8a0');
     const roundDone = pomCur % pomTot === 0;
@@ -3502,6 +3501,19 @@ function updatePomUI(){
   // Lock the session-count adjuster once a run is underway
   const adjRow=document.getElementById('pomAdjRow');
   if(adjRow) adjRow.querySelectorAll('button.b-gh').forEach(b=>{b.disabled=pomRun||pomCur>0;b.style.opacity=(pomRun||pomCur>0)?'0.35':'1';});
+  renderPomLog();
+}
+// Session log used to only get written the moment a session finished, so on
+// page load / tab switch it just showed "No sessions yet." forever even
+// with real history saved. This renders straight from stored pomSessions
+// every time the Pomodoro UI refreshes, so it always reflects reality.
+function renderPomLog(){
+  const logEl = document.getElementById('pomLog');
+  if(!logEl) return;
+  const sess = S.go('pomSessions', []);
+  logEl.innerHTML = sess.length
+    ? sess.slice(-8).reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--ai)">${e.t||''}</span> · ${e.sub}</div>`).join('')
+    : 'No sessions yet.';
 }
 
 // Recalculate after phone unlock or tab switch back

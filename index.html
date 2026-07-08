@@ -3309,6 +3309,7 @@ function pomToggle(){
   updateLiveNotification();
 }
 
+let _lastNotifSec=null;
 function pomTick(){
   if(!pomRun) return;
   const s = JSON.parse(localStorage.getItem(POM_KEY) || '{}');
@@ -3318,6 +3319,12 @@ function pomTick(){
     pomRem = Math.max(0, pomRem - 0.5);
   }
   updatePomUI();
+  // Refresh the live notification once per whole second (tick itself runs
+  // every 500ms for a smooth on-screen countdown) so the notification's time
+  // genuinely ticks down in step with the visible timer instead of jumping
+  // every 20s.
+  const sec=Math.floor(pomRem);
+  if(sec!==_lastNotifSec){_lastNotifSec=sec;updateLiveNotification();}
   if(pomRem <= 0){
     clearInterval(pomInt);
     pomRun = false;

@@ -3765,13 +3765,37 @@ function getTodayTaskLines(limit){
   const tk=TK();
   return getTasks().filter(t=>!t.done&&t.date===tk).slice(0,limit||3).map(t=>t.text);
 }
+// updateLiveNotification used to trust the in-memory pomRem/pomMode, which
+// is only as fresh as the last time pomTick managed to run. On a locked
+// Android phone, Chrome can throttle/suspend the page's timers for long
+// stretches — so the lock-screen notification would freeze on a stale
+// number instead of just updating less often. Now it always re-derives the
+// truth straight from the endTs timestamp saved in localStorage (the same
+// source completeIfExpired/pomTick use), so whenever this function DOES get
+// a chance to run — even after a long suspension — it shows the real
+// current remaining time instead of whatever it showed last. It also
+// self-heals a missed focus->break / break->focus transition: if it finds
+// the phase already expired, it drives the state machine forward itself
+// (via completeIfExpired) instead of just displaying a stuck "00:00".
 function updateLiveNotification(){
   if(!('Notification'in window)||Notification.permission!=='granted')return;
   if(!('serviceWorker'in navigator))return;
   if(!pomRun){closeLiveNotification();return;} // only show while a session is actually running
-  const m=Math.floor(pomRem/60),s2=Math.floor(pomRem%60);
+  const s=JSON.parse(localStorage.getItem(POM_KEY)||'{}');
+  let rem=pomRem, mode=pomMode;
+  if(s.run&&s.endTs){
+    rem=Math.max(0,Math.round((s.endTs-Date.now())/1000));
+    mode=s.mode||pomMode;
+    if(rem<=0){
+      // Phase already ended while we were suspended — advance state now
+      // (plays the correct sound/log/notif) instead of showing a frozen 00:00.
+      completeIfExpired();
+      return; // completeIfExpired() calls updateLiveNotification() again with fresh state
+    }
+  }
+  const m=Math.floor(rem/60),s2=Math.floor(rem%60);
   const timeStr=String(m).padStart(2,'0')+':'+String(s2).padStart(2,'0');
-  const modeLabel=pomMode==='focus'?'Focus':'Break';
+  const modeLabel=mode==='focus'?'Focus':'Break';
   const status=`⏱ ${timeStr} — ${modeLabel}`;
   const tasks=getTodayTaskLines(3);
   const body='Today: '+(tasks.length?tasks.join(' • '):'no tasks scheduled');
@@ -3780,15 +3804,23 @@ function updateLiveNotification(){
     reg.showNotification(status,{body,tag:'m2028-live',renotify:false,silent:true,icon,badge:icon}).catch(()=>{});
   }).catch(()=>{});
 }
+// Recursive setTimeout instead of setInterval: setInterval calls can pile up
+// or drift when the tab was suspended and then resumes all at once; a fresh
+// setTimeout scheduled AFTER each run self-corrects instead of stacking.
+// Runs every 15s (down from 20s) to lower the chance a phase-transition
+// gets missed for long, without meaningfully affecting battery.
 let _liveNotifTimer=null;
 function startLiveNotifLoop(){
   if(!('Notification'in window)||Notification.permission!=='granted')return;
   if(!pomRun)return; // never starts unless a session is actively running
-  updateLiveNotification();
-  clearInterval(_liveNotifTimer);
-  _liveNotifTimer=setInterval(updateLiveNotification,20000);
+  clearTimeout(_liveNotifTimer);
+  const loop=()=>{
+    updateLiveNotification();
+    if(pomRun)_liveNotifTimer=setTimeout(loop,15000);
+  };
+  loop();
 }
-function stopLiveNotifLoop(){clearInterval(_liveNotifTimer);_liveNotifTimer=null;closeLiveNotification();}
+function stopLiveNotifLoop(){clearTimeout(_liveNotifTimer);_liveNotifTimer=null;closeLiveNotification();}
 function closeLiveNotification(){
   if(!('serviceWorker'in navigator))return;
   navigator.serviceWorker.ready.then(reg=>{

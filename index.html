@@ -510,32 +510,27 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
 
 <!-- POMODORO -->
 <div id="v-pomo" class="vw">
-  <div class="ph"><div class="ph-t">Pomodoro Timer</div><div class="ph-s">50 min focus · 10 min break · phone away</div></div>
+  <div class="ph"><div class="ph-t">Pomodoro Timer</div><div class="ph-s">50 min focus · 10 min break (30 min every full round) · phone away</div></div>
   <div class="g2">
     <div class="card" style="text-align:center">
       <div id="pomLbl" style="font-size:10px;color:var(--m2);letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px">FOCUS SESSION</div>
       <div class="pr" id="pomRing"><div class="pi"><div class="pm" id="pomM">50</div><div class="pse" id="pomS">:00</div></div></div>
       <div style="font-size:12px;color:var(--m2);margin-bottom:14px">Session <span id="pomSess">1</span> / <span id="pomTot">4</span></div>
-      <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px" id="pomAdjRow">
         <button class="btn b-gh" style="padding:6px 14px;font-size:18px" onclick="adjS(-1)">−</button>
         <button class="btn b-ai" id="pomBtn" onclick="pomToggle()" style="min-width:88px">▶ Start</button>
         <button class="btn b-gh" style="padding:6px 14px;font-size:18px" onclick="adjS(1)">+</button>
       </div>
-      <button class="btn b-gh" onclick="pomReset()" style="width:100%">↺ Reset</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn b-gh" onclick="pomEndSession()" style="flex:1">⏹ End Session</button>
+      </div>
       <div style="font-size:12px;color:var(--mt);margin-top:10px">Today: <span style="color:var(--ai)" id="pomToday">0</span> sessions</div>
     </div>
     <div>
       <div class="card">
-        <div class="ct" style="margin-bottom:10px">Studying now?</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-          <button class="sj" style="background:var(--a2);color:var(--ai);border-color:rgba(79,216,160,.25)" onclick="setSub('AI/Python',this)">🤖 AI/Python</button>
-          <button class="sj" style="background:var(--u2);color:var(--up);border-color:rgba(107,147,240,.25)" onclick="setSub('Polity',this)">🏛 Polity</button>
-          <button class="sj" style="background:var(--d2);color:var(--bd);border-color:rgba(232,150,90,.25)" onclick="setSub('History',this)">📜 History</button>
-          <button class="sj" style="background:var(--e2);color:var(--ec);border-color:rgba(240,107,189,.25)" onclick="setSub('Economics',this)">📈 Economics</button>
-          <button class="sj" style="background:var(--go2);color:var(--geo);border-color:rgba(96,196,232,.25)" onclick="setSub('Geography',this)">🌍 Geography</button>
-          <button class="sj" style="background:var(--s2);color:var(--m2);border-color:var(--b)" onclick="setSub('Other',this)">Other</button>
-        </div>
-        <div style="font-size:13px;color:var(--m2)">Now: <strong style="color:var(--tx)" id="subDisp">Not set</strong></div>
+        <div class="ct" style="margin-bottom:10px">Studying now</div>
+        <div style="font-size:13px;color:var(--m2);margin-bottom:10px">Now: <strong style="color:var(--tx)" id="subDisp">Not set</strong></div>
+        <button class="btn b-gh sm" style="width:100%" onclick="openPomSubjectModal()">✏️ Change subject</button>
       </div>
       <div class="card"><div class="ct" style="margin-bottom:8px">Session log</div><div id="pomLog" style="font-size:12px;color:var(--m2);max-height:160px;overflow-y:auto">No sessions yet.</div></div>
     </div>
@@ -878,6 +873,21 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
       <div><label style="font-size:11px;color:var(--m2)">Time</label><input type="time" id="qTskTime" class="inp" style="margin-top:3px"></div>
     </div>
     <div style="display:flex;gap:7px"><button class="btn b-ai" onclick="saveQTask()">Add</button><button class="btn b-gh" onclick="closeMo('qTaskMo')">Cancel</button></div>
+  </div>
+</div>
+<div class="ov" id="pomSubMo" onclick="if(event.target===this)closeMo('pomSubMo')">
+  <div class="mo"><div class="mot">What are you studying?</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+      <button class="sj" style="background:var(--a2);color:var(--ai);border-color:rgba(79,216,160,.25)" onclick="pickPomSubject('AI/Python',this)">🤖 AI/Python</button>
+      <button class="sj" style="background:var(--u2);color:var(--up);border-color:rgba(107,147,240,.25)" onclick="pickPomSubject('Polity',this)">🏛 Polity</button>
+      <button class="sj" style="background:var(--d2);color:var(--bd);border-color:rgba(232,150,90,.25)" onclick="pickPomSubject('History',this)">📜 History</button>
+      <button class="sj" style="background:var(--e2);color:var(--ec);border-color:rgba(240,107,189,.25)" onclick="pickPomSubject('Economics',this)">📈 Economics</button>
+      <button class="sj" style="background:var(--go2);color:var(--geo);border-color:rgba(96,196,232,.25)" onclick="pickPomSubject('Geography',this)">🌍 Geography</button>
+      <button class="sj" style="background:var(--s2);color:var(--m2);border-color:var(--b)" onclick="pickPomSubject('Other',this)">Other</button>
+    </div>
+    <label style="font-size:11px;color:var(--m2)">Or type your own subject</label>
+    <input type="text" id="pomCustomSub" class="inp" style="margin-top:4px;margin-bottom:16px" placeholder="e.g. Newspaper reading" onkeydown="if(event.key==='Enter'){beginPomSession();event.preventDefault();}">
+    <button class="btn b-ai" style="width:100%" onclick="beginPomSession()">▶ Begin Focus Session</button>
   </div>
 </div>
 <div class="ov" id="projMo" onclick="if(event.target===this)closeMo('projMo')">
@@ -1351,8 +1361,8 @@ const PHASES=[
 
 // ═══ STATE ═══
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
-let pomInt=null,pomRun=false,pomMode='focus',pomRem=50*60,pomTot=4,pomCur=0;
-const PF=50*60,PB=10*60;
+let pomInt=null,pomRun=false,pomMode='focus',pomRem=50*60,pomPhaseLen=50*60,pomTot=4,pomCur=0;
+const PF=50*60,PB=10*60,PLB=30*60;
 let _sub=null,_schedKey='mwf',_schedSub='timetable',_tf='all',_cwType=null;
 
 // ═══ HELPERS ═══
@@ -3167,11 +3177,51 @@ function saveQTask(){
 }
 
 // ═══ POMODORO ═══
-// NOTE: the timer's real state lives in the pomRun/pomMode/pomRem/pomTot/pomCur
-// variables and updatePomUI() further below (timestamp-based, survives phone
-// lock/tab switches). adjS/setSub just adjust that shared state directly.
-function adjS(d){pomTot=Math.max(1,Math.min(12,pomTot+d));savePomState();updatePomUI();}
-function setSub(sub,btn){document.querySelectorAll('.sj').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');_sub=sub;document.getElementById('subDisp').textContent=sub;savePomState();}
+// The timer's real state lives in the pomRun/pomMode/pomRem/pomTot/pomCur
+// variables below and updatePomUI() further down (timestamp-based, survives
+// phone lock/tab switches). adjS only works before a run starts — once
+// sessions are underway the target session count shouldn't shift mid-run.
+function adjS(d){
+  if(pomRun||pomCur>0)return; // locked once a run is underway
+  pomTot=Math.max(1,Math.min(12,pomTot+d));
+  savePomState();updatePomUI();
+}
+// ── Subject picker: a modal shown BEFORE a fresh run starts, instead of a
+// passive panel — you always know what a logged session was actually for,
+// and you can type any custom subject name, not just the quick-pick list.
+let _pomPickedSub=null;
+function openPomSubjectModal(){
+  _pomPickedSub=_sub||null;
+  const cust=document.getElementById('pomCustomSub');if(cust)cust.value='';
+  document.querySelectorAll('#pomSubMo .sj').forEach(b=>{
+    b.classList.toggle('sel', _pomPickedSub && b.textContent.trim().endsWith(_pomPickedSub));
+  });
+  openMo('pomSubMo');
+}
+function pickPomSubject(sub,btn){
+  document.querySelectorAll('#pomSubMo .sj').forEach(b=>b.classList.remove('sel'));
+  if(btn)btn.classList.add('sel');
+  _pomPickedSub=sub;
+  const cust=document.getElementById('pomCustomSub');
+  if(cust)cust.value='';
+}
+function beginPomSession(){
+  const custom=(document.getElementById('pomCustomSub').value||'').trim();
+  const sub=custom||_pomPickedSub||'General';
+  _sub=sub;
+  const subDispEl=document.getElementById('subDisp');
+  if(subDispEl)subDispEl.textContent=sub;
+  closeMo('pomSubMo');
+  warmAudio();
+  pomMode='focus';
+  pomPhaseLen=PF;
+  pomRem=PF;
+  pomRun=true;
+  startPomInterval();
+  savePomState();
+  updatePomUI();
+  startLiveNotifLoop();
+}
 // ═══ POMODORO SOUNDS (Web Audio API — no files needed) ═══
 // IMPORTANT: a fresh AudioContext used to be created on every single call. On
 // mobile, a context created from a background/timer callback (not a direct tap)
@@ -3248,10 +3298,33 @@ function savePomState(){
     mode: pomMode,
     endTs: pomRun ? Date.now() + pomRem * 1000 : null,
     rem: pomRem,
+    phaseLen: pomPhaseLen,
     tot: pomTot,
     cur: pomCur,
     sub: _sub
   }));
+}
+
+// Every recovery path (initial load, tab refocus, pageshow) used to each
+// re-implement "is time up?" independently, with no lock between them — on
+// real devices, more than one of these can fire around the same moment
+// (visibilitychange + pageshow commonly both fire on phone unlock), and each
+// would independently log a finished session, play the sound, and advance
+// state: that's what caused the duplicate/glitchy session-log entries and
+// the sound firing more than once. _pomCompleting is a simple lock so only
+// one of them can ever actually run handlePomComplete() for a given expiry.
+let _pomCompleting=false;
+function completeIfExpired(){
+  if(_pomCompleting)return;
+  _pomCompleting=true;
+  try{
+    clearInterval(pomInt);
+    pomRun=false;
+    pomRem=0;
+    handlePomComplete();
+  } finally {
+    _pomCompleting=false;
+  }
 }
 
 function loadPomState(){
@@ -3261,6 +3334,7 @@ function loadPomState(){
     pomMode = s.mode || 'focus';
     pomTot  = s.tot  || 4;
     pomCur  = s.cur  || 0;
+    pomPhaseLen = s.phaseLen || (pomMode==='focus'?PF:PB);
     _sub    = s.sub  || null;
     if(s.run && s.endTs){
       const rem = Math.round((s.endTs - Date.now()) / 1000);
@@ -3269,10 +3343,8 @@ function loadPomState(){
         pomRun = true;
         startPomInterval();
       } else {
-        // Session ended while phone was locked — handle completion
-        pomRem = 0;
-        pomRun = false;
-        handlePomComplete();
+        // Session ended while phone was locked — handle completion exactly once
+        completeIfExpired();
       }
     } else {
       pomRem = s.rem || (pomMode === 'focus' ? PF : PB);
@@ -3298,15 +3370,22 @@ function pomToggle(){
     clearInterval(pomInt);
     savePomState();
     stopLiveNotifLoop();
-  } else {
-    // Start / resume
-    pomRun = true;
-    startPomInterval();
-    savePomState();
-    startLiveNotifLoop();
+    updatePomUI();
+    updateLiveNotification();
+    return;
   }
+  const freshStart = pomCur===0 && pomMode==='focus' && pomRem>=PF;
+  if(freshStart){
+    // Always confirm the subject before a brand-new run begins
+    openPomSubjectModal();
+    return;
+  }
+  // Resuming a paused focus/break — subject (if any) is already set
+  pomRun = true;
+  startPomInterval();
+  savePomState();
   updatePomUI();
-  updateLiveNotification();
+  startLiveNotifLoop();
 }
 
 let _lastNotifSec=null;
@@ -3326,18 +3405,13 @@ function pomTick(){
   const sec=Math.floor(pomRem);
   if(sec!==_lastNotifSec){_lastNotifSec=sec;updateLiveNotification();}
   if(pomRem <= 0){
-    clearInterval(pomInt);
-    pomRun = false;
-    handlePomComplete();
+    completeIfExpired();
   }
 }
 
 function handlePomComplete(){
   if(pomMode === 'focus'){
     pomCur++;
-    // NOTE: this used to be saved under the key 'ps', which collided with the
-    // unrelated AI-course-progress object also stored under 'ps' — whichever
-    // wrote last would silently corrupt the other. Renamed to 'pomSessions'.
     const sess = S.go('pomSessions', []);
     sess.push({d: TK(), sub: _sub || 'General', dur: PF, t: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});
     S.s('pomSessions', sess);
@@ -3347,31 +3421,56 @@ function handlePomComplete(){
     const logEl = document.getElementById('pomLog');
     if(logEl) logEl.innerHTML = sess.slice(-8).reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--ai)">${e.t||''}</span> · ${e.sub}</div>`).join('');
     pomSound('session');
-    sendNotif('✅ Session done!', 'Take a ' + (pomCur % pomTot === 0 ? '30' : '10') + '-min break.');
     pomFlash('#4fd8a0');
+    const roundDone = pomCur % pomTot === 0;
+    const breakLen = roundDone ? PLB : PB;
+    sendNotif('✅ Session done!', roundDone ? `All ${pomTot} sessions complete — take a ${breakLen/60}-min break.` : `Take a ${breakLen/60}-min break.`);
+    // Auto-continue straight into the break — this used to just sit there
+    // showing "break" without ever actually starting to count down.
     pomMode = 'break';
-    pomRem  = PB;
+    pomPhaseLen = breakLen;
+    pomRem  = breakLen;
+    pomRun = true;
+    startPomInterval();
   } else {
     pomSound('break');
-    sendNotif('☕ Break over!', 'Start your next focus session.');
     pomFlash('#e8965a');
-    pomMode = 'focus';
-    pomRem  = PF;
+    if(pomCur >= pomTot){
+      // The full planned round (all N sessions + breaks) is done — stop
+      // and reset to a clean idle state instead of looping forever.
+      sendNotif('🎉 All sessions complete!', 'Great work today.');
+      pomRun = false;
+      pomMode = 'focus';
+      pomPhaseLen = PF;
+      pomRem = PF;
+      pomCur = 0;
+      clearInterval(pomInt);
+      stopLiveNotifLoop();
+    } else {
+      sendNotif('☕ Break over!', 'Starting your next focus session.');
+      pomMode = 'focus';
+      pomPhaseLen = PF;
+      pomRem  = PF;
+      pomRun = true;
+      startPomInterval();
+    }
   }
   savePomState();
   updatePomUI();
   updateLiveNotification();
 }
 
-function pomReset(){
+function pomEndSession(){
   pomRun = false;
   clearInterval(pomInt);
   pomMode = 'focus';
+  pomPhaseLen = PF;
   pomRem  = PF;
   pomCur  = 0;
   savePomState();
   updatePomUI();
   stopLiveNotifLoop();
+  banner('Session ended.');
 }
 
 function updatePomUI(){
@@ -3382,18 +3481,17 @@ function updatePomUI(){
   const sEl = document.getElementById('pomS');
   if(sEl) sEl.textContent = ':' + String(s2).padStart(2,'0');
   document.title = pomRun ? (String(m).padStart(2,'0')+':'+String(s2).padStart(2,'0')) + ' — M2028' : 'M2028';
-  const pct = pomMode === 'focus'
-    ? ((PF - pomRem) / PF * 100)
-    : ((PB - pomRem) / PB * 100);
+  const phaseLen = pomPhaseLen || (pomMode==='focus'?PF:PB);
+  const pct = (phaseLen - pomRem) / phaseLen * 100;
   const ring = document.getElementById('pomRing');
   if(ring) ring.style.background =
     `conic-gradient(${pomMode==='focus'?'var(--ai)':'var(--bd)'} ${pct}%, var(--s3) 0%)`;
   const btn = document.getElementById('pomBtn');
-  if(btn) btn.textContent = pomRun ? '⏸ Pause' : (pomRem < (pomMode==='focus'?PF:PB) ? '▶ Resume' : '▶ Start');
+  if(btn) btn.textContent = pomRun ? '⏸ Pause' : (pomRem < phaseLen ? '▶ Resume' : '▶ Start');
   const lblEl = document.getElementById('pomLbl');
-  if(lblEl) lblEl.textContent = pomMode === 'focus' ? 'FOCUS SESSION' : '☕ BREAK TIME';
+  if(lblEl) lblEl.textContent = pomMode === 'focus' ? 'FOCUS SESSION' : (pomPhaseLen===PLB ? '☕ LONG BREAK' : '☕ BREAK TIME');
   const sessEl = document.getElementById('pomSess');
-  if(sessEl) sessEl.textContent = (pomCur % pomTot) + 1;
+  if(sessEl) sessEl.textContent = Math.min(pomCur+1, pomTot);
   const totEl = document.getElementById('pomTot');
   if(totEl) totEl.textContent = pomTot;
   const subDispEl = document.getElementById('subDisp');
@@ -3401,6 +3499,9 @@ function updatePomUI(){
   const pd = S.go('pd', {});
   const todayEl = document.getElementById('pomToday');
   if(todayEl) todayEl.textContent = pd[TK()] || 0;
+  // Lock the session-count adjuster once a run is underway
+  const adjRow=document.getElementById('pomAdjRow');
+  if(adjRow) adjRow.querySelectorAll('button.b-gh').forEach(b=>{b.disabled=pomRun||pomCur>0;b.style.opacity=(pomRun||pomCur>0)?'0.35':'1';});
 }
 
 // Recalculate after phone unlock or tab switch back
@@ -3410,9 +3511,7 @@ document.addEventListener('visibilitychange', () => {
     if(s.endTs){
       pomRem = Math.max(0, Math.round((s.endTs - Date.now()) / 1000));
       if(pomRem <= 0){
-        clearInterval(pomInt);
-        pomRun = false;
-        handlePomComplete();
+        completeIfExpired();
       }
     }
     updatePomUI();

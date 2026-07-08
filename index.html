@@ -624,22 +624,19 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
     </div>
   </div>
 
-  <!-- Notification test card -->
-  <div class="card" style="margin-bottom:14px;border:1px solid rgba(79,216,160,.2);background:rgba(79,216,160,.04)">
-    <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:8px">🔔 Test Notifications & Sound</div>
-    <div style="font-size:12px;color:var(--m2);margin-bottom:11px;line-height:1.6">
-      <strong style="color:var(--ai)">Step 1</strong> — Tap 🔔 in the top bar to enable notifications.<br>
-      <strong style="color:var(--ai)">Step 2</strong> — On Android: go to <strong>Settings → Apps → Chrome → Notifications → Allow</strong>.<br>
-      <strong style="color:var(--ai)">Step 3</strong> — Test below. Sound plays immediately, notification fires in 3 seconds.
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn b-ai" onclick="testSound('session')">🔊 Test Session Sound</button>
-      <button class="btn b-gh" onclick="testSound('break')">🔊 Test Break Sound</button>
-      <button class="btn b-up" onclick="testNotif()">🔔 Test Notification (3s)</button>
-    </div>
-    <div id="testNotifStatus" style="font-size:12px;color:var(--m2);margin-top:8px"></div>
-  </div>
+  <!-- Sound settings — collapsed to a single line; pick a sound and it previews itself, nothing else stays visible -->
+  <details class="card" style="margin-bottom:14px">
+    <summary style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;list-style:none">🔊 Sound</summary>
+    <select id="pomSoundStyleSel" onchange="setPomSoundStyle(this.value);pomSound('session')" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid var(--b);background:var(--s2);color:var(--tx);font-size:13px">
+      <option value="bell">🔔 Classic Bell</option>
+      <option value="chime">✨ Soft Chime</option>
+      <option value="digital">📟 Digital Beep</option>
+      <option value="marimba">🎵 Marimba</option>
+      <option value="pulse">💫 Ping Pulse</option>
+    </select>
+  </details>
 </div>
+
 
 <!-- HABITS -->
 <!-- UPSC BOOKS -->
@@ -3239,41 +3236,46 @@ function getAudioCtx(){
     return _sharedAudioCtx;
   }catch(e){return null;}
 }
+// Sound style is a user pick from the 5 options in the Notifications &
+// Sound dropdown (persisted in settings so it sticks across reloads).
+function getPomSoundStyle(){ return S.go('pomSoundStyle','bell'); }
+function setPomSoundStyle(v){ S.s('pomSoundStyle', v); }
+// One tone-generator per style, each with its own timbre/pattern. `type`
+// ('session' vs 'break') still controls timing/pattern-count as before;
+// `style` controls the actual sound character.
 function pomSound(type){
   const ctx=getAudioCtx();
   if(!ctx)return;
+  const style=getPomSoundStyle();
+  const tone=(freq,t,dur,wave,peak)=>{
+    const o=ctx.createOscillator();const g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=freq;o.type=wave;
+    g.gain.setValueAtTime(0,ctx.currentTime+t);
+    g.gain.linearRampToValueAtTime(peak,ctx.currentTime+t+0.04);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+dur);
+    o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+dur+0.05);
+  };
   const play=()=>{
     try{
-      if(type==='session'){
-        // Rising bell chord — plays 3 times over 3 seconds (session done)
-        const notes=[523,659,784]; // C E G
-        [0, 1.0, 2.0].forEach(rep=>{
-          notes.forEach((freq,i)=>{
-            const t=rep+(i*0.18);
-            const o=ctx.createOscillator();const g=ctx.createGain();
-            o.connect(g);g.connect(ctx.destination);
-            o.frequency.value=freq;o.type='sine';
-            g.gain.setValueAtTime(0,ctx.currentTime+t);
-            g.gain.linearRampToValueAtTime(0.4,ctx.currentTime+t+0.05);
-            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.75);
-            o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.8);
-          });
-        });
-      } else {
-        // Gentle descending chime — plays 4 times over 3 seconds (break over)
+      const reps = type==='session' ? 3 : 4;
+      if(style==='bell'){
+        // Classic Bell — rising major chord
+        const notes=[523,659,784];
+        for(let r=0;r<reps;r++) notes.forEach((f,i)=>tone(f,r*0.85+i*0.18,0.75,'sine',0.4));
+      } else if(style==='chime'){
+        // Soft Chime — gentle descending triangle pairs
         const pairs=[[880,660],[800,600],[720,540],[660,500]];
-        pairs.forEach(([f1,f2],rep)=>{
-          const base=rep*0.75;
-          [0,0.25].forEach((t,i)=>{
-            const o=ctx.createOscillator();const g=ctx.createGain();
-            o.connect(g);g.connect(ctx.destination);
-            o.frequency.value=i===0?f1:f2;o.type='triangle';
-            g.gain.setValueAtTime(0,ctx.currentTime+base+t);
-            g.gain.linearRampToValueAtTime(0.35,ctx.currentTime+base+t+0.04);
-            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+base+t+0.65);
-            o.start(ctx.currentTime+base+t);o.stop(ctx.currentTime+base+t+0.7);
-          });
-        });
+        for(let r=0;r<reps;r++){const p=pairs[r%pairs.length];tone(p[0],r*0.75,0.65,'triangle',0.32);tone(p[1],r*0.75+0.25,0.6,'triangle',0.3);}
+      } else if(style==='digital'){
+        // Digital Beep — crisp square-wave double-beeps
+        for(let r=0;r<reps;r++){tone(1046,r*0.55,0.12,'square',0.22);tone(1046,r*0.55+0.18,0.12,'square',0.22);}
+      } else if(style==='marimba'){
+        // Marimba — warm sine arpeggio
+        const notes=[392,494,587,494];
+        for(let r=0;r<reps;r++) tone(notes[r%notes.length],r*0.5,0.55,'sine',0.38);
+      } else { // pulse — Ping Pulse: single rising pulse repeated
+        for(let r=0;r<reps;r++) tone(660+r*60,r*0.6,0.4,'sine',0.35);
       }
     }catch(e){}
   };
@@ -3432,7 +3434,7 @@ function handlePomComplete(){
     pomRun = true;
     startPomInterval();
   } else {
-    pomSound('break');
+    pomSound('session'); // same alert as a finished focus session, per request
     pomFlash('#e8965a');
     if(pomCur >= pomTot){
       // The full planned round (all N sessions + breaks) is done — stop
@@ -3501,6 +3503,8 @@ function updatePomUI(){
   // Lock the session-count adjuster once a run is underway
   const adjRow=document.getElementById('pomAdjRow');
   if(adjRow) adjRow.querySelectorAll('button.b-gh').forEach(b=>{b.disabled=pomRun||pomCur>0;b.style.opacity=(pomRun||pomCur>0)?'0.35':'1';});
+  const soundSel=document.getElementById('pomSoundStyleSel');
+  if(soundSel) soundSel.value=getPomSoundStyle();
   renderPomLog();
 }
 // Session log used to only get written the moment a session finished, so on
@@ -3734,7 +3738,7 @@ function testSound(type){
   const el=document.getElementById('testNotifStatus');
   try{
     pomSound(type);
-    if(el)el.innerHTML=`<span style="color:var(--ai)">✓ Sound played! (${type==='session'?'3-note bell':'double chime'})</span>`;
+    if(el)el.innerHTML=`<span style="color:var(--ai)">✓ Played (${getPomSoundStyle()} · ${type})</span>`;
   }catch(e){
     if(el)el.innerHTML=`<span style="color:var(--rd)">✗ Sound failed: ${e.message}. Try tapping anywhere first (iOS requires a tap before audio).</span>`;
   }

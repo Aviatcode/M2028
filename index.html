@@ -3414,6 +3414,7 @@ function pomTick(){
 function handlePomComplete(){
   if(pomMode === 'focus'){
     pomCur++;
+    maybeResetPomLogCycle();
     const sess = S.go('pomSessions', []);
     sess.push({d: TK(), sub: _sub || 'General', dur: PF, t: new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})});
     S.s('pomSessions', sess);
@@ -3511,12 +3512,30 @@ function updatePomUI(){
 // page load / tab switch it just showed "No sessions yet." forever even
 // with real history saved. This renders straight from stored pomSessions
 // every time the Pomodoro UI refreshes, so it always reflects reality.
+// Session log now runs on a 7-day cycle instead of "last 8 entries forever":
+// pomLogCycleStart marks when the current window began. Once 7 full days
+// have elapsed (the 8th day arrives), the whole log wipes itself and the
+// cycle restarts from that day. Called before every render/save so it's
+// always checked fresh, whether the app was open the whole time or not.
+function maybeResetPomLogCycle(){
+  let start = S.go('pomLogCycleStart', null);
+  if(!start){ S.s('pomLogCycleStart', TK()); return; }
+  const d0 = new Date(start+'T00:00:00');
+  const d1 = new Date(TK()+'T00:00:00');
+  const daysElapsed = Math.round((d1-d0)/86400000);
+  if(daysElapsed >= 7){
+    S.s('pomSessions', []);
+    S.s('pomLogCycleStart', TK());
+  }
+}
 function renderPomLog(){
   const logEl = document.getElementById('pomLog');
   if(!logEl) return;
-  const sess = S.go('pomSessions', []);
+  maybeResetPomLogCycle();
+  const cycleStart = S.go('pomLogCycleStart', TK());
+  const sess = S.go('pomSessions', []).filter(e=>e.d>=cycleStart);
   logEl.innerHTML = sess.length
-    ? sess.slice(-8).reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--ai)">${e.t||''}</span> · ${e.sub}</div>`).join('')
+    ? sess.slice().reverse().map(e=>`<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--m2)">${e.d}</span> <span style="color:var(--ai)">${e.t||''}</span> · ${e.sub}</div>`).join('')
     : 'No sessions yet.';
 }
 

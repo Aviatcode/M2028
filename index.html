@@ -2822,6 +2822,14 @@ function resetSched(key){if(!confirm('Reset to default?'))return;const sc=S.go('
 // is always in sync automatically with no manual step required.
 function computeDayStatus(k, hd, allHabs){
   const dayH = hd[k] || {};
+  // Ground truth for "was anything done that day" is dayH itself (what was
+  // actually checked off), NOT the current habit list filtered by today's
+  // day-of-week rules. Previously a habit's completion was only counted if it
+  // was still "applicable" under its *current* .days setting — so editing or
+  // renaming a habit later silently orphaned old completions: they were still
+  // sitting in dayH as true, but no longer counted, so the calendar showed
+  // that day as blank/zero even though it had been checked off at the time.
+  const doneIds = Object.keys(dayH).filter(id=>dayH[id]===true);
   const dayObj = new Date(k+'T00:00:00');
   const dow = dayObj.getDay();
   const isMWF = dow===1||dow===3||dow===5;
@@ -2832,16 +2840,18 @@ function computeDayStatus(k, hd, allHabs){
     if(h.days==='sat') return isSatD;
     return true;
   });
-  if(!applicable.length) return null;
+  if(!applicable.length && !doneIds.length) return null;
   const isWorkoutHab = h => /workout/i.test(h.id) || /workout/i.test(h.label);
-  const workoutHabs = applicable.filter(isWorkoutHab);
-  const studyHabs = applicable.filter(h=>!isWorkoutHab(h));
-  const wDone = workoutHabs.length>0 && workoutHabs.some(h=>dayH[h.id]===true);
-  const sDone = studyHabs.length>0 && studyHabs.some(h=>dayH[h.id]===true);
+  const habById={};allHabs.forEach(h=>habById[h.id]=h);
+  let wDone=false, sDone=false;
+  doneIds.forEach(id=>{
+    const h=habById[id];
+    if(h && isWorkoutHab(h)) wDone=true; else sDone=true; // unknown/renamed habit ids still count as completion
+  });
   if(wDone && sDone) return 'both';
   if(wDone) return 'workout';
   if(sDone) return 'study';
-  return 'zero';
+  return applicable.length ? 'zero' : null;
 }
 function renderCal(){
   const MNS=['January','February','March','April','May','June','July','August','September','October','November','December'];

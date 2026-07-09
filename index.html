@@ -426,13 +426,7 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
   <!-- Calendar Strip Widget -->
   <div id="dw-cal">
   <div class="wc">
-    <div class="ct"><span id="wCalM"></span>
-      <div style="display:flex;gap:5px">
-        <button onclick="markCal('study')" style="background:var(--a2);color:var(--ai);border:none;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer">📗 Study</button>
-        <button onclick="markCal('workout')" style="background:var(--d2);color:var(--bd);border:none;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer">💪 Workout</button>
-        <button onclick="markCal('both')" style="background:rgba(232,200,90,.12);color:var(--gd);border:none;border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer">⭐ Both</button>
-      </div>
-    </div>
+    <div class="ct"><span id="wCalM"></span></div>
     <div style="font-size:11px;color:var(--mt);margin-bottom:7px">Tap any day to see that day's habits</div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px">
       <div style="text-align:center;font-size:9px;color:var(--mt)">S</div><div style="text-align:center;font-size:9px;color:var(--mt)">M</div><div style="text-align:center;font-size:9px;color:var(--mt)">T</div><div style="text-align:center;font-size:9px;color:var(--mt)">W</div><div style="text-align:center;font-size:9px;color:var(--mt)">T</div><div style="text-align:center;font-size:9px;color:var(--mt)">F</div><div style="text-align:center;font-size:9px;color:var(--mt)">S</div>
@@ -710,16 +704,6 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
         </div>
       </div>
       <div>
-        <div class="card">
-          <div class="ct" style="margin-bottom:10px">Mark today</div>
-          <div style="display:flex;flex-direction:column;gap:7px">
-            <button class="btn b-ai" onclick="markCal('study')">📗 Studied today</button>
-            <button class="btn b-bd" onclick="markCal('workout')">💪 Workout done</button>
-            <button class="btn b-dn" onclick="markCal('both')">⭐ Both done</button>
-            <button class="btn b-rd" onclick="markCal('zero')">❌ Zero day</button>
-            <button class="btn b-gh" onclick="markCal('clear')">Clear today</button>
-          </div>
-        </div>
         <div class="card"><div class="ct" style="margin-bottom:10px">This month</div><div id="calStats" style="font-size:13px;color:var(--m2);line-height:2.1"></div></div>
       </div>
     </div>
@@ -1526,7 +1510,7 @@ function renderDash(){
   // Calendar strip
   const MNS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('wCalM').textContent=MNS[d.getMonth()]+' '+d.getFullYear();
-  const cd=S.go('cd',{});
+  const hdAll=S.go('hd',{});const allHabsW=getHabs();
   const today=GT();
   const ws=new Date(today);ws.setDate(today.getDate()-today.getDay());
   ws.setHours(0,0,0,0);
@@ -1534,7 +1518,10 @@ function renderDash(){
   for(let i=0;i<7;i++){
     const dd=new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+i);
     const kk=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
-    const val=cd[kk];const isT=kk===tk;
+    const isT=kk===tk;
+    const isFut=kk>tk;
+    let val=isFut?null:computeDayStatus(kk,hdAll,allHabsW);
+    if(isT && val==='zero') val=null; // today's still in progress
     const bg=val==='study'?'rgba(79,216,160,.15)':val==='workout'?'rgba(232,150,90,.15)':val==='both'?'rgba(232,200,90,.15)':val==='zero'?'rgba(232,96,96,.1)':'var(--s2)';
     const dot=val==='study'?'var(--ai)':val==='workout'?'var(--bd)':val==='both'?'var(--gd)':val==='zero'?'var(--rd)':'transparent';
     cs+=`<div onclick="openDayDetail('${kk}')" style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:${bg};border:${isT?'2px solid var(--ai)':'1px solid var(--b)'};cursor:pointer;font-size:12px;color:${isT?'var(--ai)':'var(--tx)'};font-weight:${isT?'600':'400'};position:relative">
@@ -2827,13 +2814,42 @@ function delSchedRow(){
 function resetSched(key){if(!confirm('Reset to default?'))return;const sc=S.go('scheds',DEF_S);sc[key]=JSON.parse(JSON.stringify(DEF_S[key]));S.s('scheds',sc);showSched(key);}
 
 // ═══ CALENDAR ═══
+// A day's status (study/workout/both/zero) used to depend entirely on the
+// manual "Mark today" buttons — a separate 'cd' store that had nothing to
+// do with whether habits were actually completed, so it silently drifted
+// out of sync (hence "not working"). This derives status straight from the
+// real habit-completion data ('hd') every time the calendar renders, so it
+// is always in sync automatically with no manual step required.
+function computeDayStatus(k, hd, allHabs){
+  const dayH = hd[k] || {};
+  const dayObj = new Date(k+'T00:00:00');
+  const dow = dayObj.getDay();
+  const isMWF = dow===1||dow===3||dow===5;
+  const isSatD = dow===6;
+  const applicable = allHabs.filter(h=>{
+    if(h.days==='daily') return true;
+    if(h.days==='mwf') return isMWF;
+    if(h.days==='sat') return isSatD;
+    return true;
+  });
+  if(!applicable.length) return null;
+  const isWorkoutHab = h => /workout/i.test(h.id) || /workout/i.test(h.label);
+  const workoutHabs = applicable.filter(isWorkoutHab);
+  const studyHabs = applicable.filter(h=>!isWorkoutHab(h));
+  const wDone = workoutHabs.length>0 && workoutHabs.some(h=>dayH[h.id]===true);
+  const sDone = studyHabs.length>0 && studyHabs.some(h=>dayH[h.id]===true);
+  if(wDone && sDone) return 'both';
+  if(wDone) return 'workout';
+  if(sDone) return 'study';
+  return 'zero';
+}
 function renderCal(){
   const MNS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('calMEl').textContent=MNS[calM]+' '+calY;
   const fd=new Date(calY,calM,1).getDay();
   const dim=new Date(calY,calM+1,0).getDate();
   const pd=new Date(calY,calM,0).getDate();
-  const tk=TK();const cd=S.go('cd',{});const hd=S.go('hd',{});
+  const tk=TK();const hd=S.go('hd',{});const allHabs=getHabs();
   let dlh='';
   ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>{dlh+=`<div class="cal-dl">${d}</div>`;});
   document.getElementById('calDlbls').innerHTML=dlh;
@@ -2842,9 +2858,15 @@ function renderCal(){
   let st=0,wo=0,bt=0,zr=0;
   for(let d=1;d<=dim;d++){
     const k=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const v=cd[k];const isT=k===tk;
+    const isT=k===tk;
+    const isFuture=k>tk;
     const dayH=hd[k]||{};
     const habDone=Object.values(dayH).filter(x=>x===true).length;
+    let v=null;
+    if(!isFuture){
+      v=computeDayStatus(k,hd,allHabs);
+      if(isT && v==='zero') v=null; // today's still in progress — don't mark it a zero day before it's over
+    }
     let cls='cal-d';
     if(isT)cls+=' td';
     if(v==='study'){cls+=' ss';st++;}
@@ -2861,7 +2883,6 @@ function renderCal(){
 
 function openDayDetail(k){
   const hd=S.go('hd',{});
-  const cd=S.go('cd',{});
   const dayH=hd[k]||{};
   const allHabs=getHabs();
   // Figure out which habits were applicable that day
@@ -2880,11 +2901,13 @@ function openDayDetail(k){
   const MNS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const parts=k.split('-');
   const label=`${parseInt(parts[2])} ${MNS[parseInt(parts[1])-1]} ${parts[0]}`;
-  const status=cd[k];
-  const statusBadge=status==='study'?`<span class="tag t-ai">📗 Study</span>`:status==='workout'?`<span class="tag t-ac">💪 Workout</span>`:status==='both'?`<span class="tag" style="background:rgba(232,200,90,.1);color:var(--gd)">⭐ Both</span>`:status==='zero'?`<span class="tag t-nd" style="color:var(--rd)">❌ Zero day</span>`:'';
   const tk=TK();
   const isFuture=k>tk;
   const isToday=k===tk;
+  // Status is now derived automatically from actual habit completion —
+  // same logic renderCal() uses — instead of a separate manual mark.
+  const status=isFuture?null:computeDayStatus(k,hd,allHabs);
+  const statusBadge=status==='study'?`<span class="tag t-ai">📗 Study</span>`:status==='workout'?`<span class="tag t-ac">💪 Workout</span>`:status==='both'?`<span class="tag" style="background:rgba(232,200,90,.1);color:var(--gd)">⭐ Both</span>`:(status==='zero'&&!isToday)?`<span class="tag t-nd" style="color:var(--rd)">❌ Zero day</span>`:'';
 
   let html=`<div style="font-size:16px;font-weight:700;color:var(--tx);margin-bottom:4px">${label} ${isToday?'<span style="font-size:12px;color:var(--ai)">(Today)</span>':isFuture?'<span style="font-size:12px;color:var(--m2)">(Future)</span>':''}</div>`;
   if(statusBadge)html+=`<div style="margin-bottom:12px">${statusBadge}</div>`;
@@ -2907,31 +2930,11 @@ function openDayDetail(k){
       missed.forEach(h=>{html+=`<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--s2);border-radius:8px;margin-bottom:5px;font-size:13px;color:var(--m2)">${h.label}</div>`;});
     }
   }
-  // Mark day section (only useful for today or recent days)
-  html+=`<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--b)">
-    <div style="font-size:12px;color:var(--m2);margin-bottom:8px">Mark this day as:</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button onclick="markCalDay('${k}','study')" class="btn b-ai sm">📗 Study</button>
-      <button onclick="markCalDay('${k}','workout')" class="btn b-bd sm">💪 Workout</button>
-      <button onclick="markCalDay('${k}','both')" class="btn b-dn sm">⭐ Both</button>
-      <button onclick="markCalDay('${k}','zero')" class="btn b-rd sm">❌ Zero</button>
-      <button onclick="markCalDay('${k}','clear')" class="btn b-gh sm">Clear</button>
-    </div>
-  </div>`;
   document.getElementById('dayDetailBody').innerHTML=html;
   openMo('dayDetailMo');
 }
 
-function markCalDay(k,type){
-  const cd=S.go('cd',{});
-  if(type==='clear')delete cd[k];else cd[k]=type;
-  S.s('cd',cd);
-  closeMo('dayDetailMo');
-  renderCal();renderDash();
-}
-
 function calClick(k){openDayDetail(k);}
-function markCal(type){const k=TK();const cd=S.go('cd',{});if(type==='clear')delete cd[k];else cd[k]=type;S.s('cd',cd);renderCal();renderDash();}
 function calNav(d){calM+=d;if(calM>11){calM=0;calY++;}if(calM<0){calM=11;calY--;}renderCal();}
 
 // ═══ ROADMAP ═══

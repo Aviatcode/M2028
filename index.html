@@ -339,6 +339,51 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
   .mn{margin-left:0!important;padding:14px 14px calc(80px + env(safe-area-inset-bottom,0px));}
   .g2,.g4{grid-template-columns:1fr!important;}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   DESKTOP LAYOUT — make good use of extra width instead of
+   stretching UI into long rectangles. Mobile (<=680px, above)
+   and the tablet top-nav rules (681–899px, above) are untouched;
+   everything below only kicks in from 900px up.
+   ═══════════════════════════════════════════════════════════ */
+@media(min-width:900px){
+  /* Centered content column with a sane max-width */
+  .mn{max-width:1300px;padding:32px 36px 60px;}
+
+  /* ---- Buttons: size to their content, never stretch just
+     because more horizontal space is available ---- */
+  .mn .btn{max-width:280px;}
+  .mn .btn.sm{max-width:220px;}
+  .mn .btn[style*="width:100%"]{width:auto!important;max-width:300px;}
+  .mn .btn[style*="flex:1"]{flex:0 1 auto!important;max-width:260px;}
+
+  /* ---- Dashboard: lay widgets out in a 2-column grid instead
+     of one long single-column stack, so gaps shrink and both
+     columns get used ---- */
+  #v-dash.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  #v-dash.on>div{margin-bottom:0;}
+  #v-dash.on #dw-tasks,
+  #v-dash.on #dw-progress,
+  #v-dash.on #dw-custom{grid-column:1/-1;}
+  #v-dash.on .wc{margin-bottom:0;}
+
+  /* Custom dashboard widgets: wrap evenly instead of stacking full-width */
+  #dw-custom{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+  #dw-custom .wc{margin-bottom:0;}
+
+  /* ---- AI courses: distribute cards across 2 columns ---- */
+  #aiList{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  #aiList .ci{margin-bottom:0;}
+
+  /* ---- UPSC book rows inside each subject group: 2-column grid ---- */
+  #upscSubs [id^="sub_"]{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  #upscSubs .bi{margin-bottom:0;}
+
+  /* ---- Sequential/timeline content (roadmap, timetable rows) stays
+     single column for readability, just capped so it doesn't stretch
+     edge-to-edge on wide screens ---- */
+  #roadEl,#schedCard{max-width:900px;margin-left:auto;margin-right:auto;}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>

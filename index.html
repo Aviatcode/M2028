@@ -1223,10 +1223,10 @@ const GT=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const START=new Date('2026-06-15');
 
 // ═══ QUOTES ═══
-const QUOTES=['Do or die. There is no try.','Slow is smooth, smooth is fast.'];
+const QUOTES=['Slow is smooth, and smooth is fast ~ US Navy SEAL training','Do or do not. There is no try ~ the Jedi Master Yoda','If you want to be the best ,work when they rest ~ Avikshit Mahajan (Author)'];
 function getQuote(){
   const day=Math.floor((GT()-new Date('2026-01-01'))/86400000);
-  return QUOTES[day%2];
+  return QUOTES[day%3];
 }
 
 // ═══ DEFAULT HABITS ═══

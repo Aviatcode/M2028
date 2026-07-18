@@ -2501,7 +2501,16 @@ function countChecklistProgress(items){
 function saveAndRerenderChecklist(cw){S.s('customWidgets',cw);applyDashCfg();}
 // Plain text edits save silently WITHOUT re-rendering — re-rendering mid-keystroke
 // would blow away the cursor position and steal focus out from under the user.
-function saveChecklistSilently(cw){S.s('customWidgets',cw);}
+// Text edits fire on every keystroke (oninput), so pushing to the cloud on
+// every character makes typing feel laggy, especially on mobile. Save to
+// localStorage instantly (fast, no lag) but debounce the cloud push so it
+// only fires ~900ms after the user stops typing.
+let _clSaveTimer=null;
+function saveChecklistSilently(cw){
+  S.sLocalOnly('customWidgets',cw);
+  clearTimeout(_clSaveTimer);
+  _clSaveTimer=setTimeout(()=>{S.sPushOnly('customWidgets');},900);
+}
 
 function focusChecklistItem(id,atEnd){
   setTimeout(()=>{
@@ -2748,7 +2757,7 @@ function renderCWWidget(w){
     return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><div style="text-align:center;padding:10px 0"><div style="font-size:48px;font-weight:700;color:${col};line-height:1">${Math.abs(diff)}</div><div style="font-size:12px;color:var(--m2);margin-top:4px">${diff<0?'days ago':'days remaining'}</div><div style="font-size:11px;color:var(--mt);margin-top:2px">${w.date}</div></div></div>`;
   }
   if(w.type==='note'){
-    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><textarea class="ta" rows="3" style="font-size:12px" onblur="saveCWNote('${w.id}',this.value)">${w.note||''}</textarea></div>`;
+    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><textarea class="ta" rows="10" style="font-size:12px;min-height:220px;resize:vertical" onblur="saveCWNote('${w.id}',this.value)">${w.note||''}</textarea></div>`;
   }
   if(w.type==='links'){
     const btns=(w.links||[]).map(l=>`<button onclick="gotoTab('${l.tab}')" class="btn b-gh" style="flex:1;min-width:90px;padding:10px;font-size:12px;border-radius:9px">${l.label}</button>`).join('');
@@ -4187,6 +4196,11 @@ function _setLocalTs(k,ts){try{const t=JSON.parse(localStorage.getItem('m_sync_t
 // Override S.s to also push to cloud on every save
 const _origS=S.s.bind(S);
 S.s=(k,v)=>{_origS(k,v);_setLocalTs(k,Date.now());if(_user&&_cloudOK)push(k);};
+// Used by rapid-fire callers (e.g. checklist typing) that want to save to
+// localStorage immediately but debounce the cloud push themselves instead of
+// firing a network request on every call.
+S.sLocalOnly=(k,v)=>{_origS(k,v);_setLocalTs(k,Date.now());};
+S.sPushOnly=(k)=>{if(_user&&_cloudOK)push(k);};
 
 // ═══ AUTH ═══
 function togglePw(){const i=document.getElementById('liPw');const b=document.getElementById('pwEye');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈';}

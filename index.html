@@ -20,7 +20,7 @@
 <meta name="apple-mobile-web-app-title" content="M2028">
 <title>M2028</title>
 <!-- INSTANT LOAD: runs before body renders, no flicker for returning users -->
-<script>console.log('M2028 build: checklist-drag-fix-v3');</script>
+<script>console.log('M2028 build: checklist-resume-sync-v4');</script>
 <script>
 (function(){
   try{
@@ -191,6 +191,16 @@ body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSyst
 body.light{background:#f5f5f7!important;color:#1a1a2e!important;}
 body.pink{background:#1a0a14!important;color:#ffe4f0!important;}
 .tb{position:fixed;top:0;left:0;right:0;height:52px;background:rgba(12,12,15,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;}
+
+.collapse-nav{display:none;position:fixed;top:52px;left:0;right:0;z-index:99;background:rgba(12,12,15,.98);backdrop-filter:blur(20px);border-bottom:1px solid var(--b);max-height:0;overflow:hidden;transition:max-height .25s ease;}
+.collapse-nav.open{display:block;max-height:80vh;overflow-y:auto;}
+.collapse-nav-list{list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;gap:2px;}
+.collapse-nav-list button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;color:var(--tx);font-size:14px;font-family:inherit;padding:12px 10px;border-radius:10px;cursor:pointer;}
+.collapse-nav-list button:active,.collapse-nav-list button.on{background:var(--s2);color:var(--ai);}
+.collapse-nav-list .ic{font-size:16px;width:20px;text-align:center;}
+body.light .collapse-nav{background:rgba(245,245,247,0.98)!important;}
+body.pink .collapse-nav{background:rgba(26,10,20,0.98);}
+@media(max-width:680px){
 .logo{font-weight:700;font-size:17px;color:var(--tx);display:flex;align-items:center;gap:8px;}
 .logo span{width:28px;height:28px;background:var(--ai);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;}
 .sp{display:flex;align-items:center;gap:5px;background:var(--a2);border:1px solid rgba(79,216,160,0.2);border-radius:20px;padding:4px 11px;font-size:12px;color:var(--ai);cursor:pointer;}
@@ -434,6 +444,9 @@ body.pink input[type="date"]::-webkit-calendar-picker-indicator,body.pink input[
     <button class="btn b-gh" style="padding:4px 10px;font-size:14px;border-radius:20px" onclick="toggleTheme()" id="themeBtn" title="Cycle: Dark → Light → Pink">🌙</button>
     <button class="btn b-gh" style="padding:4px 10px;font-size:12px;border-radius:20px" onclick="openMo('acctMo')" title="Account">👤</button>
   </div>
+</div>
+<div class="collapse-nav" id="mobileNavCollapse">
+  <ul class="collapse-nav-list" id="mobileNavList"><!-- filled by renderMobileNavCollapse() --></ul>
 </div>
 <div class="tnb" id="tnbNav"><!-- filled by renderTopNav() --></div>
 <div class="app-wrap">
@@ -1223,10 +1236,10 @@ const GT=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const START=new Date('2026-06-15');
 
 // ═══ QUOTES ═══
-const QUOTES=['Slow is smooth, and smooth is fast ~ US Navy SEAL training','Do or do not. There is no try ~ the Jedi Master Yoda','If you want to be the best ,work when they rest ~ Avikshit Mahajan (Author)'];
+const QUOTES=['Do or die. There is no try.','Slow is smooth, smooth is fast.'];
 function getQuote(){
   const day=Math.floor((GT()-new Date('2026-01-01'))/86400000);
-  return QUOTES[day%3];
+  return QUOTES[day%2];
 }
 
 // ═══ DEFAULT HABITS ═══
@@ -2113,7 +2126,7 @@ function renderBottomNav(){
   primary.forEach(t=>{
     html+=`<button class="bnbt" onclick="showV('${t.id}')"><span class="ic">${t.icon}</span><span class="lbl">${navLabel(t).length>8?(t.shortLabel||navLabel(t)):navLabel(t)}</span></button>`;
   });
-  html+=`<button class="bnbt" onclick="showMore()"><span class="ic">⋯</span><span class="lbl">More</span></button>`;
+  html+=`<button class="bnbt" onclick="toggleMobileNav()"><span class="ic">☰</span><span class="lbl">More</span></button>`;
   const el=document.getElementById('bniNav');
   if(el)el.innerHTML=html;
 }
@@ -2131,10 +2144,39 @@ function renderMoreMenu(){
   if(el)el.innerHTML=html;
 }
 
+function renderMobileNavCollapse(){
+  const hidden=getNavHidden();
+  let visible=NAV_TABS.filter(t=>!hidden[t.id]);
+  if(!visible.length)visible=[NAV_TABS[0]];
+  let html='';
+  visible.forEach(t=>{
+    const action=t.pseudo?`gotoTab('${t.id}');closeMobileNav()`:`showV('${t.id}');closeMobileNav()`;
+    html+=`<button onclick="${action}"><span class="ic">${t.icon}</span><span>${navLabel(t)}</span></button>`;
+  });
+  const el=document.getElementById('mobileNavList');
+  if(el)el.innerHTML=html;
+}
+
+function toggleMobileNav(){
+  const panel=document.getElementById('mobileNavCollapse');
+  const btn=document.getElementById('mnbToggler');
+  if(!panel)return;
+  const isOpen=panel.classList.toggle('open');
+  if(btn)btn.setAttribute('aria-expanded',isOpen?'true':'false');
+}
+
+function closeMobileNav(){
+  const panel=document.getElementById('mobileNavCollapse');
+  const btn=document.getElementById('mnbToggler');
+  if(panel)panel.classList.remove('open');
+  if(btn)btn.setAttribute('aria-expanded','false');
+}
+
 function renderNavAll(){
   renderTopNav();
   renderBottomNav();
   renderMoreMenu();
+  renderMobileNavCollapse();
   syncNavActive();
 }
 
@@ -2143,7 +2185,7 @@ function renderNavAll(){
 function syncNavActive(){
   const activeEl=document.querySelector('.vw.on');
   const id=activeEl?activeEl.id.replace('v-',''):'dash';
-  document.querySelectorAll('.nb,.bnbt').forEach(b=>{
+  document.querySelectorAll('.nb,.bnbt,.collapse-nav-list button').forEach(b=>{
     b.classList.remove('on');
     if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'"))b.classList.add('on');
   });
@@ -2459,7 +2501,16 @@ function countChecklistProgress(items){
 function saveAndRerenderChecklist(cw){S.s('customWidgets',cw);applyDashCfg();}
 // Plain text edits save silently WITHOUT re-rendering — re-rendering mid-keystroke
 // would blow away the cursor position and steal focus out from under the user.
-function saveChecklistSilently(cw){S.s('customWidgets',cw);}
+// Text edits fire on every keystroke (oninput), so pushing to the cloud on
+// every character makes typing feel laggy, especially on mobile. Save to
+// localStorage instantly (fast, no lag) but debounce the cloud push so it
+// only fires ~900ms after the user stops typing.
+let _clSaveTimer=null;
+function saveChecklistSilently(cw){
+  S.sLocalOnly('customWidgets',cw);
+  clearTimeout(_clSaveTimer);
+  _clSaveTimer=setTimeout(()=>{S.sPushOnly('customWidgets');},900);
+}
 
 function focusChecklistItem(id,atEnd){
   setTimeout(()=>{
@@ -2706,7 +2757,7 @@ function renderCWWidget(w){
     return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><div style="text-align:center;padding:10px 0"><div style="font-size:48px;font-weight:700;color:${col};line-height:1">${Math.abs(diff)}</div><div style="font-size:12px;color:var(--m2);margin-top:4px">${diff<0?'days ago':'days remaining'}</div><div style="font-size:11px;color:var(--mt);margin-top:2px">${w.date}</div></div></div>`;
   }
   if(w.type==='note'){
-    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><textarea class="ta" rows="3" style="font-size:12px" onblur="saveCWNote('${w.id}',this.value)">${w.note||''}</textarea></div>`;
+    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><textarea class="ta" rows="10" style="font-size:12px;min-height:220px;resize:vertical" onblur="saveCWNote('${w.id}',this.value)">${w.note||''}</textarea></div>`;
   }
   if(w.type==='links'){
     const btns=(w.links||[]).map(l=>`<button onclick="gotoTab('${l.tab}')" class="btn b-gh" style="flex:1;min-width:90px;padding:10px;font-size:12px;border-radius:9px">${l.label}</button>`).join('');
@@ -4034,6 +4085,13 @@ function init(){
   if(pomRun)startLiveNotifLoop(); // resumes the notification loop only if a session was actually in progress when the app was reopened
 }
 setInterval(()=>{const e=document.getElementById('quoteEl');if(e)e.textContent=getQuote();},60000);
+document.addEventListener('click',(e)=>{
+  const panel=document.getElementById('mobileNavCollapse');
+  const btn=document.getElementById('mnbToggler');
+  if(!panel||!panel.classList.contains('open'))return;
+  if(panel.contains(e.target)||(btn&&btn.contains(e.target)))return;
+  closeMobileNav();
+});
 
 // ═══ SUPABASE ═══
 const SUPA_URL='https://lvzcctsqcpikisdzztot.supabase.co';
@@ -4138,6 +4196,11 @@ function _setLocalTs(k,ts){try{const t=JSON.parse(localStorage.getItem('m_sync_t
 // Override S.s to also push to cloud on every save
 const _origS=S.s.bind(S);
 S.s=(k,v)=>{_origS(k,v);_setLocalTs(k,Date.now());if(_user&&_cloudOK)push(k);};
+// Used by rapid-fire callers (e.g. checklist typing) that want to save to
+// localStorage immediately but debounce the cloud push themselves instead of
+// firing a network request on every call.
+S.sLocalOnly=(k,v)=>{_origS(k,v);_setLocalTs(k,Date.now());};
+S.sPushOnly=(k)=>{if(_user&&_cloudOK)push(k);};
 
 // ═══ AUTH ═══
 function togglePw(){const i=document.getElementById('liPw');const b=document.getElementById('pwEye');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈';}
@@ -4261,6 +4324,25 @@ if(!_cloudOK){
 
 // Auto-pull every 5 min if logged in
 setInterval(()=>{if(_user)pull();},5*60*1000);
+
+// Pull-on-resume: the 5-min interval alone means switching back to this tab/app
+// after editing on another device could show stale data for up to 5 minutes.
+// Fix: pull immediately whenever this tab/app becomes visible again (screen
+// unlock, tab switch, app foregrounded) — throttled so rapid focus/visibility
+// flapping doesn't spam the network.
+let _lastResumePull=0;
+function _resumePull(){
+  if(!_user||!_cloudOK)return;
+  const now=Date.now();
+  if(now-_lastResumePull<3000)return; // throttle: max once per 3s
+  _lastResumePull=now;
+  pull().then(()=>{
+    try{renderDash();renderHabits();renderTasks();applyDashCfg();}catch(e){}
+  });
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)_resumePull();});
+window.addEventListener('focus',_resumePull);
+window.addEventListener('pageshow',_resumePull);
 </script>
 
 <script>

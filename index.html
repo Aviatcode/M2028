@@ -1694,6 +1694,7 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div>
       <div style="font-size:14px;font-weight:700;color:var(--ai);font-style:italic" id="quoteEl"></div>
+      <div style="font-size:10px;color:var(--m2);font-style:italic;margin-top:2px" id="quoteAuthorEl"></div>
       <div style="font-size:11px;color:var(--m2);margin-top:3px" id="dateEl"></div>
     </div>
     <div style="display:flex;gap:7px;align-items:center">
@@ -2490,12 +2491,18 @@ const START = new Date("2026-06-15");
 
 // ═══ QUOTES ═══
 const QUOTES = [
-  "Do or die. There is no try.",
-  "Slow is smooth, smooth is fast.",
+  { text: "Do or die. There is no try.", author: "Master Yoda" },
+  { text: "Slow is smooth, smooth is fast.", author: "Navy SEAL" },
+  { text: "Want to be the best? Work when they rest.", author: "Avikshit Mahajan" },
+  { text: "Hope is not a strategy.", author: "Mission Impossible" },
+  { text: "This is your life, and it's ending one minute at a time.", author: "Fight Club" },
+  { text: "You should have to fight - and fight to win. There is no room for the losers.", author: "Field Marshal Sam Manekshaw" },
+  { text: "Shaurya Daksham Yudhhe, Balidan Param Dharma", author: "PARA SF" },
 ];
 function getQuote() {
   const day = Math.floor((GT() - new Date("2026-01-01")) / 86400000);
-  return QUOTES[day % 2];
+  const idx = ((day % QUOTES.length) + QUOTES.length) % QUOTES.length;
+  return QUOTES[idx];
 }
 
 // ═══ DEFAULT HABITS ═══
@@ -3575,7 +3582,10 @@ function renderDash() {
   const d = new Date();
   const tk = TK();
   // Quote
-  document.getElementById("quoteEl").textContent = getQuote();
+  const q = getQuote();
+  document.getElementById("quoteEl").textContent = q.text;
+  const qaEl = document.getElementById("quoteAuthorEl");
+  if (qaEl) qaEl.textContent = "~ " + q.author;
   // Date
   const DN = [
     "Sunday",
@@ -7392,7 +7402,12 @@ function init() {
 }
 setInterval(() => {
   const e = document.getElementById("quoteEl");
-  if (e) e.textContent = getQuote();
+  const qaEl = document.getElementById("quoteAuthorEl");
+  if (e) {
+    const q = getQuote();
+    e.textContent = q.text;
+    if (qaEl) qaEl.textContent = "~ " + q.author;
+  }
 }, 60000);
 document.addEventListener("click", (e) => {
   const panel = document.getElementById("mobileNavCollapse");

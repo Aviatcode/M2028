@@ -951,6 +951,16 @@ body.pink .collapse-nav {
   font-size: 11px;
   border-radius: 6px;
 }
+/* Timetable/Calendar section switch — deliberately bigger + bolder than the
+   small day-selector buttons (Mon/Wed/Fri, Sunday, etc.) underneath it, so
+   the two rows of similarly-colored buttons don't get confused for each other. */
+.sched-tab {
+  padding: 14px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  letter-spacing: 0.01em;
+}
 .inp {
   width: 100%;
   background: var(--s2);
@@ -1631,6 +1641,24 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
     margin-left: auto;
     margin-right: auto;
   }
+
+  /* ---- Susurrus player: on a laptop screen it now fills its column next
+     to the timer (no more max-width:520px squeeze), so give it a taller,
+     more substantial art panel + bigger title instead of staying mobile-sized ---- */
+  .susurrus-art {
+    height: 240px;
+  }
+  .susurrus-title {
+    font-size: 34px;
+  }
+
+  /* ---- Timetable/Calendar switch: exempt from the generic flex:1 shrink
+     rule above so it still fills the row evenly on desktop instead of
+     shrinking down next to empty space ---- */
+  .mn .btn.sched-tab[style*="flex:1"] {
+    flex: 1 1 auto !important;
+    max-width: none;
+  }
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -1723,7 +1751,6 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
       <div id="habList"></div>
       <div style="display:flex;gap:7px;margin-top:11px">
         <button class="btn b-ai sm" onclick="markAll()">✓ All Done</button>
-        <button class="btn b-gh sm" onclick="resetToday()">Reset</button>
       </div>
       <span id="streakBig" style="display:none"></span>
       <span id="bestSt" style="display:none"></span>
@@ -1834,108 +1861,108 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
         <button class="btn b-gh sm" style="width:100%" onclick="openPomSubjectModal()">✏️ Change subject</button>
       </div>
       <div class="card"><div class="ct" style="margin-bottom:8px">Session log</div><div id="pomLog" style="font-size:12px;color:var(--m2);max-height:160px;overflow-y:auto">No sessions yet.</div></div>
-    </div>
-  </div>
-  <!-- Susurrus Player -->
-  <div class="card" style="margin-bottom:14px;padding:0;overflow:hidden;border-radius:14px;position:relative;max-width:520px;margin-left:auto;margin-right:auto">
-    <!-- Sunset background SVG -->
-    <div style="position:relative;width:100%;height:180px;overflow:hidden;flex-shrink:0">
-      <svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
-        <!-- Sky gradient -->
-        <defs>
-          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#1a1040"/>
-            <stop offset="40%" stop-color="#f4724a"/>
-            <stop offset="65%" stop-color="#f9a84d"/>
-            <stop offset="100%" stop-color="#ffd080"/>
-          </linearGradient>
-          <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#1a6080"/>
-            <stop offset="50%" stop-color="#0d3d5a"/>
-            <stop offset="100%" stop-color="#081e2e"/>
-          </linearGradient>
-          <radialGradient id="sun" cx="50%" cy="100%" r="55%">
-            <stop offset="0%" stop-color="#fff5c0" stop-opacity="1"/>
-            <stop offset="20%" stop-color="#ffe066" stop-opacity="0.9"/>
-            <stop offset="100%" stop-color="#f4724a" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="sunpath" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#fff5c0" stop-opacity="0.7"/>
-            <stop offset="100%" stop-color="#ffe066" stop-opacity="0.05"/>
-          </linearGradient>
-        </defs>
-        <!-- Sky -->
-        <rect width="400" height="180" fill="url(#sky)"/>
-        <!-- Sun glow -->
-        <ellipse cx="200" cy="105" rx="80" ry="50" fill="url(#sun)" opacity="0.8"/>
-        <!-- Sun disc -->
-        <ellipse cx="200" cy="105" rx="22" ry="12" fill="#fff5c0"/>
-        <ellipse cx="200" cy="108" rx="22" ry="8" fill="#ffe066"/>
-        <!-- Horizon clouds -->
-        <ellipse cx="60" cy="70" rx="45" ry="14" fill="#c0603a" opacity="0.4"/>
-        <ellipse cx="100" cy="62" rx="35" ry="10" fill="#e07040" opacity="0.3"/>
-        <ellipse cx="310" cy="68" rx="50" ry="13" fill="#c05030" opacity="0.35"/>
-        <ellipse cx="350" cy="58" rx="30" ry="9" fill="#e06040" opacity="0.25"/>
-        <!-- Sea -->
-        <rect y="105" width="400" height="75" fill="url(#sea)"/>
-        <!-- Sun reflection path on water -->
-        <polygon points="170,105 230,105 250,180 150,180" fill="url(#sunpath)" opacity="0.5"/>
-        <!-- Calm water ripples -->
-        <line x1="0" y1="115" x2="400" y2="115" stroke="#2a7090" stroke-width="1" opacity="0.4"/>
-        <line x1="0" y1="125" x2="400" y2="125" stroke="#2a7090" stroke-width="0.7" opacity="0.3"/>
-        <line x1="0" y1="137" x2="400" y2="137" stroke="#1a5070" stroke-width="0.7" opacity="0.25"/>
-        <line x1="0" y1="150" x2="400" y2="150" stroke="#1a4060" stroke-width="0.5" opacity="0.2"/>
-        <line x1="0" y1="165" x2="400" y2="165" stroke="#142e45" stroke-width="0.5" opacity="0.15"/>
-        <!-- Stars -->
-        <circle cx="30" cy="20" r="1.2" fill="#fff" opacity="0.8"/>
-        <circle cx="80" cy="10" r="0.8" fill="#fff" opacity="0.6"/>
-        <circle cx="140" cy="18" r="1" fill="#fff" opacity="0.7"/>
-        <circle cx="260" cy="12" r="1.2" fill="#fff" opacity="0.8"/>
-        <circle cx="320" cy="22" r="0.8" fill="#fff" opacity="0.5"/>
-        <circle cx="370" cy="8" r="1" fill="#fff" opacity="0.7"/>
-        <circle cx="55" cy="35" r="0.6" fill="#fff" opacity="0.5"/>
-        <circle cx="345" cy="40" r="0.7" fill="#fff" opacity="0.5"/>
-      </svg>
-      <!-- Title overlay -->
-      <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-        <div style="font-size:26px;font-weight:700;color:#fff;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.6);font-family:Georgia,serif">Susurrus</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)">10-Minute NSDR · Dr. Andrew Huberman</div>
-      </div>
-    </div>
-    <!-- Audio player -->
-    <div style="padding:14px 16px;background:rgba(10,20,35,.95)">
-    
-     <audio id="nsdraudio" preload="none" style="display:none">
-    <source src="sussurus1.mp3" type="audio/mpeg">
-     </audio>
-      <div style="display:flex;align-items:center;gap:12px">
-        <button id="nsdrPlayBtn" onclick="toggleNSDR()" style="width:44px;height:44px;border-radius:50%;background:rgba(79,216,160,.15);border:1.5px solid var(--ai);color:var(--ai);font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">▶</button>
-        <div style="flex:1;min-width:0">
-          <input type="range" id="nsdrSeek" value="0" min="0" max="100" step="0.1"
-            style="width:100%;height:4px;-webkit-appearance:none;appearance:none;background:rgba(79,216,160,.2);border-radius:2px;outline:none;cursor:pointer"
-            oninput="nsdrSeek(this.value)">
-          <div style="display:flex;justify-content:space-between;margin-top:4px">
-            <span id="nsdrCur" style="font-size:10px;color:var(--m2)">0:00</span>
-            <span id="nsdrDur" style="font-size:10px;color:var(--m2)">10:42</span>
+      <!-- Susurrus Player -->
+      <div class="card" id="susurrusCard" style="margin-bottom:14px;padding:0;overflow:hidden;border-radius:14px;position:relative">
+        <!-- Sunset background SVG -->
+        <div class="susurrus-art" style="position:relative;width:100%;height:180px;overflow:hidden;flex-shrink:0">
+          <svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+            <!-- Sky gradient -->
+            <defs>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1a1040"/>
+                <stop offset="40%" stop-color="#f4724a"/>
+                <stop offset="65%" stop-color="#f9a84d"/>
+                <stop offset="100%" stop-color="#ffd080"/>
+              </linearGradient>
+              <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1a6080"/>
+                <stop offset="50%" stop-color="#0d3d5a"/>
+                <stop offset="100%" stop-color="#081e2e"/>
+              </linearGradient>
+              <radialGradient id="sun" cx="50%" cy="100%" r="55%">
+                <stop offset="0%" stop-color="#fff5c0" stop-opacity="1"/>
+                <stop offset="20%" stop-color="#ffe066" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#f4724a" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="sunpath" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff5c0" stop-opacity="0.7"/>
+                <stop offset="100%" stop-color="#ffe066" stop-opacity="0.05"/>
+              </linearGradient>
+            </defs>
+            <!-- Sky -->
+            <rect width="400" height="180" fill="url(#sky)"/>
+            <!-- Sun glow -->
+            <ellipse cx="200" cy="105" rx="80" ry="50" fill="url(#sun)" opacity="0.8"/>
+            <!-- Sun disc -->
+            <ellipse cx="200" cy="105" rx="22" ry="12" fill="#fff5c0"/>
+            <ellipse cx="200" cy="108" rx="22" ry="8" fill="#ffe066"/>
+            <!-- Horizon clouds -->
+            <ellipse cx="60" cy="70" rx="45" ry="14" fill="#c0603a" opacity="0.4"/>
+            <ellipse cx="100" cy="62" rx="35" ry="10" fill="#e07040" opacity="0.3"/>
+            <ellipse cx="310" cy="68" rx="50" ry="13" fill="#c05030" opacity="0.35"/>
+            <ellipse cx="350" cy="58" rx="30" ry="9" fill="#e06040" opacity="0.25"/>
+            <!-- Sea -->
+            <rect y="105" width="400" height="75" fill="url(#sea)"/>
+            <!-- Sun reflection path on water -->
+            <polygon points="170,105 230,105 250,180 150,180" fill="url(#sunpath)" opacity="0.5"/>
+            <!-- Calm water ripples -->
+            <line x1="0" y1="115" x2="400" y2="115" stroke="#2a7090" stroke-width="1" opacity="0.4"/>
+            <line x1="0" y1="125" x2="400" y2="125" stroke="#2a7090" stroke-width="0.7" opacity="0.3"/>
+            <line x1="0" y1="137" x2="400" y2="137" stroke="#1a5070" stroke-width="0.7" opacity="0.25"/>
+            <line x1="0" y1="150" x2="400" y2="150" stroke="#1a4060" stroke-width="0.5" opacity="0.2"/>
+            <line x1="0" y1="165" x2="400" y2="165" stroke="#142e45" stroke-width="0.5" opacity="0.15"/>
+            <!-- Stars -->
+            <circle cx="30" cy="20" r="1.2" fill="#fff" opacity="0.8"/>
+            <circle cx="80" cy="10" r="0.8" fill="#fff" opacity="0.6"/>
+            <circle cx="140" cy="18" r="1" fill="#fff" opacity="0.7"/>
+            <circle cx="260" cy="12" r="1.2" fill="#fff" opacity="0.8"/>
+            <circle cx="320" cy="22" r="0.8" fill="#fff" opacity="0.5"/>
+            <circle cx="370" cy="8" r="1" fill="#fff" opacity="0.7"/>
+            <circle cx="55" cy="35" r="0.6" fill="#fff" opacity="0.5"/>
+            <circle cx="345" cy="40" r="0.7" fill="#fff" opacity="0.5"/>
+          </svg>
+          <!-- Title overlay -->
+          <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div class="susurrus-title" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.6);font-family:Georgia,serif">Susurrus</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)">10-Minute NSDR · Dr. Andrew Huberman</div>
           </div>
         </div>
-        <button onclick="nsdrRestart()" style="background:none;border:none;color:var(--m2);font-size:16px;cursor:pointer;padding:0 4px" title="Restart">↺</button>
+        <!-- Audio player -->
+        <div style="padding:14px 16px;background:rgba(10,20,35,.95)">
+        
+         <audio id="nsdraudio" preload="none" style="display:none">
+        <source src="sussurus1.mp3" type="audio/mpeg">
+         </audio>
+          <div style="display:flex;align-items:center;gap:12px">
+            <button id="nsdrPlayBtn" onclick="toggleNSDR()" style="width:44px;height:44px;border-radius:50%;background:rgba(79,216,160,.15);border:1.5px solid var(--ai);color:var(--ai);font-size:20px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">▶</button>
+            <div style="flex:1;min-width:0">
+              <input type="range" id="nsdrSeek" value="0" min="0" max="100" step="0.1"
+                style="width:100%;height:4px;-webkit-appearance:none;appearance:none;background:rgba(79,216,160,.2);border-radius:2px;outline:none;cursor:pointer"
+                oninput="nsdrSeek(this.value)">
+              <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <span id="nsdrCur" style="font-size:10px;color:var(--m2)">0:00</span>
+                <span id="nsdrDur" style="font-size:10px;color:var(--m2)">10:42</span>
+              </div>
+            </div>
+            <button onclick="nsdrRestart()" style="background:none;border:none;color:var(--m2);font-size:16px;cursor:pointer;padding:0 4px" title="Restart">↺</button>
+          </div>
+          <div style="font-size:11px;color:var(--mt);margin-top:8px;text-align:center">Best during Pomodoro break · eyes closed · breathe slowly</div>
+        </div>
       </div>
-      <div style="font-size:11px;color:var(--mt);margin-top:8px;text-align:center">Best during Pomodoro break · eyes closed · breathe slowly</div>
+
+      <!-- Sound settings — collapsed to a single line; pick a sound and it previews itself, nothing else stays visible -->
+      <details class="card" style="margin-bottom:0">
+        <summary style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;list-style:none">🔊 Sound</summary>
+        <select id="pomSoundStyleSel" onchange="setPomSoundStyle(this.value);pomSound('session')" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid var(--b);background:var(--s2);color:var(--tx);font-size:13px">
+          <option value="bell">🔔 Classic Bell</option>
+          <option value="chime">✨ Soft Chime</option>
+          <option value="digital">📟 Digital Beep</option>
+          <option value="marimba">🎵 Marimba</option>
+          <option value="pulse">💫 Ping Pulse</option>
+        </select>
+      </details>
     </div>
   </div>
-
-  <!-- Sound settings — collapsed to a single line; pick a sound and it previews itself, nothing else stays visible -->
-  <details class="card" style="margin-bottom:14px;max-width:520px;margin-left:auto;margin-right:auto">
-    <summary style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;list-style:none">🔊 Sound</summary>
-    <select id="pomSoundStyleSel" onchange="setPomSoundStyle(this.value);pomSound('session')" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid var(--b);background:var(--s2);color:var(--tx);font-size:13px">
-      <option value="bell">🔔 Classic Bell</option>
-      <option value="chime">✨ Soft Chime</option>
-      <option value="digital">📟 Digital Beep</option>
-      <option value="marimba">🎵 Marimba</option>
-      <option value="pulse">💫 Ping Pulse</option>
-    </select>
-  </details>
 </div>
 
 
@@ -1977,8 +2004,8 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
 <div id="v-sched" class="vw">
   <div class="ph"><div class="ph-t">Timetable & Calendar</div><div class="ph-s">Tap any row to edit · tap any date to see that day's habits</div></div>
   <div style="display:flex;gap:6px;margin-bottom:14px">
-    <button class="btn b-ai sm" id="schedsub-timetable" onclick="showSchedSub('timetable')" style="flex:1">🗓 Timetable</button>
-    <button class="btn b-gh sm" id="schedsub-calendar" onclick="showSchedSub('calendar')" style="flex:1">📆 Calendar</button>
+    <button class="btn sched-tab b-ai" id="schedsub-timetable" onclick="showSchedSub('timetable')" style="flex:1">🗓 Timetable</button>
+    <button class="btn sched-tab b-gh" id="schedsub-calendar" onclick="showSchedSub('calendar')" style="flex:1">📆 Calendar</button>
   </div>
 
   <!-- Timetable panel -->
@@ -3455,9 +3482,9 @@ function showSchedSub(sub) {
   const btnTT = document.getElementById("schedsub-timetable");
   const btnCal = document.getElementById("schedsub-calendar");
   if (btnTT)
-    btnTT.className = "btn sm " + (sub === "timetable" ? "b-ai" : "b-gh");
+    btnTT.className = "btn sched-tab " + (sub === "timetable" ? "b-ai" : "b-gh");
   if (btnCal)
-    btnCal.className = "btn sm " + (sub === "calendar" ? "b-ai" : "b-gh");
+    btnCal.className = "btn sched-tab " + (sub === "calendar" ? "b-ai" : "b-gh");
   if (sub === "calendar") renderCal();
 }
 // Navigate to a "pseudo tab" that isn't its own view but jumps to a spot on an existing view
@@ -3560,7 +3587,11 @@ function calcStreak() {
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
   }
 
-  while (true) {
+  // Hard ceiling so the streak keeps counting correctly for as long as anyone
+  // could realistically use this app (36000 days ≈ 98 years) while guaranteeing
+  // the loop can never run away/hang the browser even on corrupted data.
+  const MAX_STREAK_DAYS = 36000;
+  while (streak < MAX_STREAK_DAYS) {
     const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const day = hd[k] || {};
     // Count day as done only if at least one habit is truly checked (value===true)
@@ -5060,6 +5091,100 @@ function saveCWNote(id, val) {
   }
 }
 
+// ═══ NOTEPAD IMAGES ═══
+// Screenshots are resized + re-encoded as compressed JPEGs before ever
+// touching localStorage/cloud sync, so a "small screenshot" stays small
+// (roughly tens of KB) no matter how big the original clipboard image was.
+function compressImageFile(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width,
+          h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w >= h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        try {
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function addNoteImageFiles(wid, fileList) {
+  const files = Array.from(fileList || []).filter(
+    (f) => f.type && f.type.startsWith("image/"),
+  );
+  if (!files.length) return;
+  for (const f of files) {
+    try {
+      const src = await compressImageFile(f, 480, 0.6);
+      const { cw, w } = getCWWidget(wid);
+      if (!w) return;
+      if (!w.images) w.images = [];
+      w.images.push({
+        id: "im" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        src,
+      });
+      S.s("customWidgets", cw);
+    } catch (e) {}
+  }
+  applyDashCfg();
+}
+function handleNotePaste(e, wid) {
+  const cd = e.clipboardData || window.clipboardData;
+  if (!cd || !cd.items) return;
+  const files = [];
+  for (let i = 0; i < cd.items.length; i++) {
+    const it = cd.items[i];
+    if (it.type && it.type.startsWith("image/")) {
+      const f = it.getAsFile();
+      if (f) files.push(f);
+    }
+  }
+  if (files.length) {
+    e.preventDefault();
+    addNoteImageFiles(wid, files);
+  }
+}
+function deleteNoteImage(wid, imgId) {
+  const { cw, w } = getCWWidget(wid);
+  if (!w || !w.images) return;
+  w.images = w.images.filter((im) => im.id !== imgId);
+  S.s("customWidgets", cw);
+  applyDashCfg();
+}
+function openNoteImageLightbox(src) {
+  const ov = document.createElement("div");
+  ov.style.cssText =
+    "position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out";
+  ov.onclick = () => ov.remove();
+  const img = document.createElement("img");
+  img.src = src;
+  img.style.cssText =
+    "max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.5)";
+  ov.appendChild(img);
+  document.body.appendChild(ov);
+}
+
 // ═══ CHECKLISTS (Google-Keep style) ═══
 // Each checklist widget's `items` is a FLAT array: [{id,text,done,indent}, ...]
 // indent is 0 (top-level) or 1 (nested one level under the item above it) — this
@@ -5354,6 +5479,38 @@ function cliPointerEnd() {
   }
   _cliDrag = null;
 }
+// A "block" is a top-level item plus any indent:1 children directly under it.
+// Used to move a whole completed group down into the Completed dropdown
+// together, instead of splitting a parent from its still-attached sub-items.
+function splitChecklistBlocks(items) {
+  const blocks = [];
+  let cur = null;
+  (items || []).forEach((it) => {
+    if ((it.indent || 0) === 0 || !cur) {
+      cur = { parent: (it.indent || 0) === 0 ? it : null, children: [] };
+      if ((it.indent || 0) !== 0) cur.children.push(it);
+      blocks.push(cur);
+    } else {
+      cur.children.push(it);
+    }
+  });
+  return blocks;
+}
+function flattenChecklistBlocks(blocks) {
+  const out = [];
+  blocks.forEach((b) => {
+    if (b.parent) out.push(b.parent);
+    out.push(...b.children);
+  });
+  return out;
+}
+// wid -> bool, whether that checklist's "Completed" dropdown is expanded.
+// Collapsed by default (like Google Keep) so finished items stay out of the way.
+let _clDoneOpen = {};
+function toggleClDone(wid) {
+  _clDoneOpen[wid] = !_clDoneOpen[wid];
+  applyDashCfg();
+}
 function renderChecklistItems(items, wid) {
   if (!items || !items.length) return "";
   return items
@@ -5438,7 +5595,25 @@ function renderCWWidget(w) {
     return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><div style="text-align:center;padding:10px 0"><div style="font-size:48px;font-weight:700;color:${col};line-height:1">${Math.abs(diff)}</div><div style="font-size:12px;color:var(--m2);margin-top:4px">${diff < 0 ? "days ago" : "days remaining"}</div><div style="font-size:11px;color:var(--mt);margin-top:2px">${w.date}</div></div></div>`;
   }
   if (w.type === "note") {
-    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><textarea class="ta" rows="10" style="font-size:12px;min-height:220px;resize:vertical" onblur="saveCWNote('${w.id}',this.value)">${w.note || ""}</textarea></div>`;
+    const imgs = w.images || [];
+    const thumbs = imgs
+      .map(
+        (im) => `<div style="position:relative;width:64px;height:64px;flex-shrink:0">
+        <img src="${im.src}" onclick="openNoteImageLightbox('${im.src}')" style="width:100%;height:100%;object-fit:cover;border-radius:8px;cursor:zoom-in;border:1px solid var(--b);display:block">
+        <button onclick="event.stopPropagation();deleteNoteImage('${w.id}','${im.id}')" title="Remove" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:var(--rd);color:#fff;border:1.5px solid var(--s1);font-size:11px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">×</button>
+      </div>`,
+      )
+      .join("");
+    return `<div class="wc">
+      <div class="ct" style="font-size:14px;font-weight:600">${w.title}
+        <div>
+          <input type="file" id="noteimg-${w.id}" accept="image/*" multiple style="display:none" onchange="addNoteImageFiles('${w.id}',this.files);this.value='';">
+          <button onclick="document.getElementById('noteimg-${w.id}').click()" title="Add a photo/screenshot" style="background:var(--s2);border:1px solid var(--b);border-radius:7px;color:var(--m2);font-size:12px;padding:4px 9px;cursor:pointer;font-weight:500">📷 Photo</button>
+        </div>
+      </div>
+      <textarea class="ta" rows="8" style="font-size:12px;min-height:160px;resize:vertical" placeholder="Type notes here… paste a screenshot (Ctrl/Cmd+V) to attach it" onblur="saveCWNote('${w.id}',this.value)" onpaste="handleNotePaste(event,'${w.id}')">${w.note || ""}</textarea>
+      ${imgs.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${thumbs}</div>` : `<div style="font-size:11px;color:var(--mt);margin-top:8px">No photos yet — paste a screenshot or tap 📷 Photo to add one.</div>`}
+    </div>`;
   }
   if (w.type === "links") {
     const btns = (w.links || [])
@@ -5452,9 +5627,27 @@ function renderCWWidget(w) {
   if (w.type === "checklist") {
     const items = w.items || [];
     const { total, done } = countChecklistProgress(items);
-    const rows = renderChecklistItems(items, w.id);
+    // Split into blocks (a top-level item + its nested sub-items) so a fully
+    // checked-off item drops down into the Completed dropdown as one group,
+    // while items still in progress stay up top in their working order.
+    const blocks = splitChecklistBlocks(items);
+    const activeBlocks = blocks.filter((b) => !b.parent || !b.parent.done);
+    const doneBlocks = blocks.filter((b) => b.parent && b.parent.done);
+    const activeItems = flattenChecklistBlocks(activeBlocks);
+    const doneItems = flattenChecklistBlocks(doneBlocks);
+    const activeRows = renderChecklistItems(activeItems, w.id);
+    const isOpen = !!_clDoneOpen[w.id];
+    const doneSection = doneItems.length
+      ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
+          <div onclick="toggleClDone('${w.id}')" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:4px 0;font-size:12px;color:var(--m2)">
+            <span style="display:inline-block;transition:transform .15s ease;transform:rotate(${isOpen ? 90 : 0}deg);font-size:10px">▶</span>
+            <span>Completed (${doneItems.length})</span>
+          </div>
+          <div style="display:${isOpen ? "block" : "none"}">${renderChecklistItems(doneItems, w.id)}</div>
+        </div>`
+      : "";
     return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title} <span style="font-size:11px;font-weight:400;color:var(--m2)">${done}/${total}</span></div>
-      <div id="clw-${w.id}">${rows}</div>
+      <div id="clw-${w.id}">${activeRows}${doneSection}</div>
       <div onclick="addTopChecklistItem('${w.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 0 2px;cursor:text;color:var(--mt)">
         <span style="font-size:16px;width:20px;text-align:center;flex-shrink:0">+</span>
         <span style="font-size:14px">List item</span>
@@ -6142,6 +6335,13 @@ function schedTN(task) {
     if (t && !t.done) sendNotif("⏰ Task reminder", t.text);
   }, diff);
 }
+// Collapsed by default so finished tasks stay out of the way but remain
+// one tap away, attached to the same list (mirrors the checklist dropdown).
+let _taskDoneOpen = false;
+function toggleTaskDone() {
+  _taskDoneOpen = !_taskDoneOpen;
+  renderTasks();
+}
 function setTF(f) {
   _tf = f;
   ["all", "today", "up", "done"].forEach((k) => {
@@ -6240,14 +6440,18 @@ function renderTasks() {
     });
   }
   if (done.length) {
-    h += `<div style="display:flex;align-items:center;gap:9px;margin:14px 0 9px">
-      <div style="flex:1;height:1px;background:var(--b)"></div>
-      <div style="font-size:11px;color:var(--mt);letter-spacing:.1em">COMPLETED (${done.length})</div>
-      <div style="flex:1;height:1px;background:var(--b)"></div>
+    // When the Done filter itself is active there's nothing else to hide it
+    // behind, so show the list open; otherwise keep it a collapsed dropdown
+    // (tap to expand) that stays attached under the active tasks.
+    const forceOpen = _tf === "done";
+    const isOpen = forceOpen || _taskDoneOpen;
+    h += `<div style="margin-top:14px;padding-top:9px;border-top:1px solid var(--b)">
+      <div ${forceOpen ? "" : `onclick="toggleTaskDone()"`} style="display:flex;align-items:center;gap:6px;${forceOpen ? "" : "cursor:pointer;"}user-select:none;padding:4px 0;font-size:11px;color:var(--mt);letter-spacing:.08em">
+        ${forceOpen ? "" : `<span style="display:inline-block;transition:transform .15s ease;transform:rotate(${isOpen ? 90 : 0}deg);font-size:9px">▶</span>`}
+        <span>COMPLETED (${done.length})</span>
+      </div>
+      <div style="display:${isOpen ? "block" : "none"}">${done.map(taskCard).join("")}</div>
     </div>`;
-    done.forEach((t) => {
-      h += taskCard(t);
-    });
   }
   document.getElementById("tskList").innerHTML = h;
 }

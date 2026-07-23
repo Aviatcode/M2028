@@ -7684,6 +7684,7 @@ const SUPA_KEY =
 let supa = null;
 let _user = null;
 let _cloudOK = false;
+let _realtimeChannel = null; // live Postgres-changes subscription — see setupRealtimeSync()
 try {
   if (typeof supabase !== "undefined") {
     supa = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -7869,6 +7870,67 @@ function _setLocalTs(k, ts) {
   } catch (e) {}
 }
 
+// ═══ REALTIME SYNC ═══
+// Without this, a change made on one device only reaches another device
+// when that device's app either (a) hits the 5-minute auto-pull interval, or
+// (b) gets refocused/reopened. If both devices are just sitting open side by
+// side, that's exactly the "doesn't sync immediately / takes a long time"
+// gap. This subscribes to live Postgres changes on this user's rows, so a
+// push from one device reaches every other open device within roughly a
+// second over the same websocket connection Supabase already uses for auth.
+// The 5-minute interval and focus-triggered pull stay in place as a fallback
+// in case the realtime connection ever drops.
+let _rtRerenderTimer = null;
+function _scheduleRealtimeRerender() {
+  // A single change on one device can touch a few rows in a row (e.g. a
+  // "mark all done"), so debounce a burst of incoming events into one
+  // re-render + one banner instead of flickering repeatedly.
+  clearTimeout(_rtRerenderTimer);
+  _rtRerenderTimer = setTimeout(() => {
+    try {
+      renderDash();
+      renderHabits();
+      renderTasks();
+      applyDashCfg();
+    } catch (e) {}
+    banner("✓ Synced from cloud");
+  }, 250);
+}
+function setupRealtimeSync() {
+  if (!_user || !_cloudOK || !supa) return;
+  teardownRealtimeSync(); // avoid stacking duplicate subscriptions on repeated sign-ins
+  try {
+    _realtimeChannel = supa
+      .channel("user_data_" + _user.id)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_data",
+          filter: `user_id=eq.${_user.id}`,
+        },
+        (payload) => {
+          const row = payload.new || payload.old;
+          if (!row || !row.data_key) return;
+          mergeCloudValue(row.data_key, row.data_value, row.updated_at);
+          _scheduleRealtimeRerender();
+        },
+      )
+      .subscribe();
+  } catch (e) {
+    console.warn("Realtime sync setup failed, falling back to polling:", e);
+  }
+}
+function teardownRealtimeSync() {
+  if (_realtimeChannel && supa) {
+    try {
+      supa.removeChannel(_realtimeChannel);
+    } catch (e) {}
+    _realtimeChannel = null;
+  }
+}
+
 // Override S.s to also push to cloud on every save
 const _origS = S.s.bind(S);
 S.s = (k, v) => {
@@ -7931,6 +7993,7 @@ async function doSignIn() {
     S.s("hadSession", true); // remember session for instant next load
     showApp();
     await pull();
+    setupRealtimeSync();
     init();
   } catch (e) {
     btn.textContent = "Sign In";
@@ -7977,6 +8040,7 @@ async function doSignUp() {
     if (data.user && data.user.confirmed_at) {
       _user = data.user;
       showApp();
+      setupRealtimeSync();
       init();
       return;
     }
@@ -7992,6 +8056,7 @@ async function doSignUp() {
 }
 
 function guestMode() {
+  teardownRealtimeSync();
   _user = null;
   S.s("guestMode", true);
   S.d("hadSession");
@@ -8003,6 +8068,7 @@ function guestMode() {
 }
 
 async function doSignOut() {
+  teardownRealtimeSync();
   if (_cloudOK) {
     try {
       await supa.auth.signOut();
@@ -8043,6 +8109,7 @@ async function startup() {
         .then(({ data: { session } }) => {
           if (session) {
             _user = session.user;
+            setupRealtimeSync();
             // Silent background sync
             pull().then(() => {
               try {
@@ -8054,6 +8121,7 @@ async function startup() {
           } else {
             // Session expired — clear flag and show login next time
             S.d("hadSession");
+            teardownRealtimeSync();
             _user = null;
           }
         })

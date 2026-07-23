@@ -1551,35 +1551,13 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   DESKTOP LAYOUT — make good use of extra width instead of
-   stretching UI into long rectangles. Mobile (<=680px, above)
-   and the tablet top-nav rules (681–899px, above) are untouched;
-   everything below only kicks in from 900px up.
+   TABLET + DESKTOP LAYOUT (681px and up) — make good use of extra
+   width with real multi-column grids instead of leaving a single
+   narrow column stretched into a wide, mostly-empty page. This is
+   the block that actually removes the dead space; the 900px+ block
+   further down just fine-tunes sizing once there's even more room.
    ═══════════════════════════════════════════════════════════ */
-@media (min-width: 900px) {
-  /* Centered content column with a sane max-width */
-  .mn {
-    max-width: 1300px;
-    padding: 32px 36px 60px;
-  }
-
-  /* ---- Buttons: size to their content, never stretch just
-     because more horizontal space is available ---- */
-  .mn .btn {
-    max-width: 280px;
-  }
-  .mn .btn.sm {
-    max-width: 220px;
-  }
-  .mn .btn[style*="width:100%"] {
-    width: auto !important;
-    max-width: 300px;
-  }
-  .mn .btn[style*="flex:1"] {
-    flex: 0 1 auto !important;
-    max-width: 260px;
-  }
-
+@media (min-width: 681px) {
   /* ---- Dashboard: lay widgets out in a 2-column grid instead
      of one long single-column stack, so gaps shrink and both
      columns get used ---- */
@@ -1636,10 +1614,42 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
      single column for readability, just capped so it doesn't stretch
      edge-to-edge on wide screens ---- */
   #roadEl,
-  #schedCard {
+  #schedCard,
+  #upscTierInfo {
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DESKTOP-ONLY refinements — sizing/spacing tweaks that only make
+   sense once there's a full laptop-width viewport. Mobile (<=680px)
+   and the tablet top-nav rules (681–899px, above) are untouched;
+   everything below only kicks in from 900px up.
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  /* Centered content column with a sane max-width */
+  .mn {
+    max-width: 1300px;
+    padding: 32px 36px 60px;
+  }
+
+  /* ---- Buttons: size to their content, never stretch just
+     because more horizontal space is available ---- */
+  .mn .btn {
+    max-width: 280px;
+  }
+  .mn .btn.sm {
+    max-width: 220px;
+  }
+  .mn .btn[style*="width:100%"] {
+    width: auto !important;
+    max-width: 300px;
+  }
+  .mn .btn[style*="flex:1"] {
+    flex: 0 1 auto !important;
+    max-width: 260px;
   }
 
   /* ---- Susurrus player: on a laptop screen it now fills its column next
@@ -1979,7 +1989,7 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
     </div>
     <button class="btn b-up sm" onclick="openAddCustomBook()" style="flex-shrink:0;margin-top:4px">+ Add Book</button>
   </div>
-  <div style="background:rgba(232,200,90,.05);border:1px solid rgba(232,200,90,.18);border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:12px;color:var(--m2);line-height:1.75">
+  <div id="upscTierInfo" style="background:rgba(232,200,90,.05);border:1px solid rgba(232,200,90,.18);border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:12px;color:var(--m2);line-height:1.75">
     <strong style="color:var(--gd)">S Tier:</strong> Indian Constitution at Work · Themes in Indian History 1&2 · Fundamentals of Physical Geography (every chapter asked!) · India Physical Environment · Indian Economic Development · Atlas (always open while reading geography)<br>
     <strong style="color:var(--up)">A Tier:</strong> RS Sharma · Satish Chandra · Spectrum · Plassey to Partition (500pp, no images — choose ONE of these two) · GC Leong <strong style="color:var(--tx)">SECOND HALF ONLY</strong> · Laxmikant · Economy Handbook · Economic Survey · Shankar IAS Environment · Nitin Singhania <strong style="color:var(--tx)">relevant portions only</strong><br>
     <strong style="color:var(--rd)">AIR &lt;100:</strong> These books + PYQs + The Hindu = Prelims foundation. Mains needs daily answer writing from Year 2.<br>
@@ -3608,6 +3618,35 @@ function calcStreak() {
   return streak;
 }
 
+// Per-habit streak: how many days in a row THIS specific habit has been
+// checked off, ending today (or yesterday if today isn't logged yet so it
+// doesn't flash to 0 first thing in a new day). The moment a day is missed,
+// this naturally reads 0 again next time it's calculated — there's nothing
+// to explicitly "reset": it's always recomputed from today backwards.
+function calcHabitStreak(habitId) {
+  const hd = S.go("hd", {});
+  let streak = 0;
+  let d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const todayK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const todayDone = (hd[todayK] || {})[habitId] === true;
+  if (!todayDone) {
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  }
+  const MAX_STREAK_DAYS = 36000;
+  while (streak < MAX_STREAK_DAYS) {
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const day = hd[k] || {};
+    if (day[habitId] === true) {
+      streak++;
+      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 // ═══ DASHBOARD ═══
 function renderDash() {
   const d = new Date();
@@ -3692,9 +3731,15 @@ function renderDash() {
   let hh = "";
   tl.forEach((h) => {
     const dn = !!todH[h.id];
+    const hStreak = calcHabitStreak(h.id);
     hh += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b)">
       <button onclick="togH('${h.id}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${dn ? "var(--ai)" : "var(--b2)"};background:${dn ? "var(--ai)" : "none"};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${dn ? "✓" : ""}</button>
-      <span style="font-size:13px;color:${dn ? "var(--m2)" : "var(--tx)"};text-decoration:${dn ? "line-through" : "none"}">${h.label}</span>
+      <span style="font-size:13px;color:${dn ? "var(--m2)" : "var(--tx)"};text-decoration:${dn ? "line-through" : "none"};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.label}</span>
+      ${
+        hStreak > 0
+          ? `<span title="${hStreak}-day streak on this habit" style="font-size:11px;font-weight:600;color:var(--ai);background:var(--a2);border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap">🔥 ${hStreak}</span>`
+          : `<span title="No current streak — not logged yesterday" style="font-size:11px;color:var(--mt);background:var(--s2);border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap">0d</span>`
+      }
     </div>`;
   });
   document.getElementById("wHabits").innerHTML =
@@ -3893,6 +3938,7 @@ function renderHabits() {
     const rel = !!tl.find((r) => r.id === h.id);
     const dn = !!tod[h.id];
     const dm = !rel;
+    const hStreak = calcHabitStreak(h.id);
     const dl =
       h.days === "mwf"
         ? ' <span style="font-size:10px;color:var(--mt)">(M/W/F)</span>'
@@ -3900,7 +3946,14 @@ function renderHabits() {
           ? ' <span style="font-size:10px;color:var(--mt)">(Sat)</span>'
           : "";
     html += `<div class="hr ${dn ? "ck" : ""} ${dm ? "dm" : ""}">
-      <span style="font-size:13px">${h.label}${dl}</span>
+      <span style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+        <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.label}${dl}</span>
+        ${
+          hStreak > 0
+            ? `<span title="${hStreak}-day streak on this habit" style="font-size:10px;font-weight:600;color:var(--ai);background:var(--a2);border-radius:10px;padding:2px 7px;flex-shrink:0;white-space:nowrap">🔥 ${hStreak}</span>`
+            : `<span title="No current streak — not logged yesterday" style="font-size:10px;color:var(--mt);background:var(--s2);border-radius:10px;padding:2px 7px;flex-shrink:0;white-space:nowrap">0d</span>`
+        }
+      </span>
       <button class="hc ${dn ? "ck" : ""}" onclick="${rel ? `togH('${h.id}')` : ""}" style="${dm ? "cursor:not-allowed" : ""}">${dn ? "✓" : ""}</button>
     </div>`;
   });
@@ -4079,11 +4132,14 @@ function saveNewHabit() {
   }
   const days = daysToStorage(_selectedDays);
   const habs = getHabs();
-  const newH = { id: "h" + Date.now(), label: name, days };
   if (_habEditIdx !== null) {
-    habs[_habEditIdx] = newH;
+    // Keep the same id — only the name/schedule changed, not the habit's
+    // identity — so all its past check-ins (and therefore its streak) stay
+    // linked instead of getting orphaned under a freshly generated id.
+    const existing = habs[_habEditIdx];
+    habs[_habEditIdx] = { ...existing, label: name, days };
   } else {
-    habs.push(newH);
+    habs.push({ id: "h" + Date.now(), label: name, days });
   }
   S.s("habs", habs);
   showHabStep("list");

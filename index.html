@@ -56,7 +56,7 @@ console.log("M2028 build: checklist-resume-sync-v4");
   --s1: #111114;
   --s2: #18181c;
   --s3: #222228;
-  --b: rgba(255, 255, 255, 0.06);
+  --b: transparent;
   --b2: rgba(255, 255, 255, 0.11);
   --tx: #e0dff0;
   --mt: #4e4c60;
@@ -91,7 +91,7 @@ body.light {
   --s1: #ffffff;
   --s2: #f0f0f3;
   --s3: #e4e4e8;
-  --b: rgba(0, 0, 0, 0.08);
+  --b: transparent;
   --b2: rgba(0, 0, 0, 0.14);
   --tx: #1a1a2e;
   --mt: #a0a0b0;
@@ -199,7 +199,7 @@ body.pink {
   --s1: #240d1a;
   --s2: #2e1220;
   --s3: #3d1829;
-  --b: rgba(255, 150, 200, 0.1);
+  --b: transparent;
   --b2: rgba(255, 150, 200, 0.2);
   --tx: #ffe4f0;
   --mt: #7a4060;
@@ -1065,6 +1065,81 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
   border-color: var(--ai);
   color: #000;
 }
+
+/* ═══ POLISH: focus states, hover/press feedback, input focus rings ═══
+   Additive layer — doesn't change layout, just makes interaction feel
+   more responsive and keeps the app usable with a keyboard. */
+button,
+.btn,
+.hc,
+.inp,
+.ta,
+a,
+[tabindex] {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    opacity 0.15s ease;
+}
+button:focus-visible,
+.btn:focus-visible,
+.hc:focus-visible,
+.inp:focus-visible,
+.ta:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ai);
+  outline-offset: 2px;
+}
+.btn:active,
+.hc:active {
+  transform: scale(0.96);
+}
+.inp:focus,
+.ta:focus {
+  border-color: var(--ai);
+  box-shadow: 0 0 0 3px var(--a2);
+}
+/* Hover-lift only on devices that actually have a pointer, so it doesn't
+   leave a "stuck" hover state on touch screens. */
+@media (hover: hover) and (pointer: fine) {
+  .card,
+  .wc,
+  .st {
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .card:hover,
+  .wc:hover,
+  .st:hover {
+    border-color: var(--b2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+  body.light .card:hover,
+  body.light .wc:hover,
+  body.light .st:hover {
+    box-shadow: 0 4px 16px rgba(30, 30, 60, 0.08);
+  }
+  body.pink .card:hover,
+  body.pink .wc:hover,
+  body.pink .st:hover {
+    box-shadow: 0 4px 18px rgba(255, 105, 180, 0.16);
+  }
+  .btn:hover,
+  .hc:hover {
+    filter: brightness(1.08);
+  }
+  .hr {
+    transition: border-color 0.15s ease;
+  }
+  .hr:hover {
+    border-color: var(--b2);
+  }
+}
 .bi {
   background: var(--s1);
   border: 1px solid var(--b);
@@ -1669,6 +1744,467 @@ body.pink input[type="time"]::-webkit-calendar-picker-indicator {
     flex: 1 1 auto !important;
     max-width: none;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VISUAL REFRESH — purely cosmetic, additive layer.
+   No selectors here change layout structure, remove existing rules,
+   or touch any JS/behavior — only color, depth, gradient, and spacing
+   refinements on top of what already exists, across dark/light/pink
+   and phone/tablet/desktop.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Slightly smoother text rendering + tighter heading tracking */
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.ph-t {
+  letter-spacing: -0.03em;
+}
+.ct {
+  letter-spacing: 0.01em;
+}
+
+/* Resting elevation on cards/widgets/stats — subtle, theme-aware.
+   (Hover state already lifts further via the rule added earlier.) */
+.card,
+.wc,
+.st {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+body.light .card,
+body.light .wc,
+body.light .st {
+  box-shadow: 0 1px 3px rgba(30, 30, 60, 0.05);
+}
+body.pink .card,
+body.pink .wc,
+body.pink .st {
+  box-shadow: 0 1px 4px rgba(255, 105, 180, 0.08);
+}
+
+/* Buttons: a touch of depth instead of flat fills */
+.btn {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  letter-spacing: 0.01em;
+}
+body.light .btn {
+  box-shadow: 0 1px 2px rgba(30, 30, 60, 0.05);
+}
+.b-ai {
+  background: linear-gradient(180deg, rgba(79, 216, 160, 0.14), rgba(79, 216, 160, 0.08));
+}
+.b-up {
+  background: linear-gradient(180deg, rgba(107, 147, 240, 0.14), rgba(107, 147, 240, 0.08));
+}
+.b-bd,
+.b-dn {
+  background: linear-gradient(180deg, rgba(232, 150, 90, 0.14), rgba(232, 150, 90, 0.08));
+}
+.b-rd {
+  background: linear-gradient(180deg, rgba(232, 96, 96, 0.14), rgba(232, 96, 96, 0.08));
+}
+
+/* Habit rows: small accent bar when checked, softer resting border-radius rhythm */
+.hr {
+  position: relative;
+  overflow: hidden;
+}
+.hr.ck::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--ai);
+}
+.hc {
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.06);
+}
+.hc.ck {
+  box-shadow: 0 0 0 3px var(--a2);
+}
+
+/* Top bar / tab bar / bottom nav: a touch more depth + a glowing active pill */
+.tb,
+.tnb {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+}
+.bnb {
+  box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+body.light .tb,
+body.light .tnb {
+  box-shadow: 0 1px 0 rgba(30, 30, 60, 0.04);
+}
+body.light .bnb {
+  box-shadow: 0 -1px 0 rgba(30, 30, 60, 0.04);
+}
+.nb.on,
+.tnb .nb.on {
+  background: var(--a2) !important;
+  color: var(--ai) !important;
+}
+.bnbt.on .ic {
+  filter: drop-shadow(0 0 6px var(--a2));
+}
+
+/* Refined custom scrollbar — a little more visible/grabbable than the
+   previous 3px hairline, still unobtrusive */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--b2);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--m2);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Tags/badges: slightly rounder + tighter tracking for a more refined feel */
+.tag {
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* Pink theme: soft glow instead of flat card fill for a more premium feel */
+body.pink .card,
+body.pink .wc {
+  background: linear-gradient(180deg, rgba(255, 105, 180, 0.03), transparent 40%), var(--s1) !important;
+}
+
+/* Roomier canvas on very wide desktop screens without the content going
+   edge-to-edge thin — purely a breakpoint refinement, no new columns */
+@media (min-width: 1400px) {
+  .mn {
+    max-width: 1280px;
+    padding-top: 34px;
+  }
+}
+
+/* Comfortable, consistent gutters on tablet so cards don't feel cramped
+   against the viewport edge */
+@media (min-width: 681px) and (max-width: 899px) {
+  .mn {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOLDER VISUAL PASS — noticeably more color/depth/character.
+   Still purely cosmetic: no new elements with behavior, no JS,
+   no layout/structure changes — just stronger presence for what's
+   already there. Safe to layer over the refresh above.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Ambient color glow behind the whole app — sits behind everything via
+   negative z-index, so it never covers or intercepts clicks on content.
+   Cards/bars are opaque so this shows through the gaps and page edges. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 88% 12%, rgba(107, 147, 240, 0.13), transparent 45%),
+    radial-gradient(circle at 50% 105%, rgba(232, 150, 90, 0.09), transparent 55%);
+}
+body.light::before {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(107, 147, 240, 0.1), transparent 45%),
+    radial-gradient(circle at 50% 105%, rgba(232, 150, 90, 0.07), transparent 55%);
+}
+body.pink::before {
+  background:
+    radial-gradient(circle at 88% 12%, rgba(240, 107, 189, 0.16), transparent 45%),
+    radial-gradient(circle at 50% 105%, rgba(255, 179, 217, 0.14), transparent 55%);
+}
+
+/* Rounder, more sculpted cards/widgets/buttons — a clearer signature
+   shape than the flatter, tighter radius before */
+.card,
+.wc {
+  border-radius: 20px;
+}
+.st {
+  border-radius: 16px;
+}
+.btn {
+  border-radius: 10px;
+}
+.inp,
+.ta {
+  border-radius: 10px;
+}
+
+/* Logo: gradient badge with a glow instead of a flat accent square */
+.logo span {
+  background: linear-gradient(135deg, var(--ai), var(--up));
+  box-shadow: 0 2px 10px var(--a2);
+}
+
+/* Top-bar streak/status pill: solid gradient instead of a faint tint,
+   so it actually reads as a highlight in the header */
+.sp {
+  background: linear-gradient(135deg, var(--ai), color-mix(in srgb, var(--ai) 60%, var(--up)));
+  border: none;
+  color: #06120d;
+  font-weight: 700;
+  box-shadow: 0 2px 10px var(--a2);
+}
+body.pink .sp {
+  color: #2a0a1a;
+}
+
+/* Primary CTA buttons: solid saturated fill + glow instead of a tinted
+   ghost fill, so the main action on a screen is unmistakable */
+.b-ai {
+  background: linear-gradient(135deg, var(--ai), color-mix(in srgb, var(--ai) 65%, var(--up)));
+  color: #06120d;
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 3px 12px var(--a2);
+}
+
+/* Stat numbers: gradient text so the dashboard's headline figures pop */
+.sn {
+  background: linear-gradient(135deg, var(--tx), var(--ai));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Section headers: short gradient accent bar for a clearer visual anchor */
+.ct {
+  padding-left: 11px;
+  position: relative;
+}
+.ct::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1px;
+  bottom: 1px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--ai), var(--up));
+}
+
+/* Active nav gets a glowing underline in every theme — additive, doesn't
+   touch each theme's existing background treatment */
+.nb.on,
+.tnb .nb.on,
+.bnbt.on {
+  position: relative;
+}
+.tnb .nb.on::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ai), var(--up));
+}
+.bnbt.on::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ai);
+  box-shadow: 0 0 6px var(--ai);
+}
+
+/* Checked habit checkbox: gradient fill + glow instead of flat accent */
+.hc.ck {
+  background: linear-gradient(135deg, var(--ai), color-mix(in srgb, var(--ai) 60%, var(--up)));
+  box-shadow: 0 0 0 4px var(--a2);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BORDERLESS PASS — one continuous surface, not stacked boxes.
+   var(--b)/var(--b2) are already transparent (see theme variables
+   above), which silently removes most outlines everywhere they're
+   used — in the stylesheet AND in inline styles rendered by JS,
+   since custom properties cascade regardless of where they're read.
+   This block only mops up the handful of borders each theme had
+   hardcoded to a literal color instead of the variable. Depth is
+   still communicated by background contrast + shadow, not lines.
+   ═══════════════════════════════════════════════════════════════ */
+.tb,
+.tnb,
+.bnb,
+.sb,
+.collapse-nav,
+.nb-bar,
+body.light .tb,
+body.light .sb,
+body.light .card,
+body.light .wc,
+body.light .mo,
+body.light .bi,
+body.light .hr,
+body.light .ci,
+body.light .bnb,
+body.light .inp,
+body.light .ta,
+body.light .nb-bar,
+body.pink .tb,
+body.pink .sb,
+body.pink .bnb,
+body.pink .mo,
+body.pink .card,
+body.pink .wc,
+body.pink .hr,
+body.pink .hr.ck,
+.hr.ck {
+  border-color: transparent !important;
+}
+/* Pink mode's gradient "shimmer" ring around cards is a decorative
+   border effect too — fold it away so pink mode matches the same
+   continuous, borderless surface as the other two themes. */
+body.pink .card::before {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REFINED PASS — broad but restrained: typography, breathing room,
+   softer color/depth, and subtle premium motion. Dials back a couple
+   of the earlier bolder choices (two-tone button gradients, glow
+   strength) toward something quieter and more considered. Pure CSS,
+   no JS/behavior touched.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Typography: clearer scale, a bit more presence at the top --- */
+.ph-t {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.ph-s {
+  font-size: 13.5px;
+  color: var(--m2);
+  margin-top: 1px;
+}
+.ct {
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+}
+.logo {
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+/* --- Breathing room: a little more air without changing structure --- */
+.card,
+.wc {
+  padding: 19px 21px;
+  margin-bottom: 14px;
+}
+.st {
+  padding: 16px 17px;
+}
+.ph {
+  margin-bottom: 26px;
+}
+.mn {
+  padding-top: 30px;
+}
+@media (max-width: 680px) {
+  .mn {
+    padding-top: 18px;
+  }
+}
+
+/* --- Softer, quieter color & depth (dialing back the earlier bolder
+   two-tone gradients toward a single restrained hue with a subtle
+   sheen — reads as premium rather than loud) --- */
+.b-ai {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ai) 22%, transparent), color-mix(in srgb, var(--ai) 14%, transparent));
+  color: var(--ai);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.sp {
+  background: color-mix(in srgb, var(--ai) 16%, transparent);
+  color: var(--ai);
+  box-shadow: none;
+}
+body.pink .sp {
+  color: var(--ai);
+}
+.logo span {
+  background: var(--ai);
+  box-shadow: none;
+}
+.hc.ck {
+  background: var(--ai);
+  box-shadow: 0 0 0 3px var(--a2);
+}
+body::before {
+  opacity: 0.6;
+}
+.card,
+.wc,
+.st {
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
+}
+body.light .card,
+body.light .wc,
+body.light .st {
+  box-shadow: 0 2px 14px rgba(30, 30, 60, 0.04);
+}
+body.pink .card,
+body.pink .wc,
+body.pink .st {
+  box-shadow: 0 2px 14px rgba(255, 105, 180, 0.06);
+}
+
+/* --- Subtle premium motion: gentler easing + a soft view transition --- */
+button,
+.btn,
+.hc,
+.inp,
+.ta,
+a,
+[tabindex],
+.card,
+.wc,
+.st,
+.hr {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn:hover,
+.hc:hover {
+  filter: none;
+  transform: translateY(-1px);
+}
+@keyframes viewFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.vw.on {
+  animation: viewFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -2560,13 +3096,45 @@ const isSun = () => new Date().getDay() === 0;
 function getHabs() {
   return S.go("habs", DEF_HABS);
 }
+// ═══ HABIT SCHEDULE HELPERS ═══
+// Single source of truth for "which days of the week is this habit due"
+// (0=Sun...6=Sat), used by today's habit list, the streak calculator, the
+// calendar, and the day-detail view — so a habit set to run e.g. Tue/Thu
+// behaves the same everywhere instead of only the built-in daily/mwf/sat
+// shorthands being understood in some places and not others.
+const DOW_ABBR = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+const DOW_ORDER = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const DOW_LABEL = {
+  sun: "Sun",
+  mon: "Mon",
+  tue: "Tue",
+  wed: "Wed",
+  thu: "Thu",
+  fri: "Fri",
+  sat: "Sat",
+};
+function habitDows(h) {
+  if (!h || !h.days || h.days === "daily") return [0, 1, 2, 3, 4, 5, 6];
+  if (h.days === "mwf") return [1, 3, 5];
+  if (h.days === "sat") return [6];
+  const parts = String(h.days)
+    .split(",")
+    .map((d) => DOW_ABBR[d.trim()])
+    .filter((d) => d !== undefined);
+  return parts.length ? parts : [0, 1, 2, 3, 4, 5, 6];
+}
+// Human-readable schedule, e.g. "Daily", "3x/week (Mon, Wed, Fri)"
+function habitFreqLabel(h) {
+  const dows = habitDows(h);
+  if (dows.length === 7) return "Daily";
+  const names = DOW_ORDER.filter((k) => dows.includes(DOW_ABBR[k]))
+    .map((k) => DOW_LABEL[k])
+    .join(", ");
+  return `${dows.length}x/week (${names})`;
+}
 function getTHabs() {
-  return getHabs().filter((h) => {
-    if (h.days === "daily") return true;
-    if (h.days === "mwf") return isWO();
-    if (h.days === "sat") return isSat();
-    return true;
-  });
+  const dow = new Date().getDay();
+  return getHabs().filter((h) => habitDows(h).includes(dow));
 }
 
 // ═══ UPSC BOOKS ═══
@@ -3618,31 +4186,49 @@ function calcStreak() {
   return streak;
 }
 
-// Per-habit streak: how many days in a row THIS specific habit has been
-// checked off, ending today (or yesterday if today isn't logged yet so it
-// doesn't flash to 0 first thing in a new day). The moment a day is missed,
-// this naturally reads 0 again next time it's calculated — there's nothing
-// to explicitly "reset": it's always recomputed from today backwards.
+// Per-habit streak: how many of THIS habit's *scheduled* days in a row have
+// been checked off, ending today (or the most recent scheduled day, if
+// today isn't logged yet, so it doesn't flash to 0 first thing in a new
+// day). Days the habit isn't scheduled on are skipped rather than counted
+// as a miss — so a habit set to 3x/week only needs those 3 check-ins to
+// keep its streak alive, not all 7 days. The moment a *scheduled* day is
+// missed, this naturally reads 0 again next time it's calculated — there's
+// nothing to explicitly "reset": it's always recomputed from today back.
 function calcHabitStreak(habitId) {
+  const h = getHabs().find((x) => x.id === habitId);
+  if (!h) return 0;
+  const dows = habitDows(h);
   const hd = S.go("hd", {});
   let streak = 0;
   let d = new Date();
   d.setHours(0, 0, 0, 0);
-  const todayK = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  const todayDone = (hd[todayK] || {})[habitId] === true;
-  if (!todayDone) {
+  const keyOf = (dt) =>
+    `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+
+  if (dows.includes(d.getDay())) {
+    const todayDone = (hd[keyOf(d)] || {})[habitId] === true;
+    if (!todayDone) d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  } else {
+    // Today isn't one of this habit's scheduled days — start looking from
+    // the most recent day back instead of requiring today to be checked.
     d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
   }
-  const MAX_STREAK_DAYS = 36000;
-  while (streak < MAX_STREAK_DAYS) {
-    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const day = hd[k] || {};
-    if (day[habitId] === true) {
-      streak++;
-      d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
-    } else {
-      break;
+
+  // Hard ceiling on how many calendar days we'll walk back (not on the
+  // streak count itself, since non-scheduled days are skipped without
+  // incrementing it) — guarantees this can never hang even on corrupted
+  // data, while comfortably covering a habit used for ~98 years.
+  const MAX_DAYS_WALKED = 36000;
+  for (let walked = 0; walked < MAX_DAYS_WALKED; walked++) {
+    if (dows.includes(d.getDay())) {
+      const day = hd[keyOf(d)] || {};
+      if (day[habitId] === true) {
+        streak++;
+      } else {
+        break;
+      }
     }
+    d = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
   }
   return streak;
 }
@@ -3732,13 +4318,22 @@ function renderDash() {
   tl.forEach((h) => {
     const dn = !!todH[h.id];
     const hStreak = calcHabitStreak(h.id);
+    const hDows = habitDows(h);
+    const freqTag =
+      hDows.length === 7
+        ? ""
+        : ` <span style="font-size:10px;color:var(--mt)">(${hDows.length}x/wk)</span>`;
+    const streakTitle =
+      hDows.length === 7
+        ? `${hStreak} days in a row`
+        : `${hStreak} in a row — this habit is scheduled ${hDows.length}x/week`;
     hh += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b)">
       <button onclick="togH('${h.id}')" style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${dn ? "var(--ai)" : "var(--b2)"};background:${dn ? "var(--ai)" : "none"};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${dn ? "✓" : ""}</button>
-      <span style="font-size:13px;color:${dn ? "var(--m2)" : "var(--tx)"};text-decoration:${dn ? "line-through" : "none"};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.label}</span>
+      <span style="font-size:13px;color:${dn ? "var(--m2)" : "var(--tx)"};text-decoration:${dn ? "line-through" : "none"};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.label}${freqTag}</span>
       ${
         hStreak > 0
-          ? `<span title="${hStreak}-day streak on this habit" style="font-size:11px;font-weight:600;color:var(--ai);background:var(--a2);border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap">🔥 ${hStreak}</span>`
-          : `<span title="No current streak — not logged yesterday" style="font-size:11px;color:var(--mt);background:var(--s2);border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap">0d</span>`
+          ? `<span title="${streakTitle}" style="font-size:11px;font-weight:600;color:var(--ai);background:var(--a2);border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap">🔥 ${hStreak}</span>`
+          : `<span title="No current streak yet" style="font-size:11px;color:var(--mt);background:var(--s2);border-radius:10px;padding:2px 8px;flex-shrink:0;white-space:nowrap">0</span>`
       }
     </div>`;
   });
@@ -3939,19 +4534,22 @@ function renderHabits() {
     const dn = !!tod[h.id];
     const dm = !rel;
     const hStreak = calcHabitStreak(h.id);
+    const hDows = habitDows(h);
     const dl =
-      h.days === "mwf"
-        ? ' <span style="font-size:10px;color:var(--mt)">(M/W/F)</span>'
-        : h.days === "sat"
-          ? ' <span style="font-size:10px;color:var(--mt)">(Sat)</span>'
-          : "";
+      hDows.length === 7
+        ? ""
+        : ` <span style="font-size:10px;color:var(--mt)">(${hDows.length}x/wk)</span>`;
+    const streakTitle =
+      hDows.length === 7
+        ? `${hStreak} days in a row`
+        : `${hStreak} in a row — this habit is scheduled ${hDows.length}x/week`;
     html += `<div class="hr ${dn ? "ck" : ""} ${dm ? "dm" : ""}">
       <span style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
         <span style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h.label}${dl}</span>
         ${
           hStreak > 0
-            ? `<span title="${hStreak}-day streak on this habit" style="font-size:10px;font-weight:600;color:var(--ai);background:var(--a2);border-radius:10px;padding:2px 7px;flex-shrink:0;white-space:nowrap">🔥 ${hStreak}</span>`
-            : `<span title="No current streak — not logged yesterday" style="font-size:10px;color:var(--mt);background:var(--s2);border-radius:10px;padding:2px 7px;flex-shrink:0;white-space:nowrap">0d</span>`
+            ? `<span title="${streakTitle}" style="font-size:10px;font-weight:600;color:var(--ai);background:var(--a2);border-radius:10px;padding:2px 7px;flex-shrink:0;white-space:nowrap">🔥 ${hStreak}</span>`
+            : `<span title="No current streak yet" style="font-size:10px;color:var(--mt);background:var(--s2);border-radius:10px;padding:2px 7px;flex-shrink:0;white-space:nowrap">0</span>`
         }
       </span>
       <button class="hc ${dn ? "ck" : ""}" onclick="${rel ? `togH('${h.id}')` : ""}" style="${dm ? "cursor:not-allowed" : ""}">${dn ? "✓" : ""}</button>
@@ -4004,12 +4602,7 @@ function showHabStep(step) {
     if (_habEditIdx !== null) {
       const h = getHabs()[_habEditIdx];
       if (h) {
-        const dm = {
-          daily: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"],
-          mwf: ["mon", "wed", "fri"],
-          sat: ["sat"],
-        };
-        const pre = dm[h.days] || [];
+        const pre = habitDows(h).map((i) => DOW_ORDER[i]);
         _selectedDays = new Set(pre);
         document.querySelectorAll(".day-btn").forEach((b) => {
           const d = b.getAttribute("onclick").match(/'([^']+)'/)[1];
@@ -4159,14 +4752,13 @@ function renderHabManageList() {
       '<div style="color:var(--mt);font-size:13px;padding:10px 0">No habits yet. Tap "+ Add New Habit".</div>';
     return;
   }
-  const dayLabel = { daily: "Every day", mwf: "Mon/Wed/Fri", sat: "Saturday" };
   el.innerHTML = habs
     .map(
       (h, i) => `
     <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--b)">
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;color:var(--tx)">${h.label}</div>
-        <div style="font-size:11px;color:var(--m2);margin-top:2px">${dayLabel[h.days] || h.days}</div>
+        <div style="font-size:11px;color:var(--m2);margin-top:2px">${habitFreqLabel(h)}</div>
       </div>
       <button onclick="editHabit(${i})" style="background:var(--s2);border:1px solid var(--b);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--m2);cursor:pointer">✏️</button>
       <button onclick="delHabit(${i})" style="background:var(--r2);border:1px solid rgba(232,96,96,.2);border-radius:7px;padding:5px 10px;font-size:12px;color:var(--rd);cursor:pointer">✕</button>
@@ -5951,14 +6543,7 @@ function computeDayStatus(k, hd, allHabs) {
   const dayH = hd[k] || {};
   const dayObj = new Date(k + "T00:00:00");
   const dow = dayObj.getDay();
-  const isMWF = dow === 1 || dow === 3 || dow === 5;
-  const isSatD = dow === 6;
-  const applicable = allHabs.filter((h) => {
-    if (h.days === "daily") return true;
-    if (h.days === "mwf") return isMWF;
-    if (h.days === "sat") return isSatD;
-    return true;
-  });
+  const applicable = allHabs.filter((h) => habitDows(h).includes(dow));
   if (!applicable.length) return null;
   const isWorkoutHab = (h) => /workout/i.test(h.id) || /workout/i.test(h.label);
   const workoutHabs = applicable.filter(isWorkoutHab);
@@ -6056,14 +6641,7 @@ function openDayDetail(k) {
   // Figure out which habits were applicable that day
   const dayObj = new Date(k + "T00:00:00");
   const dow = dayObj.getDay(); // 0=Sun,1=Mon...
-  const isMWF = dow === 1 || dow === 3 || dow === 5;
-  const isSatD = dow === 6;
-  const applicable = allHabs.filter((h) => {
-    if (h.days === "daily") return true;
-    if (h.days === "mwf") return isMWF;
-    if (h.days === "sat") return isSatD;
-    return true;
-  });
+  const applicable = allHabs.filter((h) => habitDows(h).includes(dow));
   const done = applicable.filter((h) => dayH[h.id] === true);
   const missed = applicable.filter((h) => !dayH[h.id]);
   const MNS = [

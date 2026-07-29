@@ -1,6 +1,6 @@
 M2028 — Personal Master Planner
 
-A single-file Progressive Web App (PWA) built for Ava — a BCA student targeting AI Engineering by January 2028 and UPSC CSE, while tracking fitness goals.
+A single-file Progressive Web App (PWA) built for Aviatcode — a BCA student targeting AI Engineering by January 2028 and UPSC CSE, while tracking fitness goals.
 
 Live:https://aviatcode.github.io/M2028/
 

@@ -6566,6 +6566,22 @@ function migrateChecklistWidgets() {
   if (changed) S.s("customWidgets", cw);
 }
 
+// One-time forced migration: the AI Courses track was fully replaced (Data
+// Science/ML/Azure ML → Full Stack + AI Engineer). Anyone with the old course
+// list already saved locally or in the cloud needs it overwritten exactly
+// once — otherwise their saved "aic" data silently wins over the new
+// defaults shipped in this file. Bump AI_TRACK_VERSION again in the future
+// if the course list is intentionally replaced again.
+const AI_TRACK_VERSION = 2;
+function migrateAiTrack() {
+  const cur = S.go("aicTrackVer", 1);
+  if (cur >= AI_TRACK_VERSION) return;
+  saveAiCourses(AI_C); // force the new 10-course Full Stack + AI list
+  S.s("as", {}); // clear old per-course status flags — ids now map to different courses
+  S.d("ps"); // old Projects & Portfolio done-state, no longer used
+  S.s("aicTrackVer", AI_TRACK_VERSION);
+}
+
 function renderCWWidget(w) {
   // No delete button on dashboard — only removable via ⚙️ Customize
   if (w.type === "countdown") {
@@ -8565,6 +8581,7 @@ function init() {
   renderHabits();
   renderUpsc();
   renderCustomBooks();
+  migrateAiTrack();
   renderAi();
   renderMyProj();
   showSched("mwf");
@@ -8616,7 +8633,6 @@ function getAllKeys() {
     "hd",
     "us",
     "as",
-    "ps",
     "bfLog",
     "ml",
     "plans",

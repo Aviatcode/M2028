@@ -2537,13 +2537,17 @@ a,
 
 <!-- AI COURSES -->
 <div id="v-ai" class="vw">
-  <div class="ph"><div class="ph-t">AI Engineering Track</div><div class="ph-s">Adjusted for college exams · <span style="color:var(--ai)" id="aiDoneEl">0</span>/<span id="aiTotalEl">8</span> done</div></div>
-  <div style="background:var(--r2);border:1px solid rgba(232,96,96,.15);border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--m2)"><strong style="color:var(--rd)">🎓 Exam blackout — no new course starts:</strong> Oct–Dec · Mar–Apr 15 · May 1–Jun 15. Only revise during these periods.</div>
+  <div class="ph"><div class="ph-t">Full Stack + AI Engineer Track</div><div class="ph-s">Building real products, not chasing certificates · <span style="color:var(--ai)" id="aiDoneEl">0</span>/<span id="aiTotalEl">10</span> done</div></div>
   <div style="display:flex;gap:7px;margin-bottom:11px">
     <button class="btn b-ai sm" onclick="openAiAdd()">+ Add Course</button>
   </div>
   <div id="aiList"></div>
-  <div class="card" style="margin-top:6px"><div class="ct" style="margin-bottom:10px">🛠 Projects & Portfolio</div><div id="aiProj"></div></div>
+
+  <div class="card" style="margin-top:6px">
+    <div class="ct">🚀 My Projects<button class="btn b-ai sm" onclick="openProjAdd()">+ Add Project</button></div>
+    <div id="projDash" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px"></div>
+    <div id="myProjList"></div>
+  </div>
 </div>
 
 <!-- TIMETABLE & CALENDAR (merged) -->
@@ -2751,8 +2755,48 @@ a,
     <button class="btn b-ai" style="width:100%" onclick="beginPomSession()">▶ Begin Focus Session</button>
   </div>
 </div>
-<div class="ov" id="projMo" onclick="if(event.target===this)closeMo('projMo')">
-  <div class="mo" style="max-width:520px"><div class="mot" id="projMoT"></div><div id="projMoB" style="font-size:13px;color:var(--m2);line-height:1.75;max-height:60vh;overflow-y:auto"></div><button class="btn b-gh" style="margin-top:14px;width:100%" onclick="closeMo('projMo')">Close</button></div>
+<!-- MY PROJECTS — ADD/EDIT MODAL -->
+<div class="ov" id="projEditMo" onclick="if(event.target===this)closeMo('projEditMo')">
+  <div class="mo" style="max-width:480px;max-height:85vh;overflow-y:auto">
+    <div class="mot" id="projEditMoT">Add Project</div>
+    <input type="hidden" id="projEditIdx">
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Project Name</label><input type="text" id="projName" class="inp" style="margin-top:4px" placeholder="e.g. AI Recipe Finder"></div>
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Description</label><textarea class="ta" id="projDesc" rows="2" style="margin-top:4px" placeholder="What does it do?"></textarea></div>
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Technologies</label><input type="text" id="projTech" class="inp" style="margin-top:4px" placeholder="e.g. React, FastAPI, PostgreSQL"></div>
+    <div style="display:flex;gap:8px;margin-bottom:9px">
+      <div style="flex:1"><label style="font-size:11px;color:var(--m2)">Start Date</label><input type="date" id="projStart" class="inp" style="margin-top:4px;width:100%"></div>
+      <div style="flex:1"><label style="font-size:11px;color:var(--m2)">Target Completion</label><input type="date" id="projTarget" class="inp" style="margin-top:4px;width:100%"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:9px">
+      <div style="flex:1"><label style="font-size:11px;color:var(--m2)">Status</label>
+        <select id="projStatus" class="inp" style="margin-top:4px;width:100%">
+          <option value="Planned">Planned</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+          <option value="On Hold">On Hold</option>
+        </select>
+      </div>
+      <div style="flex:1"><label style="font-size:11px;color:var(--m2)">Difficulty</label>
+        <select id="projDiff" class="inp" style="margin-top:4px;width:100%">
+          <option value="Easy">Easy</option>
+          <option value="Medium" selected>Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">GitHub Link</label><input type="url" id="projGh" class="inp" style="margin-top:4px" placeholder="https://github.com/..."></div>
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Live Demo</label><input type="url" id="projDemo" class="inp" style="margin-top:4px" placeholder="https://..."></div>
+    <div style="margin-bottom:9px">
+      <label style="font-size:11px;color:var(--m2)">Progress — <span id="projPrVal">0</span>%</label>
+      <input type="range" id="projPr" min="0" max="100" step="5" value="0" style="width:100%;margin-top:6px" oninput="document.getElementById('projPrVal').textContent=this.value">
+    </div>
+    <div style="margin-bottom:14px"><label style="font-size:11px;color:var(--m2)">Notes</label><textarea class="ta" id="projNotes" rows="2" style="margin-top:4px" placeholder="Any notes..."></textarea></div>
+    <div style="display:flex;gap:7px">
+      <button class="btn b-ai" onclick="saveProj()">Save</button>
+      <button class="btn b-gh" onclick="closeMo('projEditMo')">Cancel</button>
+      <button class="btn b-rd sm" id="projDelBtn" onclick="delProj()" style="margin-left:auto">Delete</button>
+    </div>
+  </div>
 </div>
 <div class="ov" id="roadMo" onclick="if(event.target===this)closeMo('roadMo')">
   <div class="mo" style="max-width:480px">
@@ -2780,7 +2824,7 @@ a,
     </div>
     <div style="margin-bottom:14px">
       <label style="font-size:11px;color:var(--m2)">Items — one per line</label>
-      <textarea class="ta" id="roadMoItems" rows="8" style="margin-top:4px" placeholder="CS50 AI with Python — Jan–Mar&#10;HarvardX Data Science&#10;Laxmikant started"></textarea>
+      <textarea class="ta" id="roadMoItems" rows="8" style="margin-top:4px" placeholder="CS50 Web Programming — Oct–Dec&#10;Full Stack Open&#10;Docker basics"></textarea>
     </div>
     <div style="display:flex;gap:7px;flex-wrap:wrap">
       <button class="btn b-ai" onclick="saveRoadPhase()">Save</button>
@@ -2888,7 +2932,12 @@ a,
     <input type="hidden" id="aiEditIdx">
     <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Course Name</label><input type="text" id="aiEditName" class="inp" style="margin-top:4px" placeholder="e.g. CS50 AI with Python"></div>
     <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Timeline</label><input type="text" id="aiEditW" class="inp" style="margin-top:4px" placeholder="e.g. Jan–Mar 2027"></div>
-    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Certificate / Type</label><input type="text" id="aiEditC" class="inp" style="margin-top:4px" placeholder="e.g. Free Harvard cert"></div>
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Estimated Duration</label><input type="text" id="aiEditC" class="inp" style="margin-top:4px" placeholder="e.g. ~10 weeks (100 hrs)"></div>
+    <div style="margin-bottom:9px"><label style="font-size:11px;color:var(--m2)">Official Course Link</label><input type="url" id="aiEditLink" class="inp" style="margin-top:4px" placeholder="https://..."></div>
+    <div style="margin-bottom:9px">
+      <label style="font-size:11px;color:var(--m2)">Progress — <span id="aiEditPrVal">0</span>%</label>
+      <input type="range" id="aiEditPr" min="0" max="100" step="5" value="0" style="width:100%;margin-top:6px" oninput="document.getElementById('aiEditPrVal').textContent=this.value">
+    </div>
     <div style="margin-bottom:14px"><label style="font-size:11px;color:var(--m2)">Notes</label><textarea class="ta" id="aiEditNt" rows="3" style="margin-top:4px" placeholder="Any notes..."></textarea></div>
     <div style="display:flex;gap:7px">
       <button class="btn b-ai" onclick="saveAiCourse()">Save</button>
@@ -3767,109 +3816,117 @@ const BOOKS = {
 };
 
 // ═══ AI COURSES ═══
+// Full Stack + AI Engineer track — replaces the old Data Science / ML / Azure ML plan.
 const AI_C = [
   {
     id: "c1",
     n: "01",
-    t: "CS50's Intro to Computer Science — Harvard",
-    w: "May–Jul 2026",
-    c: "Free Harvard cert",
-    nt: "Start now. No prerequisites. Builds programming thinking.",
+    t: "CS50's Introduction to Computer Science — Harvard",
+    w: "Aug–Oct 2026",
+    c: "~10–12 weeks (100+ hrs)",
+    link: "https://cs50.harvard.edu/x/",
+    nt: "Foundational CS — C, Python, arrays, algorithms, memory, data structures. Do every problem set.",
     st: "active",
+    pr: 0,
   },
   {
     id: "c2",
     n: "02",
-    t: "Python Basics — self-study",
-    w: "Sep 2026",
-    c: "Learning only",
-    nt: "After BCA Year 2 settles. Finish before Oct exams.",
+    t: "CS50's Web Programming with Python and JavaScript — Harvard",
+    w: "Oct–Dec 2026",
+    c: "~10 weeks (100 hrs)",
+    link: "https://cs50.harvard.edu/web/",
+    nt: "Flask, Django, JS, APIs, SQL, testing — this is where full-stack really starts.",
     st: "pending",
+    pr: 0,
   },
   {
     id: "c3",
     n: "03",
-    t: "CS50's Introduction to AI with Python — Harvard",
-    w: "Jan–Mar 2027",
-    c: "Free Harvard cert",
-    nt: "Start Jan after Dec exam blackout. Every problem set mandatory.",
+    t: "Full Stack Open — University of Helsinki",
+    w: "Dec 2026 – Feb 2027",
+    c: "~8–10 weeks (120 hrs)",
+    link: "https://fullstackopen.com/en/",
+    nt: "React, Redux, Node.js, Express, MongoDB, GraphQL, TypeScript, testing, CI/CD.",
     st: "pending",
+    pr: 0,
   },
   {
     id: "c4",
     n: "04",
-    t: "Introduction to Data Science with Python — HarvardX",
-    w: "Apr 15–May 1 2027",
-    c: "Audit only",
-    nt: "Short window between exam periods.",
+    t: "PostgreSQL & SQL",
+    w: "February 2027",
+    c: "~3 weeks (25 hrs)",
+    link: "https://www.postgresql.org/docs/current/tutorial.html",
+    nt: "Relational design, joins, indexes, transactions — the DB every backend needs.",
     st: "pending",
+    pr: 0,
   },
   {
     id: "c5",
     n: "05",
-    t: "Machine Learning and AI with Python — HarvardX",
-    w: "Jun 15–Aug 2027",
-    c: "Audit only",
-    nt: "Start after Jun 15 exams end. Build first ML model here.",
+    t: "Docker Fundamentals",
+    w: "Late February 2027",
+    c: "~1–2 weeks (15 hrs)",
+    link: "https://docs.docker.com/get-started/",
+    nt: "Containers, images, Dockerfile, docker-compose — ship anything anywhere.",
     st: "pending",
+    pr: 0,
   },
   {
     id: "c6",
     n: "06",
-    t: "Azure ML: Explore & Configure Workspace — Microsoft",
-    w: "Sep 2027",
-    c: "Microsoft cert",
-    nt: "3 weeks. Sep is free from exams.",
+    t: "GitHub Skills — Git & GitHub",
+    w: "March 2027",
+    c: "~1–2 weeks (10 hrs)",
+    link: "https://skills.github.com/",
+    nt: "Branching, PRs, Actions, collaboration workflows used on every real team.",
     st: "pending",
+    pr: 0,
   },
   {
     id: "c7",
     n: "07",
-    t: "Azure ML: Train Models with Scripts — Microsoft",
-    w: "Oct 2027",
-    c: "Microsoft cert",
-    nt: "Practical course — can run alongside exams.",
+    t: "CS50's Introduction to AI with Python — Harvard",
+    w: "March – May 2027",
+    c: "~10 weeks (100 hrs)",
+    link: "https://cs50.harvard.edu/ai/",
+    nt: "Search, ML, neural networks, NLP — core AI concepts, all in Python.",
     st: "pending",
+    pr: 0,
   },
   {
     id: "c8",
     n: "08",
-    t: "Azure ML: Deploy and Consume Models — Microsoft",
-    w: "Nov–Dec 2027",
-    c: "Microsoft cert",
-    nt: "Deploy = skill most beginners skip. Makes you production-ready.",
+    t: "Google Generative AI Learning Path",
+    w: "May 2027",
+    c: "~2 weeks (20 hrs)",
+    link: "https://www.cloudskillsboost.google/paths/118",
+    nt: "Prompting, LLMs, generative AI fundamentals with applied Google Cloud tools.",
     st: "pending",
-  },
-];
-
-const PROJS = [
-  {
-    id: "pj1",
-    t: "Project 1 — Sentiment Analyser Web App",
-    w: "Jun–Jul 2027",
-    d: "Python ML web app. Analyse text sentiment. Deploy live URL.",
-    bd: `<strong style="color:var(--ai)">Week 1 — Data & Model</strong><br>Day 1–2: Download IMDB reviews dataset (50k) from Kaggle. Load with pandas.<br>Day 3–4: Clean text — lowercase, remove HTML tags, strip punctuation.<br>Day 5–6: Train Naive Bayes classifier with scikit-learn. Target 85%+ accuracy.<br>Day 7: Save model with pickle. Test on 10 sentences yourself.<br><br><strong style="color:var(--ai)">Week 2 — Flask Web App</strong><br>Day 8–9: Install Flask. Create HTML form with text input.<br>Day 10–11: Connect Flask to saved model. Return prediction + confidence.<br>Day 12: Style with basic CSS. Clean look.<br>Day 13–14: Test 50+ sentences. Add error handling.<br><br><strong style="color:var(--ai)">Week 3 — Deploy</strong><br>Day 15–16: Create free Render.com account. Push code to GitHub.<br>Day 17–18: Deploy Flask app. Get live URL.<br>Day 19–20: Write README.md — what it does, how to run, screenshots.<br>Day 21: Add to LinkedIn and resume. Project 1 done ✓`,
+    pr: 0,
   },
   {
-    id: "pj2",
-    t: "Project 2 — Azure ML Deployed Model",
-    w: "Jul–Aug 2027",
-    d: "End-to-end: dataset → train on Azure → deploy as REST API.",
-    bd: `<strong style="color:var(--ai)">Week 1 — Setup & Data</strong><br>Day 1: Create free Azure account. Set up ML workspace.<br>Day 2–3: Use Titanic dataset from Kaggle. Upload to Azure datastore.<br>Day 4–5: Create compute instance. Explore data in Azure Studio.<br>Day 6–7: Write train.py — scikit-learn survival prediction.<br><br><strong style="color:var(--ai)">Week 2 — Train on Azure</strong><br>Day 8–9: Submit training job via Azure ML CLI. Monitor in Studio.<br>Day 10–11: Log metrics with MLflow — accuracy, precision, recall.<br>Day 12: Register best model in Azure ML Model Registry.<br>Day 13–14: Write score.py inference script.<br><br><strong style="color:var(--ai)">Week 3 — Deploy as API</strong><br>Day 15–16: Create Azure ML Managed Online Endpoint. Deploy model.<br>Day 17: Test with Postman — send JSON, get prediction back.<br>Day 18–19: Document API: endpoints, input, sample request/response.<br>Day 20–21: GitHub repo + README + screenshots. Project 2 done ✓`,
+    id: "c9",
+    n: "09",
+    t: "Hugging Face AI Course",
+    w: "June 2027",
+    c: "~4 weeks (40 hrs)",
+    link: "https://huggingface.co/learn",
+    nt: "Transformers, fine-tuning, deploying open models — hands-on with real tooling.",
+    st: "pending",
+    pr: 0,
   },
   {
-    id: "pj3",
-    t: "MongoDB Basics",
-    w: "May–Jun 2027",
-    d: "2 weeks. CRUD, aggregation, Python integration.",
-    bd: `<strong style="color:var(--ai)">Week 1</strong><br>Day 1–2: MongoDB Atlas free account. mongosh basics.<br>Day 3: CRUD — insertOne, find, update, delete.<br>Day 4: Querying — $gt, $lt, $in, $and operators.<br>Day 5: Indexes and explain().<br>Day 6–7: Aggregation — $match, $group, $sort, $project.<br><br><strong style="color:var(--ai)">Week 2</strong><br>Day 8–9: PyMongo. Connect Python to Atlas.<br>Day 10–11: Store ML model predictions in MongoDB from Python.<br>Day 12: Schema design for AI apps.<br>Day 13–14: Mini project — store sentiment results, query and display.`,
-  },
-  {
-    id: "pj4",
-    t: "Internship Hunt",
-    w: "Aug 2027",
-    d: "20+ applications. AI/ML startups, data science, Azure cloud.",
-    bd: `<strong style="color:var(--ai)">Week 1 — Profile</strong><br>Day 1–2: Update resume — 2 Harvard certs, 3 Azure certs, 2 projects with GitHub + live URLs.<br>Day 3: Polish LinkedIn — certifications, projects, skills.<br>Day 4: Polish GitHub — pin both projects, clean READMEs.<br>Day 5–7: Write 3 cover letter versions.<br><br><strong style="color:var(--ai)">Week 2–4 — Apply</strong><br>3–4 applications per day. LinkedIn Jobs, AngelList, Internshala, Naukri.<br>Track in Google Sheet: Company | Role | Date | Status.<br>Day 21: 20+ applications done.<br><br><strong style="color:var(--ai)">Interview Prep</strong><br>5 LeetCode Easy/week from Aug.<br>Explain: Linear Regression, Decision Trees, Neural Nets simply.<br>Demo Project 2 live — open Postman, show the API working.`,
+    id: "c10",
+    n: "10",
+    t: "Microsoft AI-900 (Optional)",
+    w: "July 2027",
+    c: "~2 weeks (15 hrs) — optional cert",
+    link: "https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-fundamentals/",
+    nt: "Optional cert to round things out — Azure AI fundamentals, a clean resume signal.",
+    st: "pending",
+    pr: 0,
   },
 ];
 
@@ -3967,7 +4024,7 @@ const PHASES = [
     c: "var(--ai)",
     items: [
       "CS50 AI with Python — Jan–Mar (Harvard cert)",
-      "HarvardX Data Science — Apr 15–May 1",
+      "Google Generative AI Learning Path — May",
       "Economics trilogy complete",
       "Laxmikant started",
       "6–8 hrs/day · 16% BF",
@@ -3978,19 +4035,19 @@ const PHASES = [
     d: "Jun–Aug 2027",
     c: "var(--ai)",
     items: [
-      "HarvardX ML & AI (Jun 15 start)",
+      "Hugging Face AI Course (Jun)",
       "MongoDB basics (Jun)",
-      "Project 1: Sentiment Analyser (Jul)",
-      "Project 2: Azure ML (Aug)",
+      "Build & log projects — 🚀 My Projects tab (Jul)",
+      "Microsoft AI-900 — optional cert (Aug)",
       "Geography + Art & Culture NCERTs · 15.5% BF",
     ],
   },
   {
-    t: "AZURE + INTERNSHIP",
+    t: "PORTFOLIO + INTERNSHIP",
     d: "Sep–Dec 2027",
     c: "var(--ht)",
     items: [
-      "Azure ML modules 1+2+3",
+      "Full Stack + AI portfolio review & polish",
       "20+ internship applications",
       "Science + Sociology NCERTs",
       "Shankar IAS Environment",
@@ -4004,7 +4061,7 @@ const PHASES = [
     items: [
       "Arjun Dev World History (final book)",
       "All 36 books revised ×2",
-      "AI engineer baseline complete ✓",
+      "Full Stack + AI Engineer baseline complete ✓",
       "BCA Year 4 begins",
       "Internship active",
     ],
@@ -4039,7 +4096,10 @@ function showV(id) {
     dash: renderDash,
     habits: renderHabits,
     upsc: renderUpsc,
-    ai: renderAi,
+    ai: () => {
+      renderAi();
+      renderMyProj();
+    },
     road: renderRoad,
     body: renderBody,
     sched: () => {
@@ -4397,42 +4457,54 @@ function renderDash() {
     </div>`;
   }
   document.getElementById("wCalStrip").innerHTML = cs;
-  // Tasks widget — next 48hrs
+  // Tasks widget — undated tasks always shown first (no due date = top priority
+  // to surface), followed by dated tasks due within the next 48hrs, soonest first.
   const tasks = S.go("tasks", []);
   const now2 = new Date();
   const cut = new Date(now2.getTime() + 48 * 60 * 60 * 1000);
   const rel = tasks
     .filter((t) => {
-      if (t.done || !t.date) return false;
+      if (t.done) return false;
+      if (!t.date) return true;
       const dt = new Date(t.date + "T" + (t.time || "23:59"));
       return dt <= cut;
     })
-    .sort(
-      (a, b) =>
+    .sort((a, b) => {
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return -1;
+      if (!b.date) return 1;
+      return (
         new Date(a.date + "T" + (a.time || "23:59")) -
-        new Date(b.date + "T" + (b.time || "23:59")),
-    );
+        new Date(b.date + "T" + (b.time || "23:59"))
+      );
+    });
   let tw = "";
   if (!rel.length) {
     tw =
       '<div style="font-size:12px;color:var(--mt);text-align:center;padding:12px 0">No tasks in next 48 hrs</div>';
   } else {
     rel.forEach((t) => {
-      const dt = new Date(t.date + "T" + (t.time || "23:59"));
-      const ov = dt < now2;
-      const isT = t.date === tk;
-      const lbl = ov
-        ? "Overdue"
-        : isT
-          ? "Today"
-          : t.date === nxtDay(tk)
-            ? "Tomorrow"
-            : t.date;
-      const col = ov ? "var(--rd)" : isT ? "var(--bd)" : "var(--m2)";
+      let lbl, col;
+      if (!t.date) {
+        lbl = "No due date";
+        col = "var(--m2)";
+      } else {
+        const dt = new Date(t.date + "T" + (t.time || "23:59"));
+        const ov = dt < now2;
+        const isT = t.date === tk;
+        lbl = ov
+          ? "Overdue"
+          : isT
+            ? "Today"
+            : t.date === nxtDay(tk)
+              ? "Tomorrow"
+              : t.date;
+        col = ov ? "var(--rd)" : isT ? "var(--bd)" : "var(--m2)";
+      }
       tw += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b)">
       <button onclick="togTask('${t.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b2);background:none;cursor:pointer;flex-shrink:0"></button>
       <div style="flex:1;min-width:0"><div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.text}</div>
-      <div style="font-size:10px;color:${col};margin-top:2px">${lbl}${t.time ? " at " + t.time : ""}</div></div>
+      <div style="font-size:10px;color:${col};margin-top:2px">${lbl}${t.date && t.time ? " at " + t.time : ""}</div></div>
       <button onclick="toggleTasksExpand()" style="background:none;border:none;color:var(--mt);font-size:16px;cursor:pointer">›</button>
     </div>`;
     });
@@ -5005,40 +5077,33 @@ function renderAi() {
     const st = as[c.id] || c.st || "pending";
     const dn = st === "done";
     const ac = st === "active";
-    html += `<div class="ci ${dn ? "dc" : ac ? "ac" : ""}">
+    const pr = dn ? 100 : typeof c.pr === "number" ? c.pr : 0;
+    const barColor = dn ? "var(--ai)" : ac ? "var(--bd)" : "var(--m2)";
+    html += `<div class="ci ${dn ? "dc" : ac ? "ac" : ""}" style="align-items:flex-start" draggable="true" ondragstart="dragStartGeneric(event,'ai',${idx})" ondragover="dragOverGeneric(event)" ondrop="dropGeneric(event,'ai',${idx})" ondragend="dragEndGeneric(event)">
+      <span style="cursor:grab;color:var(--mt);font-size:13px;padding-top:3px;flex-shrink:0" title="Drag to reorder">⠿</span>
       <div class="cn2" style="font-size:14px">${String(idx + 1).padStart(2, "0")}</div>
       <div class="ci2">
         <div class="cna">${c.t}</div>
-        <div class="cw">${c.w || ""} · ${c.c || ""}</div>
+        <div class="cw">${c.w || ""}${c.c ? " · " + c.c : ""}</div>
         <div style="font-size:11px;color:var(--m2);margin-top:3px">${c.nt || ""}</div>
+        <div class="pt" style="margin-top:7px"><div class="pf" style="width:${pr}%;background:${barColor}"></div></div>
+        <div style="font-size:10px;color:var(--m2);margin-top:3px">${pr}% complete${c.link ? ` · <a href="${escAttr(c.link)}" target="_blank" rel="noopener" style="color:var(--up);text-decoration:none">🔗 Official course page</a>` : ""}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">
         <span class="tag ${dn ? "t-dn" : ac ? "t-ac" : "t-nd"}">${dn ? "✓ Done" : ac ? "Active" : "Pending"}</span>
         ${!dn && !ac ? `<button class="btn b-bd sm" onclick="setAi('${c.id}','active')">Start</button>` : ""}
         ${ac ? `<button class="btn b-dn sm" onclick="setAi('${c.id}','done')">Done ✓</button>` : ""}
         ${dn ? `<button class="btn b-gh sm" onclick="setAi('${c.id}','pending')">Reset</button>` : ""}
-        <button class="btn b-gh sm" onclick="openAiEdit(${idx})" style="font-size:10px">✏️</button>
+        <div style="display:flex;gap:4px">
+          <button class="btn b-gh sm" onclick="openAiEdit(${idx})" style="font-size:10px">✏️</button>
+          <button class="btn b-gh sm" onclick="quickDelAiCourse(${idx})" title="Delete course" style="font-size:10px;color:var(--rd)">🗑</button>
+        </div>
       </div>
     </div>`;
   });
   document.getElementById("aiList").innerHTML =
     html ||
     '<div style="color:var(--mt);font-size:13px;padding:12px 0">No courses yet.</div>';
-  const ps = S.go("ps", {});
-  let ph = "";
-  PROJS.forEach((p) => {
-    const dn = ps[p.id] || false;
-    ph += `<div class="bi ${dn ? "dn" : ""}" style="margin-bottom:7px">
-      <div class="bh">
-        <div class="bi2"><div class="bt">${p.t}</div><div class="ba">${p.w}</div><div style="font-size:12px;color:var(--m2);margin-top:3px">${p.d}</div></div>
-        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">
-          <button class="btn ${dn ? "b-gh" : "b-dn"} sm" onclick="togProj('${p.id}')">${dn ? "Undo" : "Done ✓"}</button>
-          <button class="btn b-up sm" onclick="showProj('${p.id}')">Daily Plan 📋</button>
-        </div>
-      </div>
-    </div>`;
-  });
-  document.getElementById("aiProj").innerHTML = ph;
   const done = Object.values(as).filter((v) => v === "done").length;
   document.getElementById("aiDoneEl").textContent = done;
   if (document.getElementById("aiTotalEl"))
@@ -5051,18 +5116,39 @@ function setAi(id, st) {
   renderAi();
   renderDash();
 }
-function togProj(id) {
-  const ps = S.go("ps", {});
-  ps[id] = !ps[id];
-  S.s("ps", ps);
-  renderAi();
+
+// Generic drag-and-drop reordering shared by AI Courses and My Projects lists
+let _dragState = { type: null, idx: null };
+function dragStartGeneric(e, type, idx) {
+  _dragState = { type, idx };
+  e.dataTransfer.effectAllowed = "move";
+  e.currentTarget.style.opacity = "0.4";
 }
-function showProj(id) {
-  const p = PROJS.find((x) => x.id === id);
-  if (!p) return;
-  document.getElementById("projMoT").textContent = p.t;
-  document.getElementById("projMoB").innerHTML = p.bd;
-  openMo("projMo");
+function dragEndGeneric(e) {
+  e.currentTarget.style.opacity = "1";
+}
+function dragOverGeneric(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+}
+function dropGeneric(e, type, idx) {
+  e.preventDefault();
+  if (_dragState.type !== type || _dragState.idx === null || _dragState.idx === idx)
+    return;
+  if (type === "ai") {
+    const courses = getAiCourses();
+    const [moved] = courses.splice(_dragState.idx, 1);
+    courses.splice(idx, 0, moved);
+    saveAiCourses(courses);
+    renderAi();
+  } else if (type === "proj") {
+    const projs = getMyProj();
+    const [moved] = projs.splice(_dragState.idx, 1);
+    projs.splice(idx, 0, moved);
+    saveMyProj(projs);
+    renderMyProj();
+  }
+  _dragState = { type: null, idx: null };
 }
 
 function openAiEdit(idx) {
@@ -5073,6 +5159,9 @@ function openAiEdit(idx) {
   document.getElementById("aiEditName").value = c.t;
   document.getElementById("aiEditW").value = c.w || "";
   document.getElementById("aiEditC").value = c.c || "";
+  document.getElementById("aiEditLink").value = c.link || "";
+  document.getElementById("aiEditPr").value = c.pr || 0;
+  document.getElementById("aiEditPrVal").textContent = c.pr || 0;
   document.getElementById("aiEditNt").value = c.nt || "";
   document.getElementById("aiDelBtn").style.display = "block";
   openMo("aiEditMo");
@@ -5083,6 +5172,9 @@ function openAiAdd() {
   document.getElementById("aiEditName").value = "";
   document.getElementById("aiEditW").value = "";
   document.getElementById("aiEditC").value = "";
+  document.getElementById("aiEditLink").value = "";
+  document.getElementById("aiEditPr").value = 0;
+  document.getElementById("aiEditPrVal").textContent = 0;
   document.getElementById("aiEditNt").value = "";
   document.getElementById("aiDelBtn").style.display = "none";
   openMo("aiEditMo");
@@ -5093,13 +5185,15 @@ function saveAiCourse() {
   if (!t) return;
   const w = document.getElementById("aiEditW").value.trim();
   const c = document.getElementById("aiEditC").value.trim();
+  const link = document.getElementById("aiEditLink").value.trim();
+  const pr = parseInt(document.getElementById("aiEditPr").value) || 0;
   const nt = document.getElementById("aiEditNt").value.trim();
   const courses = getAiCourses();
   if (idx === "") {
-    courses.push({ id: "c" + Date.now(), t, w, c, nt, st: "pending" });
+    courses.push({ id: "c" + Date.now(), t, w, c, link, pr, nt, st: "pending" });
   } else {
     const old = courses[parseInt(idx)];
-    courses[parseInt(idx)] = { ...old, t, w, c, nt };
+    courses[parseInt(idx)] = { ...old, t, w, c, link, pr, nt };
   }
   saveAiCourses(courses);
   closeMo("aiEditMo");
@@ -5114,6 +5208,244 @@ function delAiCourse() {
   saveAiCourses(courses);
   closeMo("aiEditMo");
   renderAi();
+}
+// One-tap delete straight from the course list (no need to open the edit modal first)
+function quickDelAiCourse(idx) {
+  const courses = getAiCourses();
+  const c = courses[idx];
+  if (!c) return;
+  if (!confirm(`Delete "${c.t}"?`)) return;
+  courses.splice(idx, 1);
+  saveAiCourses(courses);
+  renderAi();
+}
+
+// ═══ MY PROJECTS ═══
+// Fully custom, empty-by-default project manager — no predefined projects.
+function getMyProj() {
+  return S.go("myProj", []);
+}
+function saveMyProj(p) {
+  S.s("myProj", p);
+}
+const PROJ_STATUS_META = {
+  Planned: { tag: "t-nd", bar: "var(--m2)" },
+  "In Progress": { tag: "t-ac", bar: "var(--bd)" },
+  Completed: { tag: "t-dn", bar: "var(--ai)" },
+  "On Hold": { tag: "t-up", bar: "var(--up)" },
+};
+const PROJ_DIFF_COLOR = { Easy: "var(--ai)", Medium: "var(--bd)", Hard: "var(--rd)" };
+let _projLogOpen = {};
+function fmtProjDate(d) {
+  if (!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  if (isNaN(dt)) return d;
+  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+function renderMyProj() {
+  const projs = getMyProj();
+
+  // Dashboard stats
+  const total = projs.length;
+  const completed = projs.filter((p) => p.status === "Completed").length;
+  const inProgress = projs.filter((p) => p.status === "In Progress").length;
+  const overallPct = total
+    ? Math.round(projs.reduce((s, p) => s + (p.pr || 0), 0) / total)
+    : 0;
+  const statCard = (label, val, color) =>
+    `<div style="background:var(--s2);border-radius:9px;padding:10px 8px;text-align:center">
+      <div style="font-size:19px;font-weight:700;color:${color}">${val}</div>
+      <div style="font-size:10px;color:var(--m2);margin-top:2px">${label}</div>
+    </div>`;
+  document.getElementById("projDash").innerHTML =
+    statCard("Total Projects", total, "var(--tx)") +
+    statCard("Completed", completed, "var(--ai)") +
+    statCard("In Progress", inProgress, "var(--bd)") +
+    statCard("Overall Progress", overallPct + "%", "var(--up)");
+
+  if (!projs.length) {
+    document.getElementById("myProjList").innerHTML =
+      '<div style="color:var(--mt);font-size:13px;padding:16px 0;text-align:center">No projects yet — tap "+ Add Project" to start tracking your first build.</div>';
+    return;
+  }
+
+  let html = "";
+  projs.forEach((p, idx) => {
+    const meta = PROJ_STATUS_META[p.status] || PROJ_STATUS_META.Planned;
+    const pr = typeof p.pr === "number" ? p.pr : 0;
+    const tech = (p.tech || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const log = p.log || [];
+    const open = !!_projLogOpen[p.id];
+    html += `<div class="ci" style="align-items:flex-start;flex-wrap:wrap" draggable="true" ondragstart="dragStartGeneric(event,'proj',${idx})" ondragover="dragOverGeneric(event)" ondrop="dropGeneric(event,'proj',${idx})" ondragend="dragEndGeneric(event)">
+      <span style="cursor:grab;color:var(--mt);font-size:13px;padding-top:3px;flex-shrink:0" title="Drag to reorder">⠿</span>
+      <div class="ci2" style="min-width:220px">
+        <div class="cna">${escAttr(p.name)}</div>
+        ${tech.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${tech.map((t) => `<span class="tag t-up">${escAttr(t)}</span>`).join("")}</div>` : ""}
+        ${p.desc ? `<div style="font-size:11px;color:var(--m2);margin-top:5px">${escAttr(p.desc)}</div>` : ""}
+        <div style="font-size:10px;color:var(--m2);margin-top:6px">
+          ${p.start ? "Start " + fmtProjDate(p.start) : ""}${p.start && p.target ? " → " : ""}${p.target ? "Target " + fmtProjDate(p.target) : ""}
+          ${p.diff ? ` · <span style="color:${PROJ_DIFF_COLOR[p.diff] || "var(--m2)"}">${p.diff}</span>` : ""}
+        </div>
+        <div class="pt" style="margin-top:7px"><div class="pf" style="width:${pr}%;background:${meta.bar}"></div></div>
+        <div style="font-size:10px;color:var(--m2);margin-top:3px">${pr}% complete</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          ${p.gh ? `<a href="${escAttr(p.gh)}" target="_blank" rel="noopener" class="btn b-gh sm" style="text-decoration:none">💻 GitHub</a>` : ""}
+          ${p.demo ? `<a href="${escAttr(p.demo)}" target="_blank" rel="noopener" class="btn b-up sm" style="text-decoration:none">🔗 Live Demo</a>` : ""}
+        </div>
+        ${p.notes ? `<div style="font-size:11px;color:var(--m2);margin-top:8px;font-style:italic">${escAttr(p.notes)}</div>` : ""}
+        <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--b)">
+          <div onclick="toggleProjLog('${p.id}')" style="cursor:pointer;user-select:none;font-size:11px;color:var(--mt);display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;transition:transform .15s ease;transform:rotate(${open ? 90 : 0}deg);font-size:9px">▶</span>
+            <span>PROGRESS LOG (${log.length})</span>
+          </div>
+          <div style="display:${open ? "block" : "none"};margin-top:9px">
+            <div style="display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap">
+              <input type="date" id="logDate-${p.id}" class="inp" style="width:140px" value="${TK()}">
+              <input type="text" id="logText-${p.id}" class="inp" style="flex:1;min-width:120px" placeholder="What did you work on?" onkeydown="if(event.key==='Enter')addProjLog('${p.id}')">
+              <button class="btn b-ai sm" onclick="addProjLog('${p.id}')">+ Add</button>
+            </div>
+            ${
+              log.length
+                ? [...log]
+                    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+                    .map(
+                      (l) => `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--b);font-size:11px">
+                <span style="color:var(--m2);flex-shrink:0;width:80px">${fmtProjDate(l.date)}</span>
+                <span style="flex:1;color:var(--tx)">${escAttr(l.text)}</span>
+                <button onclick="delProjLog('${p.id}','${l.id}')" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0">×</button>
+              </div>`,
+                    )
+                    .join("")
+                : '<div style="font-size:11px;color:var(--mt);padding:6px 0">No log entries yet.</div>'
+            }
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">
+        <span class="tag ${meta.tag}">${p.status}</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn b-gh sm" onclick="openProjEdit(${idx})" style="font-size:10px">✏️</button>
+          <button class="btn b-gh sm" onclick="quickDelProj(${idx})" title="Delete project" style="font-size:10px;color:var(--rd)">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById("myProjList").innerHTML = html;
+}
+function openProjAdd() {
+  document.getElementById("projEditMoT").textContent = "Add Project";
+  document.getElementById("projEditIdx").value = "";
+  document.getElementById("projName").value = "";
+  document.getElementById("projDesc").value = "";
+  document.getElementById("projTech").value = "";
+  document.getElementById("projStart").value = "";
+  document.getElementById("projTarget").value = "";
+  document.getElementById("projStatus").value = "Planned";
+  document.getElementById("projDiff").value = "Medium";
+  document.getElementById("projGh").value = "";
+  document.getElementById("projDemo").value = "";
+  document.getElementById("projPr").value = 0;
+  document.getElementById("projPrVal").textContent = 0;
+  document.getElementById("projNotes").value = "";
+  document.getElementById("projDelBtn").style.display = "none";
+  openMo("projEditMo");
+}
+function openProjEdit(idx) {
+  const projs = getMyProj();
+  const p = projs[idx];
+  if (!p) return;
+  document.getElementById("projEditMoT").textContent = "Edit Project";
+  document.getElementById("projEditIdx").value = idx;
+  document.getElementById("projName").value = p.name || "";
+  document.getElementById("projDesc").value = p.desc || "";
+  document.getElementById("projTech").value = p.tech || "";
+  document.getElementById("projStart").value = p.start || "";
+  document.getElementById("projTarget").value = p.target || "";
+  document.getElementById("projStatus").value = p.status || "Planned";
+  document.getElementById("projDiff").value = p.diff || "Medium";
+  document.getElementById("projGh").value = p.gh || "";
+  document.getElementById("projDemo").value = p.demo || "";
+  document.getElementById("projPr").value = p.pr || 0;
+  document.getElementById("projPrVal").textContent = p.pr || 0;
+  document.getElementById("projNotes").value = p.notes || "";
+  document.getElementById("projDelBtn").style.display = "block";
+  openMo("projEditMo");
+}
+function saveProj() {
+  const idx = document.getElementById("projEditIdx").value;
+  const name = document.getElementById("projName").value.trim();
+  if (!name) return;
+  const fields = {
+    name,
+    desc: document.getElementById("projDesc").value.trim(),
+    tech: document.getElementById("projTech").value.trim(),
+    start: document.getElementById("projStart").value,
+    target: document.getElementById("projTarget").value,
+    status: document.getElementById("projStatus").value,
+    diff: document.getElementById("projDiff").value,
+    gh: document.getElementById("projGh").value.trim(),
+    demo: document.getElementById("projDemo").value.trim(),
+    pr: parseInt(document.getElementById("projPr").value) || 0,
+    notes: document.getElementById("projNotes").value.trim(),
+  };
+  const projs = getMyProj();
+  if (idx === "") {
+    projs.push({ id: "p" + Date.now(), log: [], ...fields });
+  } else {
+    const old = projs[parseInt(idx)];
+    projs[parseInt(idx)] = { ...old, ...fields };
+  }
+  saveMyProj(projs);
+  closeMo("projEditMo");
+  renderMyProj();
+}
+function delProj() {
+  const idx = parseInt(document.getElementById("projEditIdx").value);
+  if (isNaN(idx)) return;
+  if (!confirm("Delete this project?")) return;
+  const projs = getMyProj();
+  projs.splice(idx, 1);
+  saveMyProj(projs);
+  closeMo("projEditMo");
+  renderMyProj();
+}
+function quickDelProj(idx) {
+  const projs = getMyProj();
+  const p = projs[idx];
+  if (!p) return;
+  if (!confirm(`Delete "${p.name}"?`)) return;
+  projs.splice(idx, 1);
+  saveMyProj(projs);
+  renderMyProj();
+}
+function toggleProjLog(id) {
+  _projLogOpen[id] = !_projLogOpen[id];
+  renderMyProj();
+}
+function addProjLog(id) {
+  const dateEl = document.getElementById("logDate-" + id);
+  const textEl = document.getElementById("logText-" + id);
+  const text = textEl.value.trim();
+  if (!text) return;
+  const projs = getMyProj();
+  const p = projs.find((x) => x.id === id);
+  if (!p) return;
+  if (!p.log) p.log = [];
+  p.log.push({ id: "l" + Date.now(), date: dateEl.value || TK(), text });
+  saveMyProj(projs);
+  _projLogOpen[id] = true;
+  renderMyProj();
+}
+function delProjLog(id, logId) {
+  const projs = getMyProj();
+  const p = projs.find((x) => x.id === id);
+  if (!p) return;
+  p.log = (p.log || []).filter((l) => l.id !== logId);
+  saveMyProj(projs);
+  renderMyProj();
 }
 
 // ═══ MILESTONES ═══
@@ -7033,10 +7365,14 @@ function renderTasks() {
     done = tasks.filter((t) => t.done);
   }
 
-  // Sort active: overdue first, then by date
+  // Sort active: tasks with no due date float to the top (highest priority to
+  // surface since they're not yet scheduled); dated tasks follow, soonest first.
   active.sort((a, b) => {
-    const da = new Date((a.date || "9999-12-31") + "T" + (a.time || "23:59"));
-    const db = new Date((b.date || "9999-12-31") + "T" + (b.time || "23:59"));
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return -1;
+    if (!b.date) return 1;
+    const da = new Date(a.date + "T" + (a.time || "23:59"));
+    const db = new Date(b.date + "T" + (b.time || "23:59"));
     return da - db;
   });
 
@@ -8230,6 +8566,7 @@ function init() {
   renderUpsc();
   renderCustomBooks();
   renderAi();
+  renderMyProj();
   showSched("mwf");
   renderCal();
   renderRoad();
@@ -8294,6 +8631,7 @@ function getAllKeys() {
     "dashCfg",
     "miles",
     "aic",
+    "myProj",
     "phases",
     "upscTitle",
     "customBooks",

@@ -2282,6 +2282,7 @@ a,
     <div class="ct">Daily Habits
       <div style="display:flex;gap:6px">
         <button class="btn b-ai sm" onclick="markAll()">✓ All</button>
+        <button class="btn b-gh sm" onclick="openScorecard()" title="Monthly Scorecard">🏆</button>
         <button class="btn b-gh sm" onclick="openMo('habEditMo')">✏️</button>
       </div>
     </div>
@@ -2660,6 +2661,18 @@ a,
     <p style="font-size:12px;color:var(--m2);margin-bottom:9px">One task per line.</p>
     <textarea class="ta" id="planBox" rows="10" placeholder="6:30 AM — Read The Hindu&#10;4:30 PM — CS50 problem set&#10;7:30 PM — Indian Constitution Ch.3"></textarea>
     <div style="display:flex;gap:7px;margin-top:11px"><button class="btn b-ai" onclick="savePlan()">Save</button><button class="btn b-gh" onclick="closeMo('planMo')">Cancel</button></div>
+  </div>
+</div>
+<!-- MONTHLY ACHIEVEMENT SCORECARD -->
+<div class="ov" id="scorecardMo" onclick="if(event.target===this)closeMo('scorecardMo')">
+  <div class="mo" style="max-width:460px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <button onclick="scNav(-1)" style="background:var(--s2);border:1px solid var(--b);border-radius:50%;width:28px;height:28px;color:var(--m2);font-size:14px;cursor:pointer">‹</button>
+      <div class="mot" id="scMoTitle" style="margin-bottom:0;text-align:center">Scorecard</div>
+      <button onclick="scNav(1)" id="scNextBtn" style="background:var(--s2);border:1px solid var(--b);border-radius:50%;width:28px;height:28px;color:var(--m2);font-size:14px;cursor:pointer">›</button>
+    </div>
+    <div id="scMoBody" style="margin-top:14px"></div>
+    <button class="btn b-gh" style="margin-top:14px;width:100%" onclick="closeMo('scorecardMo')">Close</button>
   </div>
 </div>
 <div class="ov" id="habEditMo" onclick="if(event.target===this)closeMo('habEditMo')">
@@ -4585,6 +4598,153 @@ function resetToday() {
   try {
     renderCal();
   } catch (e) {}
+}
+
+// ═══ MONTHLY ACHIEVEMENT SCORECARD ═══
+// Tallies how many times each habit was completed in a given month (against
+// how many days it was actually due, since not every habit runs daily) and
+// ranks them — "did the most" and "most repeated" both read off this same
+// ranked list, sorted by raw completion count.
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+let _scYear, _scMonth;
+function computeScorecard(year, month) {
+  const hd = S.go("hd", {});
+  const habs = getHabs();
+  const now = new Date();
+  const isCurMonth = year === now.getFullYear() && month === now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const lastDay = isCurMonth ? now.getDate() : daysInMonth;
+  const stats = habs.map((h) => ({
+    id: h.id,
+    label: h.label,
+    freq: habitFreqLabel(h),
+    due: 0,
+    count: 0,
+  }));
+  const byId = {};
+  stats.forEach((s) => (byId[s.id] = s));
+  let totalCompletions = 0,
+    totalDue = 0;
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month, d).getDay();
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dayRec = hd[key] || {};
+    habs.forEach((h) => {
+      if (!habitDows(h).includes(dow)) return;
+      byId[h.id].due++;
+      totalDue++;
+      if (dayRec[h.id]) {
+        byId[h.id].count++;
+        totalCompletions++;
+      }
+    });
+  }
+  stats.forEach((s) => (s.pct = s.due ? Math.round((s.count / s.due) * 100) : 0));
+  stats.sort((a, b) => b.count - a.count || b.pct - a.pct);
+  return {
+    year,
+    month,
+    daysInMonth,
+    lastDay,
+    isCurMonth,
+    stats,
+    totalCompletions,
+    totalDue,
+    overallPct: totalDue ? Math.round((totalCompletions / totalDue) * 100) : 0,
+  };
+}
+function openScorecard(year, month) {
+  const now = new Date();
+  if (year === undefined) {
+    // Default: the month that most recently finished
+    month = now.getMonth() - 1;
+    year = now.getFullYear();
+    if (month < 0) {
+      month = 11;
+      year--;
+    }
+  }
+  _scYear = year;
+  _scMonth = month;
+  renderScorecard();
+  openMo("scorecardMo");
+}
+function scNav(delta) {
+  _scMonth += delta;
+  if (_scMonth < 0) {
+    _scMonth = 11;
+    _scYear--;
+  } else if (_scMonth > 11) {
+    _scMonth = 0;
+    _scYear++;
+  }
+  renderScorecard();
+}
+function scRankRow(s, i) {
+  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b)">
+    <div style="width:20px;text-align:center;font-size:13px;flex-shrink:0">${medal}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.label}</div>
+      <div style="font-size:9px;color:var(--mt);margin-top:1px">${s.freq}</div>
+      <div class="pt" style="margin-top:5px"><div class="pf" style="width:${s.pct}%;background:${i === 0 ? "var(--ai)" : "var(--m2)"}"></div></div>
+    </div>
+    <div style="font-size:11px;color:var(--m2);width:56px;text-align:right;flex-shrink:0">${s.count}/${s.due}</div>
+  </div>`;
+}
+function renderScorecard() {
+  const data = computeScorecard(_scYear, _scMonth);
+  document.getElementById("scMoTitle").textContent =
+    `📊 ${MONTH_NAMES[_scMonth]} ${_scYear}`;
+  const now = new Date();
+  const isFuture =
+    _scYear > now.getFullYear() ||
+    (_scYear === now.getFullYear() && _scMonth >= now.getMonth());
+  document.getElementById("scNextBtn").disabled = isFuture;
+  document.getElementById("scNextBtn").style.opacity = isFuture ? "0.35" : "1";
+
+  const top = data.stats.find((s) => s.count > 0);
+  let html = "";
+  if (!data.totalCompletions) {
+    html = `<div style="text-align:center;padding:24px 0;color:var(--mt);font-size:13px">No habit completions logged for this month${data.isCurMonth ? " yet" : ""}.</div>`;
+  } else {
+    html += `<div style="text-align:center;background:var(--a2);border:1px solid rgba(79,216,160,.25);border-radius:12px;padding:16px">
+      <div style="font-size:10px;color:var(--m2);text-transform:uppercase;letter-spacing:.5px">🏆 Habit You Did The Most</div>
+      <div style="font-size:16px;font-weight:700;color:var(--ai);margin-top:6px">${top.label}</div>
+      <div style="font-size:12px;color:var(--m2);margin-top:4px">Completed ${top.count}/${top.due} due days · ${top.pct}% consistency</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0">
+      <div style="background:var(--s2);border-radius:9px;padding:10px 6px;text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--tx)">${data.totalCompletions}</div>
+        <div style="font-size:9px;color:var(--m2);margin-top:2px">Total Completions</div>
+      </div>
+      <div style="background:var(--s2);border-radius:9px;padding:10px 6px;text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--up)">${data.overallPct}%</div>
+        <div style="font-size:9px;color:var(--m2);margin-top:2px">Overall Consistency</div>
+      </div>
+      <div style="background:var(--s2);border-radius:9px;padding:10px 6px;text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--bd)">${data.lastDay}</div>
+        <div style="font-size:9px;color:var(--m2);margin-top:2px">Days Tracked</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--m2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Most Repeated — Full Ranking</div>
+    ${data.stats.map((s, i) => scRankRow(s, i)).join("")}`;
+  }
+  document.getElementById("scMoBody").innerHTML = html;
+}
+// Auto-surface the scorecard once, on the 1st of every month, recapping the
+// month that just finished. Guarded by a "last seen" flag so it only pops up
+// once per calendar month no matter how many times the app is opened.
+function checkAutoScorecard() {
+  const now = new Date();
+  if (now.getDate() !== 1) return;
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  if (S.go("scorecardSeen", "") === monthKey) return;
+  S.s("scorecardSeen", monthKey);
+  setTimeout(() => openScorecard(), 700);
 }
 function renderHabits() {
   const k = TK();
@@ -8584,6 +8744,7 @@ function init() {
   migrateAiTrack();
   renderAi();
   renderMyProj();
+  checkAutoScorecard();
   showSched("mwf");
   renderCal();
   renderRoad();

@@ -3133,6 +3133,7 @@ const QUOTES = [
   { text: "This is your life, and it's ending one minute at a time.", author: "Fight Club" },
   { text: "You should have to fight - and fight to win. There is no room for the losers.", author: "Field Marshal Sam Manekshaw" },
   { text: "Shaurya Daksham Yudhhe, Balidan Param Dharma", author: "PARA SF" },
+  { text: "You've got to pay a price to be the best, the best pay a big price", author: "Bill Beswick" },
 ];
 function getQuote() {
   const day = Math.floor((GT() - new Date("2026-01-01")) / 86400000);
@@ -5894,6 +5895,17 @@ function applyDashCfg() {
     const el = document.getElementById("dw-" + w.id);
     if (el) el.style.display = cfg[w.id] === false ? "none" : "block";
   });
+  // On the desktop 2-column dashboard grid, Habits and Calendar are the only
+  // two widgets placed side by side (everything else spans the full width).
+  // If one of that pair gets turned off, let the other stretch across both
+  // columns instead of leaving the empty half sitting there unused.
+  const habitsOn = cfg.habits !== false;
+  const calOn = cfg.cal !== false;
+  const soloVisible = habitsOn !== calOn; // exactly one of the two is on
+  const habitsEl = document.getElementById("dw-habits");
+  const calEl = document.getElementById("dw-cal");
+  if (habitsEl) habitsEl.style.gridColumn = soloVisible ? "1/-1" : "";
+  if (calEl) calEl.style.gridColumn = soloVisible ? "1/-1" : "";
   const cw = S.go("customWidgets", []);
   const el = document.getElementById("dw-custom");
   if (el)
@@ -8114,22 +8126,48 @@ function maybeResetPomLogCycle() {
     S.s("pomLogCycleStart", TK());
   }
 }
+// Only completed FOCUS sessions ever get pushed into 'pomSessions' (see
+// handlePomComplete — break completions never push an entry), so this log
+// is already break-free. On top of that, group entries by day and show
+// each day's total focus time studied (sum of that day's session
+// durations), so "how much did I study today" is visible at a glance
+// instead of having to count individual session rows.
 function renderPomLog() {
   const logEl = document.getElementById("pomLog");
   if (!logEl) return;
   maybeResetPomLogCycle();
   const cycleStart = S.go("pomLogCycleStart", TK());
   const sess = S.go("pomSessions", []).filter((e) => e.d >= cycleStart);
-  logEl.innerHTML = sess.length
-    ? sess
+  if (!sess.length) {
+    logEl.innerHTML = "No sessions yet.";
+    return;
+  }
+  const byDate = {};
+  sess.forEach((e) => {
+    (byDate[e.d] = byDate[e.d] || []).push(e);
+  });
+  const fmtDur = (totalSec) => {
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.round((totalSec % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+  logEl.innerHTML = Object.keys(byDate)
+    .sort()
+    .reverse()
+    .map((d) => {
+      const entries = byDate[d];
+      const totalSec = entries.reduce((sum, e) => sum + (e.dur || 0), 0);
+      const rows = entries
         .slice()
         .reverse()
         .map(
           (e) =>
-            `<div style="padding:3px 0;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--m2)">${e.d}</span> <span style="color:var(--ai)">${e.t || ""}</span> · ${e.sub}</div>`,
+            `<div style="padding:3px 0 3px 10px;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--m2)">${e.t || ""}</span> · ${e.sub}</div>`,
         )
-        .join("")
-    : "No sessions yet.";
+        .join("");
+      return `<div style="margin-bottom:6px"><div style="padding:4px 0;font-size:11px;font-weight:700;color:var(--ai)">${d} — ${fmtDur(totalSec)} studied</div>${rows}</div>`;
+    })
+    .join("");
 }
 
 // Recalculate after phone unlock or tab switch back

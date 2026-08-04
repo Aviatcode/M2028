@@ -1447,6 +1447,49 @@ a:focus-visible,
   font-weight: 700;
   margin-bottom: 13px;
 }
+/* ═══ TASK EMERGENCY ALERT ═══ */
+@keyframes taskAlertPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(232, 96, 96, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(232, 96, 96, 0);
+  }
+}
+@keyframes taskAlertShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+.task-alert-ov {
+  z-index: 400;
+  background: rgba(20, 4, 4, 0.82);
+}
+.task-alert-mo {
+  border: 2px solid var(--rd);
+  animation: taskAlertPulse 1.6s ease-out infinite;
+  text-align: center;
+}
+.task-alert-icon {
+  font-size: 34px;
+  margin-bottom: 6px;
+  animation: taskAlertShake 0.7s ease-in-out infinite;
+  display: inline-block;
+}
 .wd {
   flex: 1;
   text-align: center;
@@ -2753,6 +2796,20 @@ a,
     <div style="display:flex;gap:7px"><button class="btn b-ai" onclick="saveQTask()">Add</button><button class="btn b-gh" onclick="closeMo('qTaskMo')">Cancel</button></div>
   </div>
 </div>
+<!-- TASK EMERGENCY ALERT — no backdrop-close by design; must be acted on -->
+<div class="ov task-alert-ov" id="taskAlertOv">
+  <div class="mo task-alert-mo" style="max-width:340px">
+    <div class="task-alert-icon">🚨</div>
+    <div class="mot" id="taskAlertTitle" style="color:var(--rd)">Due Today</div>
+    <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px;word-break:break-word" id="taskAlertText"></div>
+    <div style="font-size:12px;color:var(--m2);margin-bottom:18px" id="taskAlertWhen"></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn b-ai" onclick="taskAlertMarkDone()">✓ Mark Done</button>
+      <button class="btn b-gh" onclick="taskAlertSnooze()">⏰ Snooze 10 min</button>
+      <button class="btn b-gh sm" onclick="taskAlertDismiss()" style="opacity:.7">Dismiss</button>
+    </div>
+  </div>
+</div>
 <div class="ov" id="pomSubMo" onclick="if(event.target===this)closeMo('pomSubMo')">
   <div class="mo"><div class="mot">What are you studying?</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
@@ -3066,7 +3123,7 @@ a,
     </div>
     <div style="display:flex;gap:7px">
       <button class="btn b-ai" onclick="saveCustomBook()" style="flex:1">Save Book</button>
-      <button class="btn b-rd sm" id="delBookBtn" onclick="delCustomBook()" style="display:none">Delete</button>
+      <button class="btn b-rd sm" id="delBookBtn" onclick="delCustomBook(this)" style="display:none">Delete</button>
     </div>
   </div>
 </div>
@@ -4216,6 +4273,43 @@ function banner(msg) {
   el.style.display = "block";
   setTimeout(() => (el.style.display = "none"), 3500);
 }
+// Tap-to-confirm — same pattern already used by delCW(). window.confirm()
+// is blocked or silently no-ops inside sandboxed webviews/previews (e.g. an
+// embedded preview iframe) and is flaky in some mobile in-app browsers, so
+// destructive actions confirm inline on the button itself instead: first
+// tap turns it red asking "Sure?", a second tap within 2.5s confirms, and
+// it reverts on its own if nothing happens.
+function tapToConfirm(btn, actionFn, confirmLabel) {
+  if (!btn) {
+    actionFn();
+    return;
+  }
+  if (btn.dataset.confirming === "1") {
+    delete btn.dataset.confirming;
+    actionFn();
+    return;
+  }
+  const orig = {
+    text: btn.textContent,
+    bg: btn.style.background,
+    color: btn.style.color,
+    border: btn.style.border,
+  };
+  btn.dataset.confirming = "1";
+  btn.textContent = confirmLabel || "Sure? Tap again";
+  btn.style.background = "var(--rd)";
+  btn.style.color = "#fff";
+  btn.style.border = "none";
+  setTimeout(() => {
+    if (btn && btn.dataset.confirming === "1") {
+      delete btn.dataset.confirming;
+      btn.textContent = orig.text;
+      btn.style.background = orig.bg;
+      btn.style.color = orig.color;
+      btn.style.border = orig.border;
+    }
+  }, 2500);
+}
 function nxtDay(ds) {
   const d = new Date(ds);
   d.setDate(d.getDate() + 1);
@@ -5117,12 +5211,17 @@ function getRevState(st) {
 }
 function renderUpsc() {
   const us = S.go("us", {});
-  const allB = Object.values(BOOKS).flat();
+  const hidden = new Set(S.go("upscHidden", []));
+  const allB = Object.values(BOOKS)
+    .flat()
+    .filter((b) => !hidden.has(b.id));
   const done = allB.filter((b) => getRevState(us[b.id] || "p").done).length;
   document.getElementById("upscTotal").textContent =
     `${done}/${allB.length} done`;
   let html = "";
-  Object.entries(BOOKS).forEach(([subj, books]) => {
+  Object.entries(BOOKS).forEach(([subj, allBooks]) => {
+    const books = allBooks.filter((b) => !hidden.has(b.id));
+    if (!books.length) return; // whole subject removed — skip its header too
     const sid = subj.replace(/[^a-z0-9]/gi, "_");
     const subjOpen = _openSubj.has(sid);
     const sdone = books.filter((b) => getRevState(us[b.id] || "p").done).length;
@@ -5161,6 +5260,7 @@ function renderUpsc() {
         st !== "p"
           ? `<button class="btn b-gh sm" style="font-size:10px;padding:3px 7px;opacity:.5" onclick="setBook('${b.id}','p')" title="Reset">↺</button>`
           : "";
+      const delBtn = `<button class="btn b-gh sm" style="font-size:10px;padding:3px 7px;color:var(--rd);opacity:.6" onclick="delUpscBook('${b.id}', this)" title="Remove from list">🗑</button>`;
       html += `<div class="bi ${isDone ? "dn" : isRd ? "rd" : ""}" id="bi_${b.id}">
         <div class="bh" onclick="togBook('${b.id}')">
           <div class="bn2">${b.n}</div>
@@ -5175,6 +5275,7 @@ function renderUpsc() {
             <span class="tag ${isDone ? "t-dn" : isRd ? "t-ac" : "t-nd"}">${isDone ? "✓ Done" : isRd ? "Reading" : "Pending"}</span>
             ${actionBtns}
             ${resetBtn}
+            ${delBtn}
           </div>
         </div>
         <div class="bb" style="display:${bookOpen ? "block" : "none"}">
@@ -5184,7 +5285,35 @@ function renderUpsc() {
     });
     html += "</div></div>";
   });
+  const hiddenCount = hidden.size;
+  if (hiddenCount > 0) {
+    html += `<div style="text-align:center;margin-top:10px"><button class="btn b-gh sm" onclick="restoreUpscBooks()">↺ Restore ${hiddenCount} removed book${hiddenCount > 1 ? "s" : ""}</button></div>`;
+  }
   document.getElementById("upscSubs").innerHTML = html;
+}
+// Books removed from the built-in curriculum list aren't deleted from the
+// BOOKS constant (that ships with the app) — their id just gets added to
+// 'upscHidden' and filtered out everywhere above. Progress/chapters already
+// logged for them are left untouched in storage, so "Restore" brings a book
+// back exactly where you left it.
+function delUpscBook(id, btn) {
+  tapToConfirm(
+    btn,
+    () => {
+      const hidden = new Set(S.go("upscHidden", []));
+      hidden.add(id);
+      S.s("upscHidden", [...hidden]);
+      renderUpsc();
+      renderDash();
+      banner("Book removed — restore anytime from the bottom of the list.");
+    },
+    "Sure?",
+  );
+}
+function restoreUpscBooks() {
+  S.s("upscHidden", []);
+  renderUpsc();
+  renderDash();
 }
 function togSubj(id) {
   if (_openSubj.has(id)) _openSubj.delete(id);
@@ -7489,6 +7618,150 @@ function schedTN(task) {
     if (t && !t.done) sendNotif("⏰ Task reminder", t.text);
   }, diff);
 }
+
+// ═══ TASK EMERGENCY ALERTS ═══
+// Full-screen, on-screen alert (works whether or not OS notification
+// permission was ever granted) that fires:
+//  1) once a task's due date becomes today
+//  2) again ~1 hour before a timed task's deadline
+// 'taskAlertsFired' remembers which (task, alert-type) pairs already fired so
+// re-checking on an interval / reopening the tab never spams duplicates.
+// 'taskAlertSnoozeUntil' holds a per-key timestamp so "Snooze" can push a
+// specific alert 10 minutes out without it firing again immediately.
+let _taskAlertQueue = [];
+let _taskAlertShowing = false;
+let _activeTaskAlertId = null;
+let _activeTaskAlertKey = null;
+function getFiredTaskAlerts() {
+  return S.go("taskAlertsFired", {});
+}
+function markTaskAlertFired(key) {
+  const fired = getFiredTaskAlerts();
+  fired[key] = Date.now();
+  const cutoff = Date.now() - 14 * 86400000; // drop entries older than 14 days
+  Object.keys(fired).forEach((k) => {
+    if (fired[k] < cutoff) delete fired[k];
+  });
+  S.s("taskAlertsFired", fired);
+}
+function checkTaskAlerts() {
+  const tasks = getTasks().filter((t) => !t.done && t.date);
+  const fired = getFiredTaskAlerts();
+  const snooze = S.go("taskAlertSnoozeUntil", {});
+  const isSnoozed = (key) => snooze[key] && Date.now() < snooze[key];
+  const now = new Date();
+  const today = TK();
+  tasks.forEach((t) => {
+    const todayKey = `${t.id}_today_${t.date}`;
+    if (t.date === today && !fired[todayKey] && !isSnoozed(todayKey)) {
+      queueTaskAlert(t, "today", todayKey);
+    }
+    if (t.time) {
+      const due = new Date(t.date + "T" + t.time);
+      const minsLeft = (due - now) / 60000;
+      const hourKey = `${t.id}_1hr`;
+      if (
+        minsLeft <= 60 &&
+        minsLeft > 0 &&
+        !fired[hourKey] &&
+        !isSnoozed(hourKey)
+      ) {
+        queueTaskAlert(t, "1hr", hourKey);
+      }
+    }
+  });
+}
+function queueTaskAlert(task, type, key) {
+  markTaskAlertFired(key);
+  _taskAlertQueue.push({ task, type, key });
+  if (!_taskAlertShowing) showNextTaskAlert();
+}
+function showNextTaskAlert() {
+  if (!_taskAlertQueue.length) {
+    _taskAlertShowing = false;
+    return;
+  }
+  _taskAlertShowing = true;
+  const { task, type, key } = _taskAlertQueue.shift();
+  _activeTaskAlertId = task.id;
+  _activeTaskAlertKey = key;
+  const titleEl = document.getElementById("taskAlertTitle");
+  const textEl = document.getElementById("taskAlertText");
+  const whenEl = document.getElementById("taskAlertWhen");
+  if (titleEl)
+    titleEl.textContent = type === "1hr" ? "Due in 1 Hour" : "Due Today";
+  if (textEl) textEl.textContent = task.text;
+  if (whenEl)
+    whenEl.textContent = task.time
+      ? `Due ${task.time}${task.date !== TK() ? " · " + task.date : ""}`
+      : `Due ${task.date}`;
+  const ovEl = document.getElementById("taskAlertOv");
+  if (ovEl) ovEl.classList.add("op");
+  taskAlertSound();
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+  sendNotif(type === "1hr" ? "⏰ Task due in 1 hour" : "🚨 Task due today", task.text);
+}
+function closeTaskAlertModal() {
+  const ovEl = document.getElementById("taskAlertOv");
+  if (ovEl) ovEl.classList.remove("op");
+  _activeTaskAlertId = null;
+  _activeTaskAlertKey = null;
+  setTimeout(showNextTaskAlert, 350);
+}
+function taskAlertMarkDone() {
+  if (_activeTaskAlertId) {
+    const tasks = getTasks();
+    const t = tasks.find((x) => x.id === _activeTaskAlertId);
+    if (t) t.done = true;
+    saveTasks(tasks);
+    renderTasks();
+    renderDash();
+  }
+  closeTaskAlertModal();
+}
+function taskAlertSnooze() {
+  if (_activeTaskAlertKey) {
+    const fired = getFiredTaskAlerts();
+    delete fired[_activeTaskAlertKey];
+    S.s("taskAlertsFired", fired);
+    const snooze = S.go("taskAlertSnoozeUntil", {});
+    snooze[_activeTaskAlertKey] = Date.now() + 10 * 60000;
+    S.s("taskAlertSnoozeUntil", snooze);
+  }
+  closeTaskAlertModal();
+}
+function taskAlertDismiss() {
+  closeTaskAlertModal();
+}
+// A sharper, more urgent alarm pattern than the calm Pomodoro chime, so a
+// due task is unmistakable at a glance.
+function taskAlertSound() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const beep = (freq, t, dur) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.frequency.value = freq;
+    o.type = "square";
+    g.gain.setValueAtTime(0, ctx.currentTime + t);
+    g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + dur);
+    o.start(ctx.currentTime + t);
+    o.stop(ctx.currentTime + t + dur + 0.05);
+  };
+  const play = () => {
+    try {
+      for (let r = 0; r < 5; r++) {
+        beep(880, r * 0.3, 0.15);
+        beep(660, r * 0.3 + 0.15, 0.15);
+      }
+    } catch (e) {}
+  };
+  if (ctx.state === "suspended") ctx.resume().then(play).catch(play);
+  else play();
+}
 // Collapsed by default so finished tasks stay out of the way but remain
 // one tap away, attached to the same list (mirrors the checklist dropdown).
 let _taskDoneOpen = false;
@@ -8277,18 +8550,40 @@ function saveCustomBook() {
   renderCustomBooks();
   banner("✓ Book saved!");
 }
-function delCustomBook() {
+function delCustomBook(btn) {
   const id = document.getElementById("editBookId").value;
   if (!id) return;
-  if (!confirm("Delete this book?")) return;
-  let books = S.go("customBooks", []);
-  books = books.filter((x) => x.id !== id);
-  S.s("customBooks", books);
-  const us = S.go("us", {});
-  delete us[id];
-  S.s("us", us);
-  closeMo("addBookMo");
-  renderCustomBooks();
+  tapToConfirm(
+    btn,
+    () => {
+      let books = S.go("customBooks", []);
+      books = books.filter((x) => x.id !== id);
+      S.s("customBooks", books);
+      const us = S.go("us", {});
+      delete us[id];
+      S.s("us", us);
+      closeMo("addBookMo");
+      renderCustomBooks();
+    },
+    "Sure? Tap again",
+  );
+}
+// One-tap delete directly from the book row, same effect as the Delete
+// button inside the Edit modal, without needing to open Edit first.
+function quickDelCustomBook(id, btn) {
+  tapToConfirm(
+    btn,
+    () => {
+      let books = S.go("customBooks", []);
+      books = books.filter((x) => x.id !== id);
+      S.s("customBooks", books);
+      const us = S.go("us", {});
+      delete us[id];
+      S.s("us", us);
+      renderCustomBooks();
+    },
+    "Sure?",
+  );
 }
 function renderCustomBooks() {
   const books = S.go("customBooks", []);
@@ -8340,6 +8635,7 @@ function renderCustomBooks() {
             <span class="tag ${isDone ? "t-dn" : isRd ? "t-ac" : "t-nd"}">${isDone ? "✓ Done" : isRd ? "Reading" : "Pending"}</span>
             ${actionBtns}
             <button onclick="openEditCustomBook('${b.id}')" style="background:none;border:none;color:var(--mt);font-size:11px;cursor:pointer;padding:2px">✏️ Edit</button>
+            <button onclick="quickDelCustomBook('${b.id}', this)" style="background:none;border:none;color:var(--rd);font-size:11px;cursor:pointer;padding:2px" title="Delete book">🗑️ Delete</button>
           </div>
         </div>
         ${cTot > 0 && bookOpen ? `<div class="bb" style="display:block">${b.chs.map((ch, ci) => `<div class="cr"><div class="chn">${ch}</div><button class="cc ${chapD[ci] ? "ck" : ""}" onclick="togCh('${b.id}','${ck}',${ci},${cTot})">${chapD[ci] ? "✓" : ""}</button></div>`).join("")}</div>` : ""}
@@ -8788,6 +9084,7 @@ function init() {
   renderRoad();
   renderBody();
   renderTasks();
+  checkTaskAlerts();
   updatePomUI();
   if (pomRun) startLiveNotifLoop(); // resumes the notification loop only if a session was actually in progress when the app was reopened
 }
@@ -8800,6 +9097,14 @@ setInterval(() => {
     if (qaEl) qaEl.textContent = "~ " + q.author;
   }
 }, 60000);
+// Check every 30s (catches the "due today" + "1 hour before" windows soon
+// after they open) and again immediately whenever the tab regains focus, so
+// an alert that would've fired while the phone was locked still shows up
+// the moment the person looks at the app.
+setInterval(checkTaskAlerts, 30000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkTaskAlerts();
+});
 document.addEventListener("click", (e) => {
   const panel = document.getElementById("mobileNavCollapse");
   const btn = document.getElementById("mnbToggler");
@@ -8855,6 +9160,9 @@ function getAllKeys() {
     "navHidden",
     "navLabels",
     "pomSessions",
+    "upscHidden",
+    "taskAlertsFired",
+    "taskAlertSnoozeUntil",
   ];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -9080,6 +9388,59 @@ S.sPushOnly = (k) => {
   if (_user && _cloudOK) push(k);
 };
 
+// ═══ ACCOUNT-SWITCH DATA ISOLATION ═══
+// BUG THIS FIXES: signing out never cleared the actual cached app data
+// (habits, streak history, tasks, etc.) from localStorage — only the
+// session flags. So if a second account signed in on the same device, pull()
+// merged straight on top of the first account's leftover data. Worse, the
+// generic merge in mergeCloudValue() is "newest local write wins", so that
+// leftover data could look newer than the second account's real cloud copy
+// and get PUSHED UP, overwriting the second account's cloud data with the
+// first account's. clearLocalAppData() wipes every account-scoped local key
+// so a fresh sign-in always starts from a clean slate before pull() runs.
+// setLastLocalUid()/getLastLocalUid() are a second, independent safety net:
+// stored outside the "m_" prefix (so the wipe itself never touches them),
+// they let sign-in detect "this device's cached data belongs to a different
+// account than the one just signed in" even if doSignOut() was skipped
+// entirely (tab closed without logging out, session swapped some other way).
+function clearLocalAppData() {
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith("m_") && k !== "m_theme") toRemove.push(k);
+  }
+  toRemove.forEach((k) => localStorage.removeItem(k));
+  try {
+    localStorage.removeItem(POM_KEY);
+  } catch (e) {}
+}
+function getLastLocalUid() {
+  try {
+    return localStorage.getItem("m2028_uid") || null;
+  } catch (e) {
+    return null;
+  }
+}
+function setLastLocalUid(uid) {
+  try {
+    if (uid) localStorage.setItem("m2028_uid", uid);
+    else localStorage.removeItem("m2028_uid");
+  } catch (e) {}
+}
+// Call right after a user object is confirmed, before pull() runs. Returns
+// true if a wipe happened (so callers can banner it if useful).
+function guardAccountSwitch(user) {
+  if (!user) return false;
+  const last = getLastLocalUid();
+  if (last && last !== user.id) {
+    clearLocalAppData();
+    setLastLocalUid(user.id);
+    return true;
+  }
+  setLastLocalUid(user.id);
+  return false;
+}
+
 // ═══ AUTH ═══
 function togglePw() {
   const i = document.getElementById("liPw");
@@ -9120,12 +9481,14 @@ async function doSignIn() {
       return;
     }
     _user = data.user;
+    const wiped = guardAccountSwitch(_user);
     S.d("guestMode");
     S.s("hadSession", true); // remember session for instant next load
     showApp();
     await pull();
     setupRealtimeSync();
     init();
+    if (wiped) banner("Switched account — loaded your data fresh.");
   } catch (e) {
     btn.textContent = "Sign In";
     btn.disabled = false;
@@ -9170,6 +9533,7 @@ async function doSignUp() {
     }
     if (data.user && data.user.confirmed_at) {
       _user = data.user;
+      guardAccountSwitch(_user);
       showApp();
       setupRealtimeSync();
       init();
@@ -9188,6 +9552,14 @@ async function doSignUp() {
 
 function guestMode() {
   teardownRealtimeSync();
+  if (getLastLocalUid()) {
+    // Local data currently belongs to a signed-in account, not this guest
+    // session — clear it so "continue without account" never surfaces
+    // someone else's cached habits/tasks/streak as if they were this
+    // guest session's own data.
+    clearLocalAppData();
+    setLastLocalUid(null);
+  }
   _user = null;
   S.s("guestMode", true);
   S.d("hadSession");
@@ -9206,6 +9578,8 @@ async function doSignOut() {
     } catch (e) {}
   }
   _user = null;
+  clearLocalAppData();
+  setLastLocalUid(null);
   S.d("guestMode");
   S.d("hadSession"); // clear both flags so login shows next open
   document.getElementById("appShell").style.display = "none";
@@ -9240,6 +9614,7 @@ async function startup() {
         .then(({ data: { session } }) => {
           if (session) {
             _user = session.user;
+            guardAccountSwitch(_user);
             setupRealtimeSync();
             // Silent background sync
             pull().then(() => {

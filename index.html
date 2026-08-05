@@ -3144,6 +3144,8 @@ a,
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn b-ai" onclick="pushAll()">☁️ Push all data to cloud</button>
       <button class="btn b-up" onclick="pull().then(()=>{init();closeMo('acctMo');})">⬇️ Pull latest from cloud</button>
+      <button class="btn b-gh" onclick="if(confirm('Restore Habits from the last automatic backup? This replaces your current habit list.'))restoreFromBackup('habs').then(()=>closeMo('acctMo'))">🩹 Restore Habits from backup</button>
+      <button class="btn b-gh" onclick="if(confirm('Restore Tasks from the last automatic backup? This replaces your current task list.'))restoreFromBackup('tasks').then(()=>closeMo('acctMo'))">🩹 Restore Tasks from backup</button>
       <button class="btn b-gh" onclick="closeMo('acctMo')">Close</button>
       <button class="btn b-rd" onclick="doSignOut()" style="margin-top:4px">Sign Out</button>
     </div>
@@ -9121,6 +9123,38 @@ let supa = null;
 let _user = null;
 let _cloudOK = false;
 let _realtimeChannel = null; // live Postgres-changes subscription — see setupRealtimeSync()
+
+// ═══ SYNC-READY GATE ═══
+// BUG THIS FIXES: the app renders instantly from whatever's cached locally
+// (that's why it feels fast on reopen), then confirms the real account and
+// pulls the real cloud data in the background. In the gap between "_user is
+// set" and "pull() has actually finished reconciling with the cloud", the
+// local cache can be stale, default, or empty (e.g. right after an account
+// switch, or on a brand new tab). If ANYTHING gets saved during that gap —
+// a stray tap, a fresh "add habit" against a not-yet-loaded list — S.s()
+// pushes it to the cloud immediately, permanently overwriting real data
+// with something that was never actually current. This is exactly what
+// wiped habs/tasks previously. _syncReady blocks all outgoing pushes until
+// pull() has confirmed the real state at least once for the active
+// account/session; it does NOT block local saves, so the UI stays instant —
+// it only holds back the network write until it's safe.
+let _syncReady = false;
+// Last known-good value per key, captured every time we hear from the
+// cloud (via pull() or realtime) — used both to detect a suspicious
+// "overwriting real data with nothing" push and to power a one-click
+// restore if that ever happens anyway.
+let _lastCloudValues = {};
+// Keys with no other backing history anywhere else in this app's data
+// model — if these get overwritten with an empty value, there is nothing
+// to reconstruct them from (unlike e.g. habit completion history, which
+// survives independently in 'hd'). Extra caution applies to these.
+const GUARD_KEYS = ["habs", "tasks"];
+function _isEmptyValue(v) {
+  if (v === null || v === undefined) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === "object") return Object.keys(v).length === 0;
+  return false;
+}
 try {
   if (typeof supabase !== "undefined") {
     supa = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -9172,10 +9206,49 @@ function getAllKeys() {
 }
 
 // Push one key to cloud
-async function push(key) {
+async function push(key, force) {
   if (!_user || !_cloudOK) return;
+  // Hold outgoing writes until we've confirmed real cloud state at least
+  // once this session — see _syncReady comment above. Local saves already
+  // happened (S.s wrote to localStorage before calling push), so nothing
+  // the user did is lost; the network write just waits a moment.
+  // `force` bypasses this for the explicit sign-out flush below, where the
+  // user has already been actively using this exact session's real data —
+  // there's no "did we load the right account yet" ambiguity to protect
+  // against there, and we specifically don't want to silently drop their
+  // last few edits on the way out.
+  if (!_syncReady && !force) return;
   const val = S.g(key);
   if (val === null) return;
+  // Safety net for irreplaceable keys: if we're about to overwrite a cloud
+  // value we know was real/non-empty with something empty, back the old
+  // value up first (as a plain sibling row in the same table, so it costs
+  // nothing extra) instead of just letting it vanish. This does NOT block
+  // the push — an intentional "delete everything" still works and still
+  // syncs — it just guarantees a one-query undo exists if it wasn't
+  // intentional.
+  if (
+    GUARD_KEYS.includes(key) &&
+    _isEmptyValue(val) &&
+    !_isEmptyValue(_lastCloudValues[key])
+  ) {
+    try {
+      await supa.from("user_data").upsert(
+        {
+          user_id: _user.id,
+          data_key: key + "__backup",
+          data_value: _lastCloudValues[key],
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,data_key" },
+      );
+      console.warn(
+        `Backed up previous '${key}' before overwriting with an empty value. Restore with restoreFromBackup("${key}") if this wasn't intentional.`,
+      );
+    } catch (e) {
+      console.warn("Backup-before-overwrite failed:", e);
+    }
+  }
   try {
     await supa
       .from("user_data")
@@ -9190,6 +9263,48 @@ async function push(key) {
       );
   } catch (e) {
     console.warn("Push failed:", e);
+  }
+}
+
+// Copies data_key+"__backup" back onto data_key, both in the cloud and
+// locally, and re-renders. Callable from the browser console as an
+// emergency undo: restoreFromBackup("habs")
+async function restoreFromBackup(key) {
+  if (!_user || !_cloudOK) {
+    console.warn("Not signed in / cloud unavailable.");
+    return;
+  }
+  try {
+    const { data, error } = await supa
+      .from("user_data")
+      .select("data_value")
+      .eq("user_id", _user.id)
+      .eq("data_key", key + "__backup")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      console.warn(`No backup found for '${key}'.`);
+      return;
+    }
+    _origS(key, data.data_value);
+    _setLocalTs(key, Date.now());
+    await supa.from("user_data").upsert(
+      {
+        user_id: _user.id,
+        data_key: key,
+        data_value: data.data_value,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,data_key" },
+    );
+    try {
+      renderDash();
+      renderHabits();
+      renderTasks();
+    } catch (e) {}
+    banner(`✓ Restored '${key}' from backup`);
+  } catch (e) {
+    console.warn("Restore failed:", e);
   }
 }
 
@@ -9213,6 +9328,11 @@ async function pull() {
       .select("data_key,data_value,updated_at")
       .eq("user_id", _user.id);
     if (error) throw error;
+    // We've now actually heard from the cloud (even if it came back empty,
+    // e.g. a brand new account) — safe to allow outgoing pushes again from
+    // this point on. Set BEFORE merging so any "local is genuinely newer,
+    // push it" decisions made during the merge below still go through.
+    _syncReady = true;
     if (data && data.length) {
       data.forEach((r) =>
         mergeCloudValue(r.data_key, r.data_value, r.updated_at),
@@ -9235,6 +9355,7 @@ function sessionSig(s) {
   );
 }
 function mergeCloudValue(key, cloudVal, updatedAt) {
+  _lastCloudValues[key] = cloudVal;
   if (key === "pd") {
     // Daily Pomodoro-session counts: {date: count}. Take the max per date so
     // a session logged on either device is never lost.
@@ -9277,14 +9398,14 @@ function mergeCloudValue(key, cloudVal, updatedAt) {
 }
 
 // Push all local data to cloud
-async function pushAll() {
+async function pushAll(force) {
   if (!_user || !_cloudOK) {
     banner("Cloud sync unavailable right now — data still saved locally.");
     return;
   }
   banner("Syncing to cloud...");
   try {
-    for (const k of getAllKeys()) await push(k);
+    for (const k of getAllKeys()) await push(k, force);
     banner("✓ All data backed up to cloud");
   } catch (e) {
     banner("Sync failed — data still saved locally.");
@@ -9431,6 +9552,11 @@ function setLastLocalUid(uid) {
 // true if a wipe happened (so callers can banner it if useful).
 function guardAccountSwitch(user) {
   if (!user) return false;
+  // Nothing should reach the cloud until pull() has confirmed which
+  // account's data we're actually looking at — closes the exact race that
+  // let a leftover/mid-switch local cache get pushed as if it were real.
+  _syncReady = false;
+  _lastCloudValues = {};
   const last = getLastLocalUid();
   if (last && last !== user.id) {
     clearLocalAppData();
@@ -9535,6 +9661,7 @@ async function doSignUp() {
       _user = data.user;
       guardAccountSwitch(_user);
       showApp();
+      await pull(); // confirms real (usually empty) cloud state, flips sync-ready
       setupRealtimeSync();
       init();
       return;
@@ -9561,6 +9688,8 @@ function guestMode() {
     setLastLocalUid(null);
   }
   _user = null;
+  _syncReady = false;
+  _lastCloudValues = {};
   S.s("guestMode", true);
   S.d("hadSession");
   showApp();
@@ -9571,6 +9700,20 @@ function guestMode() {
 }
 
 async function doSignOut() {
+  // Push everything to the cloud FIRST, while _user/_cloudOK are still
+  // valid, so nothing typed in the last few seconds is lost when local
+  // data gets wiped below. force=true because by definition, if you're
+  // actively signing out, this session's local data is the real, current
+  // data — there's no "haven't confirmed the cloud yet" ambiguity to
+  // protect against here, unlike on a fresh load.
+  if (_user && _cloudOK) {
+    banner("Saving your data before signing out...");
+    try {
+      await pushAll(true);
+    } catch (e) {
+      console.warn("Pre-signout flush failed:", e);
+    }
+  }
   teardownRealtimeSync();
   if (_cloudOK) {
     try {
@@ -9578,6 +9721,8 @@ async function doSignOut() {
     } catch (e) {}
   }
   _user = null;
+  _syncReady = false;
+  _lastCloudValues = {};
   clearLocalAppData();
   setLastLocalUid(null);
   S.d("guestMode");
@@ -9685,6 +9830,30 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("focus", _resumePull);
 window.addEventListener("pageshow", _resumePull);
+
+// ═══ SAME-BROWSER MULTI-TAB SYNC ═══
+// If this account is open in two tabs on the same browser at once, each tab
+// otherwise only finds out about the other's edits via the network (5-min
+// interval / realtime / resume-pull) — a real gap, and exactly the kind of
+// "which tab is right" confusion that's easy to run into. localStorage is
+// already shared instantly between same-origin tabs, and the browser's
+// native 'storage' event fires in every OTHER tab the moment one tab writes
+// — no network round-trip needed. Use that to keep every open tab of this
+// account visually in sync in real time, and to make sure an old tab left
+// open in the background never acts on data it knows is out of date.
+let _tabRerenderTimer = null;
+window.addEventListener("storage", (e) => {
+  if (!e.key || !e.key.startsWith("m_")) return;
+  clearTimeout(_tabRerenderTimer);
+  _tabRerenderTimer = setTimeout(() => {
+    try {
+      renderDash();
+      renderHabits();
+      renderTasks();
+      applyDashCfg();
+    } catch (err) {}
+  }, 150);
+});
 </script>
 
 <script>

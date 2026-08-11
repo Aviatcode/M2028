@@ -1666,6 +1666,233 @@ a:focus-visible,
   .g4 {
     grid-template-columns: 1fr !important;
   }
+
+  /* Tasks widget: on phones, "Show all" reveals the add-task row, filters,
+     and the full task list all at once inside this widget on the home
+     page — combined with the keyboard opening to type a new task, that
+     used to grow tall enough to need a lot of scrolling. Shrink it down
+     and cap the list's height (with its own internal scroll) so the add
+     row and the ✓/× controls stay comfortably reachable on screen. */
+  #dw-tasks #tasksFullSection {
+    margin-top: 9px !important;
+    padding-top: 9px !important;
+  }
+  #dw-tasks #tasksFullSection > div:first-child {
+    gap: 6px !important;
+    margin-bottom: 8px !important;
+  }
+  #dw-tasks .inp {
+    padding: 6px 9px !important;
+    font-size: 12px !important;
+  }
+  #tskInp {
+    min-width: 110px !important;
+  }
+  #tskDate {
+    width: 100px !important;
+  }
+  #tskTime {
+    width: 78px !important;
+  }
+  #dw-tasks .tsk-row {
+    padding: 6px 0 !important;
+    gap: 6px !important;
+  }
+  #dw-tasks .tsk-row input[type="text"] {
+    font-size: 12px !important;
+    padding: 3px 0 !important;
+  }
+  #dw-tasks .tsk-row input[type="date"] {
+    font-size: 10px !important;
+    width: 88px !important;
+  }
+  #dw-tasks .tsk-row input[type="time"] {
+    font-size: 10px !important;
+    width: 62px !important;
+  }
+  #tskList {
+    max-height: 38vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ═══ DASHBOARD WIDGET REORDER + RESIZE ═══
+   Handles fade/scale in instead of display:none↔flex popping, the widget
+   itself gets a soft lift while it's actively being dragged or resized,
+   and max-height only transitions when we're NOT live-tracking the
+   pointer (so the drag itself stays a perfectly 1:1, lag-free follow —
+   see the "resizing"/"dragging" overrides below — while programmatic
+   changes like the reset-to-default action animate smoothly). */
+.dash-w {
+  position: relative;
+  margin-bottom: 16px;
+  box-sizing: border-box;
+  border-radius: 16px;
+  transition:
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    outline-color 0.3s ease;
+}
+.dash-w.dash-w-sized {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  transition:
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    outline-color 0.3s ease,
+    max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* While a resize is actively tracking the pointer, height must never be
+   transitioned (that would make it lag behind the cursor) — only the
+   "chrome" (shadow/outline) gets to animate. */
+.dash-w.resizing,
+.dash-w.resizing.dash-w-sized {
+  transition:
+    box-shadow 0.18s ease,
+    outline-color 0.18s ease !important;
+}
+.dash-w .dragHandle,
+.dash-w .resizeHandle {
+  display: flex;
+  position: absolute;
+  z-index: 5;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  opacity: 0;
+  transform: scale(0.55);
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  transition:
+    opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.16s ease;
+}
+.dash-w .dragHandle {
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, var(--ai), color-mix(in srgb, var(--ai) 55%, var(--up)));
+  color: #000;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+}
+.dash-w .resizeHandle {
+  bottom: 8px;
+  right: 8px;
+  cursor: nwse-resize;
+  background: color-mix(in srgb, var(--s3) 85%, var(--ai) 15%);
+  color: var(--tx);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22), 0 0 0 1px var(--b2) inset;
+}
+#dashWidgets.reorder-on .dash-w .dragHandle,
+#dashWidgets.reorder-on .dash-w .resizeHandle {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+#dashWidgets.reorder-on .dash-w .dragHandle:hover,
+#dashWidgets.reorder-on .dash-w .resizeHandle:hover {
+  transform: scale(1.12);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.32);
+}
+#dashWidgets.reorder-on .dash-w .dragHandle:active,
+#dashWidgets.reorder-on .dash-w .resizeHandle:active {
+  transform: scale(0.92);
+}
+#dashWidgets.reorder-on .dash-w {
+  outline: 2px dashed color-mix(in srgb, var(--ai) 45%, transparent);
+  outline-offset: 4px;
+  animation: dashEditGlow 2.6s ease-in-out infinite;
+}
+@keyframes dashEditGlow {
+  0%,
+  100% {
+    outline-color: color-mix(in srgb, var(--ai) 32%, transparent);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--ai) 62%, transparent);
+  }
+}
+/* Gentle hover lift outside edit mode — the dashboard reads a bit more
+   alive/modern without changing the actual layout. Gated to devices that
+   have a real hover concept so a tap on a touchscreen doesn't leave a
+   widget stuck looking "lifted" until the next tap elsewhere. */
+@media (hover: hover) and (pointer: fine) {
+  #dashWidgets:not(.reorder-on) .dash-w:hover {
+    transform: translateY(-2px);
+  }
+  #dashWidgets:not(.reorder-on) .dash-w:hover .wc {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16);
+  }
+}
+/* While in edit-layout mode, everything inside a widget except the two
+   handles stops responding to taps — otherwise dragging on a phone would
+   also fire whatever button/input happens to be under the finger. */
+#dashWidgets.reorder-on .dash-w > *:not(.dragHandle):not(.resizeHandle) {
+  pointer-events: none;
+}
+.dash-w.dragging {
+  opacity: 0.55;
+  transform: scale(1.015);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.38);
+  z-index: 20;
+  cursor: grabbing;
+  animation: none;
+}
+.dash-w.dragging .dragHandle {
+  cursor: grabbing;
+}
+.dash-w.resizing {
+  outline: 2px solid var(--ai) !important;
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--ai) 22%, transparent);
+  z-index: 20;
+}
+/* Brief flash when a resize crosses the half↔full snap threshold —
+   tactile confirmation for a change that (being a CSS-grid column jump)
+   can't itself be smoothly animated. */
+.dash-w.snap-pulse {
+  animation: dashSnapPulse 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes dashSnapPulse {
+  0% {
+    outline-color: var(--ai);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--ai) 28%, transparent);
+  }
+  100% {
+    box-shadow: 0 14px 30px color-mix(in srgb, var(--ai) 22%, transparent);
+  }
+}
+/* Floating live readout shown next to the pointer while resizing */
+.resize-tip {
+  position: fixed;
+  z-index: 999;
+  transform: translate(14px, -50%);
+  background: color-mix(in srgb, var(--s1) 92%, black 8%);
+  color: var(--tx);
+  border: 1px solid var(--b2);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.resize-tip.on {
+  opacity: 1;
+}
+.resize-tip b {
+  color: var(--ai);
+  font-weight: 700;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1678,33 +1905,22 @@ a:focus-visible,
 @media (min-width: 681px) {
   /* ---- Dashboard: lay widgets out in a 2-column grid instead
      of one long single-column stack, so gaps shrink and both
-     columns get used ---- */
-  #v-dash.on {
+     columns get used. Driven by explicit classes (.dash-w-half /
+     .dash-w-full) rather than DOM position, so widgets can be freely
+     drag-reordered and resized without breaking the layout. ---- */
+  #v-dash.on #dashWidgets {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
     align-items: start;
   }
-  #v-dash.on > div {
+  #v-dash.on #dashWidgets > .dash-w {
     margin-bottom: 0;
   }
-  #v-dash.on > div:first-child,
-  #v-dash.on #dw-tasks,
-  #v-dash.on #dw-progress,
-  #v-dash.on #dw-custom {
+  #v-dash.on #dashWidgets > .dash-w-full {
     grid-column: 1/-1;
   }
   #v-dash.on .wc {
-    margin-bottom: 0;
-  }
-
-  /* Custom dashboard widgets: wrap evenly instead of stacking full-width */
-  #dw-custom {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-  }
-  #dw-custom .wc {
     margin-bottom: 0;
   }
 
@@ -2315,12 +2531,16 @@ a,
       <div style="font-size:11px;color:var(--m2);margin-top:3px" id="dateEl"></div>
     </div>
     <div style="display:flex;gap:7px;align-items:center">
+      <button class="btn b-gh sm" id="reorderBtn" onclick="toggleReorderMode()" style="font-size:11px">🧩 Edit Layout</button>
       <button class="btn b-gh sm" onclick="openMo('dashCfgMo')" style="font-size:11px">⚙️ Customize</button>
       <div style="background:var(--a2);border:1px solid rgba(79,216,160,.2);border-radius:20px;padding:5px 14px;font-size:13px;color:var(--ai);font-weight:600">🔥 <span id="streakW">0</span> day streak</div>
     </div>
   </div>
+  <div id="dashWidgets">
   <!-- Habits Widget -->
-  <div id="dw-habits">
+  <div id="dw-habits" class="dash-w dash-w-half" data-wid="habits">
+  <span class="dragHandle" onpointerdown="_onHandlePointerDown(event)">⠿</span>
+  <span class="resizeHandle" onpointerdown="_onResizePointerDown(event)" ondblclick="_resetWidgetSize(event)" title="Drag to resize, double-click to reset">⤡</span>
   <div class="wc">
     <div class="ct">Daily Habits
       <div style="display:flex;gap:6px">
@@ -2348,7 +2568,9 @@ a,
   </div>
   </div>
   <!-- Calendar Strip Widget -->
-  <div id="dw-cal">
+  <div id="dw-cal" class="dash-w dash-w-half" data-wid="cal">
+  <span class="dragHandle" onpointerdown="_onHandlePointerDown(event)">⠿</span>
+  <span class="resizeHandle" onpointerdown="_onResizePointerDown(event)" ondblclick="_resetWidgetSize(event)" title="Drag to resize, double-click to reset">⤡</span>
   <div class="wc">
     <div class="ct"><span id="wCalM"></span></div>
     <div style="font-size:11px;color:var(--mt);margin-bottom:7px">Tap any day to see that day's habits</div>
@@ -2362,7 +2584,9 @@ a,
   </div>
   </div>
   <!-- Tasks Section (moved from tab to homepage) -->
-  <div id="dw-tasks">
+  <div id="dw-tasks" class="dash-w dash-w-full" data-wid="tasks">
+  <span class="dragHandle" onpointerdown="_onHandlePointerDown(event)">⠿</span>
+  <span class="resizeHandle" onpointerdown="_onResizePointerDown(event)" ondblclick="_resetWidgetSize(event)" title="Drag to resize, double-click to reset">⤡</span>
   <div class="wc">
     <div class="ct">☑️ Tasks
       <div style="display:flex;gap:6px">
@@ -2391,7 +2615,9 @@ a,
   </div>
   </div>
   <!-- Progress + Plan -->
-  <div id="dw-progress">
+  <div id="dw-progress" class="dash-w dash-w-full" data-wid="progress">
+  <span class="dragHandle" onpointerdown="_onHandlePointerDown(event)">⠿</span>
+  <span class="resizeHandle" onpointerdown="_onResizePointerDown(event)" ondblclick="_resetWidgetSize(event)" title="Drag to resize, double-click to reset">⤡</span>
   <div class="g2">
     <div class="wc" style="margin-bottom:0">
       <div style="font-size:13px;font-weight:600;color:var(--tx);margin-bottom:10px">📊 Progress</div>
@@ -2422,8 +2648,7 @@ a,
     </div>
   </div>
   </div><!-- /dw-progress -->
-  <!-- Custom widgets area -->
-  <div id="dw-custom"></div>
+  </div><!-- /dashWidgets -->
 </div>
 
 <!-- POMODORO -->
@@ -6020,30 +6245,393 @@ function getDashCfg() {
   });
 }
 
+function getDashOrder() {
+  // Combined order for EVERY widget on the dashboard — built-in ones plus
+  // custom ones (prefixed "cw:" to keep the id spaces from colliding).
+  // Anything not yet in the saved order (a widget that existed before this
+  // feature shipped, or a brand new custom widget just added) gets
+  // appended at the end in its natural default position, rather than
+  // disappearing.
+  const cfg = getDashCfg();
+  const cw = S.go("customWidgets", []);
+  const allIds = [
+    "habits",
+    "cal",
+    "tasks",
+    "progress",
+    ...cw.map((w) => "cw:" + w.id),
+  ];
+  let order = Array.isArray(cfg.order)
+    ? cfg.order.filter((id) => allIds.includes(id))
+    : [];
+  allIds.forEach((id) => {
+    if (!order.includes(id)) order.push(id);
+  });
+  return order;
+}
+
 function applyDashCfg() {
   const cfg = getDashCfg();
+  const wrap = document.getElementById("dashWidgets");
   DASH_WIDGETS.forEach((w) => {
     const el = document.getElementById("dw-" + w.id);
     if (el) el.style.display = cfg[w.id] === false ? "none" : "block";
   });
-  // On the desktop 2-column dashboard grid, Habits and Calendar are the only
-  // two widgets placed side by side (everything else spans the full width).
-  // If one of that pair gets turned off, let the other stretch across both
-  // columns instead of leaving the empty half sitting there unused.
+  const sizes = cfg.widgetSize || {};
+  const heights = cfg.widgetHeight || {};
+
+  // On the desktop 2-column dashboard grid, Habits and Calendar pair up
+  // side by side whenever they land next to each other in the order and
+  // neither has been manually resized. If one of that pair gets turned
+  // off, let the other stretch across both columns instead of leaving the
+  // empty half sitting there unused — unless the user has explicitly
+  // resized it, in which case that manual choice wins.
   const habitsOn = cfg.habits !== false;
   const calOn = cfg.cal !== false;
   const soloVisible = habitsOn !== calOn; // exactly one of the two is on
   const habitsEl = document.getElementById("dw-habits");
   const calEl = document.getElementById("dw-cal");
-  if (habitsEl) habitsEl.style.gridColumn = soloVisible ? "1/-1" : "";
-  if (calEl) calEl.style.gridColumn = soloVisible ? "1/-1" : "";
-  const cw = S.go("customWidgets", []);
-  const el = document.getElementById("dw-custom");
-  if (el)
-    el.innerHTML = cw
-      .filter((w) => w.enabled !== false)
-      .map((w) => renderCWWidget(w))
-      .join("");
+  if (habitsEl && !sizes.habits)
+    habitsEl.classList.toggle("dash-w-full", soloVisible);
+  if (calEl && !sizes.cal) calEl.classList.toggle("dash-w-full", soloVisible);
+
+  if (wrap) {
+    // Rebuild custom-widget nodes fresh each call (cheap — renderCWWidget
+    // already regenerates its own HTML wholesale) without touching any
+    // built-in widget node, so their internal state/listeners survive.
+    Array.from(wrap.querySelectorAll('.dash-w[data-wid^="cw:"]')).forEach(
+      (el) => el.remove(),
+    );
+    const cw = S.go("customWidgets", []);
+    cw.filter((w) => w.enabled !== false).forEach((w) => {
+      const el = document.createElement("div");
+      el.className = "dash-w dash-w-full";
+      el.dataset.wid = "cw:" + w.id;
+      el.innerHTML =
+        '<span class="dragHandle" onpointerdown="_onHandlePointerDown(event)">⠿</span>' +
+        '<span class="resizeHandle" onpointerdown="_onResizePointerDown(event)" ondblclick="_resetWidgetSize(event)" title="Drag to resize, double-click to reset">⤡</span>' +
+        renderCWWidget(w);
+      wrap.appendChild(el);
+    });
+    // Apply the saved order. appendChild on a node already in the DOM just
+    // relocates it, so walking the order and re-appending each id in turn
+    // reliably lands every widget — built-in or custom — in the right
+    // spot without ever recreating (and thereby losing state on) one of
+    // the built-in widgets.
+    getDashOrder().forEach((id) => {
+      const safe = id.replace(/"/g, "");
+      const el = wrap.querySelector(`.dash-w[data-wid="${safe}"]`);
+      if (el) wrap.appendChild(el);
+    });
+    // Apply any manually-chosen widths/heights.
+    Array.from(wrap.querySelectorAll(".dash-w")).forEach((el) => {
+      const id = el.dataset.wid;
+      if (sizes[id])
+        el.classList.toggle("dash-w-full", sizes[id] === "full");
+      if (heights[id]) {
+        el.style.maxHeight = heights[id] + "px";
+        el.classList.add("dash-w-sized");
+      } else {
+        el.style.maxHeight = "";
+        el.classList.remove("dash-w-sized");
+      }
+    });
+  }
+}
+
+// ═══ DASHBOARD WIDGET DRAG-REORDER + RESIZE ═══
+let _reorderMode = false;
+function toggleReorderMode() {
+  _reorderMode = !_reorderMode;
+  const wrap = document.getElementById("dashWidgets");
+  const btn = document.getElementById("reorderBtn");
+  if (wrap) wrap.classList.toggle("reorder-on", _reorderMode);
+  if (btn) {
+    btn.textContent = _reorderMode ? "✓ Done" : "🧩 Edit Layout";
+    btn.classList.toggle("b-ai", _reorderMode);
+    btn.classList.toggle("b-gh", !_reorderMode);
+  }
+  if (_reorderMode)
+    banner("Drag ⠿ to move a widget, drag ⤡ to resize it");
+}
+
+function _saveDashOrderFromDOM() {
+  const wrap = document.getElementById("dashWidgets");
+  if (!wrap) return;
+  const order = Array.from(wrap.children)
+    .filter((el) => el.classList.contains("dash-w"))
+    .map((el) => el.dataset.wid)
+    .filter(Boolean);
+  const cfg = getDashCfg();
+  cfg.order = order;
+  S.s("dashCfg", cfg);
+}
+
+// Shared by both drag-reorder and resize so neither interaction fights the
+// browser's native text-selection while the pointer is down — a stray
+// selection highlight is what usually makes an otherwise-fine drag *look*
+// janky, independent of how smooth the actual logic is.
+function _noSelectOn() {
+  document.body.style.userSelect = "none";
+  document.body.style.webkitUserSelect = "none";
+}
+function _noSelectOff() {
+  document.body.style.userSelect = "";
+  document.body.style.webkitUserSelect = "";
+}
+
+// FLIP (First-Last-Invert-Play): record where every OTHER widget sits,
+// let `mutate` reorder the DOM, then animate each one that actually moved
+// from its old screen position to its new one via a transform. The result
+// is the rest of the grid gliding out of the way instead of jump-cutting
+// every time the dragged widget crosses into a new slot.
+function _flipSiblings(wrap, dragEl, mutate) {
+  const els = Array.from(wrap.children).filter(
+    (el) => el !== dragEl && el.classList.contains("dash-w"),
+  );
+  const before = new Map(els.map((el) => [el, el.getBoundingClientRect()]));
+  mutate();
+  els.forEach((el) => {
+    const b = before.get(el);
+    const a = el.getBoundingClientRect();
+    const dx = b.left - a.left;
+    const dy = b.top - a.top;
+    if (!dx && !dy) return;
+    el.style.transition = "none";
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => {
+      el.style.transition = "transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)";
+      el.style.transform = "";
+      el.addEventListener(
+        "transitionend",
+        () => {
+          el.style.transition = "";
+        },
+        { once: true },
+      );
+    });
+  });
+}
+
+let _dragEl = null;
+let _dragLastTarget = undefined;
+let _dragPendingEvent = null;
+let _dragRAF = null;
+function _onHandlePointerDown(e) {
+  if (!_reorderMode) return;
+  const widget = e.currentTarget.closest(".dash-w");
+  if (!widget) return;
+  e.preventDefault();
+  _dragEl = widget;
+  _dragLastTarget = undefined;
+  widget.classList.add("dragging");
+  _noSelectOn();
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  } catch (err) {}
+  document.addEventListener("pointermove", _onDragMove);
+  document.addEventListener("pointerup", _onDragEnd, { once: true });
+  document.addEventListener("pointercancel", _onDragEnd, { once: true });
+}
+function _onDragMove(e) {
+  if (!_dragEl) return;
+  _dragPendingEvent = e;
+  if (_dragRAF) return;
+  _dragRAF = requestAnimationFrame(_applyDragFrame);
+}
+function _applyDragFrame() {
+  _dragRAF = null;
+  const e = _dragPendingEvent;
+  if (!_dragEl || !e) return;
+  const wrap = document.getElementById("dashWidgets");
+  if (!wrap) return;
+  const siblings = Array.from(wrap.children).filter(
+    (el) => el !== _dragEl && el.classList.contains("dash-w"),
+  );
+  const y = e.clientY;
+  let target = null;
+  for (const sib of siblings) {
+    const r = sib.getBoundingClientRect();
+    if (y < r.top + r.height / 2) {
+      target = sib;
+      break;
+    }
+  }
+  // Only touch the DOM — and pay for the reflow that comes with it — when
+  // the insertion point actually changed. Re-running insertBefore on
+  // every single pointermove (as before) forced a fresh layout on every
+  // event even when nothing was going to move.
+  if (target === _dragLastTarget) return;
+  _dragLastTarget = target;
+  _flipSiblings(wrap, _dragEl, () => {
+    if (target) wrap.insertBefore(_dragEl, target);
+    else wrap.appendChild(_dragEl);
+  });
+}
+function _onDragEnd() {
+  document.removeEventListener("pointermove", _onDragMove);
+  if (_dragRAF) {
+    cancelAnimationFrame(_dragRAF);
+    _dragRAF = null;
+  }
+  _dragPendingEvent = null;
+  _noSelectOff();
+  if (_dragEl) _dragEl.classList.remove("dragging");
+  _dragEl = null;
+  _dragLastTarget = undefined;
+  _saveDashOrderFromDOM();
+}
+
+// Resize: drag vertically to set a custom height (the widget scrolls
+// internally past that point); on the desktop 2-column grid, drag
+// horizontally past roughly the widget's own midpoint to snap it between
+// half-width (paired with a neighbor) and full-width — like a real
+// resize handle rather than a plain on/off toggle. Pointer updates are
+// coalesced to one per animation frame (instead of applied straight off
+// the raw event) so a fast mouse/trackpad can't fire the height + width
+// logic more often than the screen can actually redraw, and a small
+// floating readout tracks the cursor so the half/full snap point is
+// obvious the moment you cross it rather than a silent surprise on release.
+let _resizeEl = null;
+let _resizeStartX = 0,
+  _resizeStartY = 0,
+  _resizeStartH = 0,
+  _resizeStartW = 0,
+  _resizeStartFull = false;
+let _resizePendingEvent = null;
+let _resizeRAF = null;
+let _resizeTipEl = null;
+
+function _resizeTip() {
+  if (!_resizeTipEl) {
+    _resizeTipEl = document.createElement("div");
+    _resizeTipEl.className = "resize-tip";
+    document.body.appendChild(_resizeTipEl);
+  }
+  return _resizeTipEl;
+}
+
+function _onResizePointerDown(e) {
+  if (!_reorderMode) return;
+  const widget = e.currentTarget.closest(".dash-w");
+  if (!widget) return;
+  e.preventDefault();
+  e.stopPropagation();
+  _resizeEl = widget;
+  _resizeStartX = e.clientX;
+  _resizeStartY = e.clientY;
+  const rect = widget.getBoundingClientRect();
+  _resizeStartH = rect.height;
+  _resizeStartW = rect.width || 1;
+  _resizeStartFull = widget.classList.contains("dash-w-full");
+  widget.classList.add("resizing");
+  widget.style.willChange = "max-height";
+  _noSelectOn();
+  const tip = _resizeTip();
+  tip.style.left = e.clientX + "px";
+  tip.style.top = e.clientY + "px";
+  tip.classList.add("on");
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  } catch (err) {}
+  document.addEventListener("pointermove", _onResizeMove);
+  document.addEventListener("pointerup", _onResizeEnd, { once: true });
+  document.addEventListener("pointercancel", _onResizeEnd, { once: true });
+}
+function _onResizeMove(e) {
+  if (!_resizeEl) return;
+  _resizePendingEvent = e;
+  if (_resizeRAF) return;
+  _resizeRAF = requestAnimationFrame(_applyResizeFrame);
+}
+function _applyResizeFrame() {
+  _resizeRAF = null;
+  const e = _resizePendingEvent;
+  if (!_resizeEl || !e) return;
+  const dy = e.clientY - _resizeStartY;
+  const dx = e.clientX - _resizeStartX;
+  const newH = Math.max(120, Math.min(900, _resizeStartH + dy));
+  _resizeEl.style.maxHeight = newH + "px";
+  _resizeEl.classList.add("dash-w-sized");
+  let full = _resizeStartFull;
+  if (window.innerWidth >= 681) {
+    const w = _resizeStartW || 1;
+    full = _resizeStartFull ? dx > -w * 0.35 : dx > w * 0.35;
+    if (full !== _resizeEl.classList.contains("dash-w-full")) {
+      _resizeEl.classList.toggle("dash-w-full", full);
+      // Restart the snap-feedback flash even if it's already mid-play.
+      _resizeEl.classList.remove("snap-pulse");
+      void _resizeEl.offsetWidth;
+      _resizeEl.classList.add("snap-pulse");
+    }
+  }
+  const tip = _resizeTip();
+  tip.style.left = e.clientX + "px";
+  tip.style.top = e.clientY + "px";
+  tip.innerHTML =
+    Math.round(newH) +
+    "px" +
+    (window.innerWidth >= 681
+      ? " · <b>" + (full ? "Full width" : "Half width") + "</b>"
+      : "");
+}
+function _onResizeEnd() {
+  document.removeEventListener("pointermove", _onResizeMove);
+  if (_resizeRAF) {
+    cancelAnimationFrame(_resizeRAF);
+    _resizeRAF = null;
+  }
+  _resizePendingEvent = null;
+  _noSelectOff();
+  if (_resizeTipEl) _resizeTipEl.classList.remove("on");
+  if (!_resizeEl) return;
+  const el = _resizeEl;
+  el.classList.remove("resizing", "snap-pulse");
+  el.style.willChange = "";
+  const id = el.dataset.wid;
+  const cfg = getDashCfg();
+  cfg.widgetHeight = cfg.widgetHeight || {};
+  cfg.widgetHeight[id] = Math.round(el.getBoundingClientRect().height);
+  cfg.widgetSize = cfg.widgetSize || {};
+  cfg.widgetSize[id] = el.classList.contains("dash-w-full") ? "full" : "half";
+  S.s("dashCfg", cfg);
+  _resizeEl = null;
+}
+function _resetWidgetSize(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const widget = e.currentTarget.closest(".dash-w");
+  if (!widget) return;
+  const id = widget.dataset.wid;
+  const cfg = getDashCfg();
+  if (cfg.widgetHeight) delete cfg.widgetHeight[id];
+  if (cfg.widgetSize) delete cfg.widgetSize[id];
+  S.s("dashCfg", cfg);
+  // Animate smoothly back to the natural size instead of snapping
+  // instantly: lock in the current pixel height, measure what the
+  // natural (unconstrained) height would be, then transition between the
+  // two — applyDashCfg() (which is what actually clears the override)
+  // only runs once that animation has settled.
+  widget.classList.add("dash-w-sized");
+  const startH = widget.getBoundingClientRect().height;
+  widget.style.maxHeight = startH + "px";
+  void widget.offsetHeight;
+  widget.style.maxHeight = "";
+  const naturalH = widget.scrollHeight;
+  widget.style.maxHeight = startH + "px";
+  void widget.offsetHeight;
+  requestAnimationFrame(() => {
+    widget.style.maxHeight = naturalH + "px";
+  });
+  let settleTimer;
+  const finish = () => {
+    widget.removeEventListener("transitionend", finish);
+    clearTimeout(settleTimer);
+    applyDashCfg();
+  };
+  widget.addEventListener("transitionend", finish);
+  settleTimer = setTimeout(finish, 450);
+  banner("Reset to default size");
 }
 
 function openDashCfg() {
@@ -9737,7 +10325,7 @@ async function doSignOut() {
 function showApp() {
   document.getElementById("loginScr").style.display = "none";
   document.getElementById("appShell").style.display = "block";
-  // Apply dashboard config NOW that appShell is visible so dw-custom renders correctly
+  // Apply dashboard config NOW that appShell is visible so widgets render correctly
   setTimeout(() => applyDashCfg(), 50);
 }
 

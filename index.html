@@ -11013,6 +11013,9 @@ let _realtimeChannel = null; // live Postgres-changes subscription — see setup
 // account/session; it does NOT block local saves, so the UI stays instant —
 // it only holds back the network write until it's safe.
 let _syncReady = false;
+// Keys a push() call had to skip because syncing wasn't ready yet — flushed
+// the moment pull() confirms real cloud state (see push() and pull()).
+let _pendingPushKeys = new Set();
 // Last known-good value per key, captured every time we hear from the
 // cloud (via pull() or realtime) — used both to detect a suspicious
 // "overwriting real data with nothing" push and to power a one-click
@@ -11092,7 +11095,10 @@ async function push(key, force) {
   // there's no "did we load the right account yet" ambiguity to protect
   // against there, and we specifically don't want to silently drop their
   // last few edits on the way out.
-  if (!_syncReady && !force) return;
+  if (!_syncReady && !force) {
+    _pendingPushKeys.add(key);
+    return;
+  }
   const val = S.g(key);
   if (val === null) return;
   // Safety net for irreplaceable keys: if we're about to overwrite a cloud
@@ -11214,6 +11220,16 @@ async function pull() {
       );
       banner("✓ Synced from cloud");
     }
+    // Anything saved before syncing was ready (see push()) either just got
+    // re-sent above because the merge found its key genuinely newer than an
+    // existing cloud row, or — if there was no cloud row at all yet for that
+    // key — never got a retry at all. Flush whatever's left explicitly so
+    // neither case can strand a change on one device.
+    if (_pendingPushKeys.size) {
+      const pending = Array.from(_pendingPushKeys);
+      _pendingPushKeys.clear();
+      pending.forEach((k) => push(k));
+    }
   } catch (e) {
     console.warn("Pull failed:", e);
   }
@@ -11240,6 +11256,38 @@ function mergeCloudValue(key, cloudVal, updatedAt) {
       merged[d] = Math.max(merged[d] || 0, cloudVal[d] || 0);
     });
     S.s(key, merged);
+    return;
+  }
+  if (key === "customWidgets") {
+    // Union by id instead of picking one whole array over the other, so an
+    // addition made on the other device is never silently discarded just
+    // because this device's copy of the list happens to look newer.
+    const local = S.g(key) || [];
+    const cloud = cloudVal || [];
+    const cloudTs = updatedAt ? new Date(updatedAt).getTime() : 0;
+    const localTs = _getLocalTs(key);
+    const preferLocal = localTs && localTs > cloudTs;
+    const base = (preferLocal ? local : cloud).slice();
+    const other = preferLocal ? cloud : local;
+    const baseIds = new Set(base.map((w) => w.id));
+    let addedFromOther = false;
+    other.forEach((w) => {
+      if (!baseIds.has(w.id)) {
+        base.push(w);
+        baseIds.add(w.id);
+        addedFromOther = true;
+      }
+    });
+    if (addedFromOther) {
+      // The union picked up a widget the other side had that this copy was
+      // missing — save AND push the merged list so the other device
+      // converges on the same full set too, instead of staying out of sync
+      // in the opposite direction.
+      S.s(key, base);
+    } else if (!preferLocal) {
+      _origS(key, base);
+      _setLocalTs(key, cloudTs || Date.now());
+    }
     return;
   }
   if (key === "pomSessions") {

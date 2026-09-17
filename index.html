@@ -3319,7 +3319,7 @@ body.light .rck.on {
     <div class="sp" onclick="gotoTab('habits')">🔥 <span id="spEl">0</span>d</div>
     <button class="btn b-gh" style="padding:4px 10px;font-size:12px;border-radius:20px" onclick="reqNotif()" id="nBtn">🔔</button>
     <button class="btn b-gh" style="padding:4px 10px;font-size:14px;border-radius:20px" onclick="toggleTheme()" id="themeBtn" title="Cycle: Dark → Light → Pink">🌙</button>
-    <button class="btn b-gh" style="padding:4px 10px;font-size:12px;border-radius:20px" onclick="openMo('acctMo')" title="Account">👤</button>
+    <button class="btn b-gh" id="acctBtn" style="padding:4px 10px;font-size:12px;border-radius:20px" onclick="openMo('acctMo')" title="Account">👤</button>
   </div>
 </div>
 <div class="collapse-nav" id="mobileNavCollapse">
@@ -8592,6 +8592,11 @@ function leafSkippable(node) {
       if (LEAF_SKIP_TAGS[p.tagName]) return true;
       if (p.classList && p.classList.contains("leafico")) return true;
       if (p.id === "pinkFloat" || p.id === "pinkCursor") return true;
+      // Top-bar chrome: these three show live app state (notification
+      // permission, active theme, account) rather than decorative emoji, so
+      // they keep their real glyph even while the rest of the UI leafs out.
+      if (p.id === "nBtn" || p.id === "themeBtn" || p.id === "acctBtn")
+        return true;
       if (p.isContentEditable) return true;
     }
     p = p.parentNode;
@@ -11667,13 +11672,16 @@ if (!_cloudOK) {
   }
 }
 
-// Auto-pull every 2 min if logged in (was 5 — cross-device edits now show
-// up faster without polling aggressively enough to matter for battery/data).
+// Auto-pull every 60s if logged in (was 5 min, then 2 min). This is only a
+// safety net — setupRealtimeSync() below is the actual live sync path and
+// reflects changes instantly; this timer just re-syncs in case that
+// real-time channel ever silently drops, so polling it this often costs
+// one small query a minute, not a heavier sync.
 setInterval(
   () => {
     if (_user) pull();
   },
-  2 * 60 * 1000,
+  60 * 1000,
 );
 
 // Pull-on-resume: the 5-min interval alone means switching back to this tab/app

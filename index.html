@@ -332,6 +332,45 @@ body.pink .ov {
     opacity: 0;
   }
 }
+/* Wind-blown fall: four waypoints of horizontal drift (--x1..--x4) layered
+   onto a steady vertical descent, plus rotation that keeps turning the same
+   direction rather than snapping back — a leaf caught in a gust doesn't
+   reverse mid-air. */
+@keyframes leafFall {
+  0% {
+    transform: translate(0, -8vh) rotate(0deg);
+    opacity: 0;
+  }
+  7% {
+    opacity: var(--lf-op, 0.75);
+  }
+  25% {
+    transform: translate(var(--x1, 40px), 23vh) rotate(var(--r1, 80deg));
+  }
+  50% {
+    transform: translate(var(--x2, -30px), 48vh) rotate(var(--r2, 190deg));
+  }
+  75% {
+    transform: translate(var(--x3, 45px), 73vh) rotate(var(--r3, 300deg));
+  }
+  92% {
+    opacity: var(--lf-op, 0.75);
+  }
+  100% {
+    transform: translate(var(--x4, -15px), 108vh) rotate(var(--r4, 430deg));
+    opacity: 0;
+  }
+}
+/* Fast wobble on the leaf's own axis, independent of the drift above. */
+@keyframes leafFlutter {
+  0%,
+  100% {
+    transform: rotate(-16deg) scale(1);
+  }
+  50% {
+    transform: rotate(16deg) scale(0.9);
+  }
+}
 @keyframes sway {
   0%,
   100% {
@@ -402,13 +441,23 @@ body.pink .ov {
 body.pink #pinkFloat {
   display: block;
 }
-.pf-emoji {
+/* Leaves fall from the top rather than rise like bubbles, drifting sideways
+   through four waypoints (--x1..--x4, set per-leaf in JS) so the path reads
+   as wind catching them rather than a straight drop. A second, faster
+   rotation on the inner icon layers a flutter on top of that big drift, the
+   way a real leaf spins on its own axis while also being carried by wind. */
+.pf-leaf {
   position: absolute;
-  bottom: -60px;
-  font-size: 20px;
-  animation: floatUp linear infinite;
+  top: -60px;
+  animation: leafFall linear infinite;
+  will-change: transform, opacity;
   user-select: none;
   pointer-events: none;
+}
+.pf-leaf .leafico {
+  display: block;
+  animation: leafFlutter ease-in-out infinite;
+  will-change: transform;
 }
 
 /* Cursor sparkle trail */
@@ -2465,6 +2514,764 @@ a,
 .vw.on {
   animation: viewFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   M2028 — VISUAL REFRESH  ("instrument panel")
+   ----------------------------------------------------------------------
+   Direction: this app is a campaign board with a hard deadline, not a
+   consumer to-do app. So: blue-steel darks instead of neutral black,
+   hairline rules that are actually visible (they were transparent before,
+   which is why every card read as a floating grey blob), and status
+   carried STRUCTURALLY on a left rail rather than as decoration.
+
+   Signal language, used consistently everywhere below:
+     red   = overdue        amber = due today
+     blue  = scheduled      jade  = complete
+   Everything that isn't signalling state stays quiet and grey.
+   This block is last in the stylesheet, so it overrides what came before.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #0d1014;
+  --s1: #151a21;
+  --s2: #1b222b;
+  --s3: #27313d;
+  --b: rgba(150, 180, 210, 0.1);
+  --b2: rgba(150, 180, 210, 0.2);
+  --tx: #e6ecf3;
+  --mt: #5a6673;
+  --m2: #8c99a9;
+  --ai: #35c48f;
+  --a2: rgba(53, 196, 143, 0.12);
+  --up: #5b8def;
+  --u2: rgba(91, 141, 239, 0.12);
+  --bd: #e8854f;
+  --d2: rgba(232, 133, 79, 0.12);
+  --rd: #e2574f;
+  --r2: rgba(226, 87, 79, 0.12);
+  --gd: #d7a93a;
+  --ec: #e468b0;
+  --e2: rgba(228, 104, 176, 0.12);
+  --geo: #4fb8e0;
+  --go2: rgba(79, 184, 224, 0.12);
+
+  /* new signal + elevation tokens */
+  --wn: #f2b544;
+  --w2: rgba(242, 181, 68, 0.13);
+  --dn: #35c48f;
+  --sh1: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --sh2: 0 6px 22px rgba(0, 0, 0, 0.38);
+  --r-sm: 8px;
+  --r-md: 11px;
+  --r-lg: 15px;
+}
+
+body.light {
+  --bg: #f2f4f7;
+  --s1: #ffffff;
+  --s2: #eef1f5;
+  --s3: #dde3ea;
+  --b: rgba(20, 35, 55, 0.12);
+  --b2: rgba(20, 35, 55, 0.22);
+  --tx: #141a22;
+  --mt: #8d99a6;
+  --m2: #5c6875;
+  --ai: #0f9d69;
+  --a2: rgba(15, 157, 105, 0.1);
+  --wn: #b7791f;
+  --w2: rgba(183, 121, 31, 0.12);
+  --dn: #0f9d69;
+  --rd: #cf4038;
+  --r2: rgba(207, 64, 56, 0.1);
+  --sh1: 0 1px 2px rgba(20, 35, 55, 0.07);
+  --sh2: 0 6px 22px rgba(20, 35, 55, 0.12);
+}
+
+body.pink {
+  --b: rgba(255, 150, 200, 0.17);
+  --b2: rgba(255, 150, 200, 0.3);
+  --wn: #ffc36e;
+  --w2: rgba(255, 195, 110, 0.14);
+  --dn: #ff6eb4;
+  --sh1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --sh2: 0 6px 22px rgba(0, 0, 0, 0.42);
+}
+
+/* ─── Surfaces ──────────────────────────────────────────────────────── */
+.card,
+.wc {
+  background: var(--s1);
+  border: 1px solid var(--b);
+  border-radius: var(--r-lg);
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  box-shadow: var(--sh1);
+}
+body.light .card,
+body.light .wc {
+  border-color: var(--b) !important;
+}
+.st {
+  background: var(--s1);
+  border: 1px solid var(--b);
+  border-radius: var(--r-md);
+  padding: 14px 15px;
+  box-shadow: var(--sh1);
+}
+.sn {
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ct {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.005em;
+  margin-bottom: 13px;
+}
+
+/* ─── Controls ──────────────────────────────────────────────────────── */
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.25;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.08s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.b-gh {
+  background: var(--s2);
+  color: var(--m2);
+  border: 1px solid var(--b);
+}
+.b-gh:hover {
+  color: var(--tx);
+  border-color: var(--b2);
+}
+.b-ai {
+  background: var(--a2);
+  color: var(--ai);
+  border: 1px solid rgba(53, 196, 143, 0.3);
+}
+.sm {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+.inp {
+  background: var(--s2);
+  border: 1px solid var(--b);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  font-size: 13px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.inp:focus {
+  border-color: var(--ai);
+  background: var(--s1);
+}
+.pt {
+  height: 5px;
+  background: var(--s3);
+  border-radius: 99px;
+  margin-top: 6px;
+}
+.pf {
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tag {
+  font-size: 10px;
+  padding: 2.5px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Quality floor: keyboard focus stays visible, motion is opt-out. */
+:focus-visible {
+  outline: 2px solid var(--ai);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ROWS — shared by Tasks and Checklists
+   The left rail is the whole idea: 3px of colour that tells you the state
+   of the row before you read a word of it. Controls are always visible
+   (the old build hid the drag handle and delete behind :hover, which on a
+   phone meant they simply did not exist).
+   ════════════════════════════════════════════════════════════════════ */
+.row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 13px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.row + .row {
+  margin-top: 2px;
+}
+.row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--b2);
+  transition: background 0.2s ease;
+}
+.row:hover {
+  background: var(--s2);
+}
+.row.is-over::before {
+  background: var(--rd);
+}
+.row.is-today::before {
+  background: var(--wn);
+}
+.row.is-soon::before {
+  background: var(--up);
+}
+.row.is-done::before {
+  background: var(--dn);
+  opacity: 0.45;
+}
+.row.is-done {
+  opacity: 0.62;
+}
+.row.is-over {
+  background: var(--r2);
+}
+.row.is-over:hover {
+  background: rgba(226, 87, 79, 0.2);
+}
+.row.is-done:hover {
+  background: var(--s2);
+}
+
+/* Checkbox */
+.rck {
+  width: 21px;
+  height: 21px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1.5px solid var(--b2);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: transparent;
+  padding: 0;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.rck:hover {
+  border-color: var(--ai);
+}
+.rck.on {
+  background: var(--dn);
+  border-color: var(--dn);
+  color: #06120d;
+}
+body.light .rck.on {
+  color: #fff;
+}
+
+.rbody {
+  flex: 1;
+  min-width: 0;
+}
+.rtext {
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 1px 0;
+  color: var(--tx);
+}
+.rtext::placeholder {
+  color: var(--mt);
+}
+.row.is-done .rtext {
+  color: var(--m2);
+  text-decoration: line-through;
+  text-decoration-color: var(--mt);
+}
+.rmeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* Date / time chips.
+   A native <input type=date> dropped straight into a row is the single
+   ugliest thing in the old build — different width in every browser, grey
+   dd/mm/yyyy placeholder shouting at you on every undated task. So the
+   input is still there (same events, same behaviour) but transparent and
+   stretched over a chip we control the look of. */
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid var(--b);
+  background: var(--s2);
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--m2);
+  cursor: pointer;
+  line-height: 1.6;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.chip:hover {
+  border-color: var(--b2);
+  color: var(--tx);
+}
+.chip.set {
+  color: var(--tx);
+}
+.chip.warn {
+  color: var(--wn);
+  border-color: rgba(242, 181, 68, 0.35);
+  background: var(--w2);
+}
+.chip.bad {
+  color: var(--rd);
+  border-color: rgba(226, 87, 79, 0.35);
+  background: var(--r2);
+}
+.chip input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  background: none;
+}
+.chip .ico {
+  opacity: 0.75;
+  font-size: 10px;
+}
+
+/* Row actions */
+.racts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.ract {
+  background: none;
+  border: none;
+  color: var(--mt);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 5px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.ract:hover {
+  color: var(--tx);
+  background: var(--s3);
+}
+.ract.del:hover {
+  color: var(--rd);
+  background: var(--r2);
+}
+.ract.grab {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  letter-spacing: -2px;
+  font-size: 13px;
+}
+
+/* Group heading for a run of rows (Overdue / Today / …) */
+.rgroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--m2);
+  letter-spacing: 0.01em;
+}
+.rgroup:first-child {
+  margin-top: 2px;
+}
+.rgroup .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+.rgroup .line {
+  flex: 1;
+  height: 1px;
+  background: var(--b);
+}
+.rgroup .n {
+  font-variant-numeric: tabular-nums;
+  color: var(--mt);
+  font-weight: 550;
+}
+
+/* Collapsible "Completed" drawer */
+.rdone-tog {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 4px;
+  margin-top: 10px;
+  border-top: 1px solid var(--b);
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--m2);
+}
+.rdone-tog:hover {
+  color: var(--tx);
+}
+.rdone-tog .caret {
+  display: inline-block;
+  font-size: 9px;
+  transition: transform 0.18s ease;
+  color: var(--mt);
+}
+.rdone-tog.open .caret {
+  transform: rotate(90deg);
+}
+
+/* Empty states are an invitation to act, not a shrug. */
+.rempty {
+  text-align: center;
+  padding: 26px 16px;
+  color: var(--mt);
+}
+.rempty .big {
+  font-size: 22px;
+  margin-bottom: 7px;
+  opacity: 0.55;
+}
+.rempty .t {
+  font-size: 13px;
+  color: var(--m2);
+  margin-bottom: 3px;
+}
+.rempty .s {
+  font-size: 11.5px;
+  color: var(--mt);
+}
+
+/* ─── Task composer ─────────────────────────────────────────────────── */
+.tcompose {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 10px;
+  background: var(--s2);
+  border: 1px solid var(--b);
+  border-radius: var(--r-md);
+  margin-bottom: 12px;
+}
+.tcompose .inp {
+  background: var(--s1);
+}
+.tcompose #tskInp {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Filter row as a segmented control rather than four loose buttons. */
+.tfilters {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.tfilters .seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--s2);
+  border: 1px solid var(--b);
+  border-radius: 9px;
+}
+.tfilters .seg .btn {
+  border: none !important;
+  background: none !important;
+  color: var(--m2) !important;
+  padding: 5px 11px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 550;
+}
+.tfilters .seg .btn.b-ai {
+  background: var(--s1) !important;
+  color: var(--tx) !important;
+  box-shadow: var(--sh1);
+}
+
+/* ─── Checklist card ────────────────────────────────────────────────── */
+.clhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.clhead .t {
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--tx);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clhead .n {
+  font-size: 11.5px;
+  color: var(--m2);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  font-weight: 550;
+}
+.clbar {
+  height: 3px;
+  background: var(--s3);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.clbar > i {
+  display: block;
+  height: 100%;
+  background: var(--dn);
+  border-radius: 99px;
+  transition: width 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cli.nest {
+  margin-left: 26px;
+}
+.cli.nest::before {
+  opacity: 0.45;
+}
+.cladd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 13px;
+  margin-top: 4px;
+  cursor: text;
+  color: var(--mt);
+  border-radius: var(--r-md);
+  border: 1px dashed var(--b2);
+  font-size: 13px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+.cladd:hover {
+  color: var(--ai);
+  border-color: var(--ai);
+  background: var(--a2);
+}
+.cli-placeholder {
+  border-radius: var(--r-md);
+  background: var(--s3);
+  opacity: 0.45;
+}
+
+/* Old hover-only affordances are dead — kill the inherited opacity:0 so the
+   handle and the delete button exist on touch devices. */
+.cli > span:first-child,
+.cli > button:last-child {
+  opacity: 1 !important;
+}
+.cli {
+  border-bottom: none !important;
+}
+
+/* ─── Mobile ────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .row {
+    padding: 9px 6px 9px 12px;
+    gap: 9px;
+  }
+  .rtext {
+    font-size: 13.5px;
+  }
+  .chip {
+    font-size: 10.5px;
+    padding: 3px 8px;
+  }
+  .ract {
+    font-size: 16px;
+    padding: 5px 6px;
+  }
+  .tcompose {
+    padding: 9px;
+    gap: 7px;
+  }
+  .cli.nest {
+    margin-left: 18px;
+  }
+  /* the old build shrank these to unreadable sizes on phones */
+  #dw-tasks .row input[type="text"] {
+    font-size: 13.5px !important;
+    padding: 1px 0 !important;
+  }
+}
+
+
+/* ─── Link buttons ──────────────────────────────────────────────────── */
+.lnkwrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.lnkbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 104px;
+  max-width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--b);
+  background: var(--s2);
+  color: var(--tx);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.25;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--sh1);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    transform 0.08s ease;
+}
+.lnkbtn:hover {
+  border-color: var(--ai);
+  background: var(--a2);
+  color: var(--ai);
+}
+.lnkbtn:active {
+  transform: scale(0.97);
+}
+.lnkbtn .lb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lnkbtn .ext {
+  font-size: 11px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+.lnkbtn:hover .ext {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   LEAF ICONS  (pink theme)
+   Four hand-drawn leaves stand in for every emoji while the pink theme is on.
+   They are inline SVG sized in em, so a leaf is exactly as big as the text it
+   replaced and stays crisp at any zoom. Which colour an emoji gets is derived
+   from the emoji itself, so the same one always comes back the same colour
+   instead of flickering between renders.
+   ════════════════════════════════════════════════════════════════════ */
+.leafico {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.24em;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  flex-shrink: 0;
+}
+.lf1 {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(-4 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23f4aca4"/><stop offset="1" stop-color="%23efc19f"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>');
+}
+.lf2 {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(104 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23b4e4a0"/><stop offset="1" stop-color="%23a6dcae"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>');
+}
+.lf3 {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(-52 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23a6c6ef"/><stop offset="1" stop-color="%23b4daee"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>');
+}
+.lf4 {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(162 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23f1dda9"/><stop offset="1" stop-color="%23eed7ae"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>');
+}
+
+/* Leaves in the falling shower render at the wrapper's full font-size,
+   with no inline-text baseline offset (unlike .leafico used in running text). */
+.pf-leaf .leafico {
+  width: 1em;
+  height: 1em;
+  vertical-align: baseline;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -2597,18 +3404,20 @@ a,
     <div id="wTasks"></div>
     <!-- Expanded full task manager, hidden by default -->
     <div id="tasksFullSection" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--b)">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:11px">
-        <input type="text" id="tskInp" class="inp" style="flex:1;min-width:150px" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTask()">
-        <input type="date" id="tskDate" class="inp" style="width:130px">
-        <input type="time" id="tskTime" class="inp" style="width:100px">
-        <button class="btn b-ai" onclick="addTask()">+ Add</button>
+      <div class="tcompose">
+        <input type="text" id="tskInp" class="inp" placeholder="Add a task" onkeydown="if(event.key==='Enter')addTask()">
+        <input type="date" id="tskDate" class="inp" style="width:132px" title="Due date">
+        <input type="time" id="tskTime" class="inp" style="width:104px" title="Due time">
+        <button class="btn b-ai" onclick="addTask()">Add task</button>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:11px;flex-wrap:wrap">
-        <button class="btn b-ai sm" id="tf-all" onclick="setTF('all')">All</button>
-        <button class="btn b-gh sm" id="tf-today" onclick="setTF('today')">Today</button>
-        <button class="btn b-gh sm" id="tf-up" onclick="setTF('up')">Upcoming</button>
-        <button class="btn b-gh sm" id="tf-done" onclick="setTF('done')">Done</button>
-        <button class="btn b-rd sm" style="margin-left:auto" onclick="clearDone()">Clear Done</button>
+      <div class="tfilters">
+        <div class="seg">
+          <button class="btn b-ai sm" id="tf-all" onclick="setTF('all')">All</button>
+          <button class="btn b-gh sm" id="tf-today" onclick="setTF('today')">Today</button>
+          <button class="btn b-gh sm" id="tf-up" onclick="setTF('up')">Upcoming</button>
+          <button class="btn b-gh sm" id="tf-done" onclick="setTF('done')">Done</button>
+        </div>
+        <button class="btn b-rd sm" style="margin-left:auto" onclick="clearDone()">Clear completed</button>
       </div>
       <div id="tskList"></div>
     </div>
@@ -3172,10 +3981,13 @@ a,
           <textarea id="cw-note" class="ta" rows="2" style="margin-top:4px" placeholder="Write anything..."></textarea>
         </div>
         <div id="cwf-links" style="display:none;margin-bottom:9px">
-          <label style="font-size:11px;color:var(--m2)">Add a button</label>
-          <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:6px">
-            <input type="text" id="cw-link-label" class="inp" placeholder="Label e.g. 📚 UPSC" style="flex:1">
-            <select id="cw-link-tab" class="inp" style="width:110px">
+          <label style="font-size:11px;color:var(--m2)">Button name</label>
+          <input type="text" id="cw-link-label" class="inp" style="margin-top:4px;margin-bottom:8px" placeholder="e.g. rickroll">
+          <label style="font-size:11px;color:var(--m2)">Link</label>
+          <input type="text" id="cw-link-url" class="inp" style="margin-top:4px;margin-bottom:8px" placeholder="paste a link, e.g. youtube.com/watch?v=..." onkeydown="if(event.key==='Enter')addLinkItem()">
+          <label style="font-size:11px;color:var(--m2)">…or jump to a section of this app instead</label>
+          <select id="cw-link-tab" class="inp" style="margin-top:4px;margin-bottom:9px">
+            <option value="">Use the link above</option>
               <option value="dash">🏠 Home</option>
               <option value="pomo">⏱ Pomo</option>
               <option value="habits">✅ Habits</option>
@@ -3185,9 +3997,8 @@ a,
               <option value="sched">🗓 Timetable & Cal</option>
               <option value="road">🗺 Roadmap</option>
               <option value="body">💪 Body</option>
-            </select>
-          </div>
-          <button onclick="addLinkItem()" class="btn b-gh sm" style="margin-bottom:9px;width:100%">+ Add Button</button>
+          </select>
+          <button onclick="addLinkItem()" class="btn b-gh sm" style="margin-bottom:9px;width:100%">+ Add button</button>
           <div id="cw-links-list" style="min-height:30px"></div>
           <input type="hidden" id="cw-links">
         </div>
@@ -3276,9 +4087,10 @@ a,
     <!-- Links fields -->
     <div id="cwef-links" style="display:none;margin-bottom:11px">
       <label style="font-size:11px;color:var(--m2)">Add / remove buttons</label>
-      <div style="display:flex;gap:6px;margin-top:6px;margin-bottom:6px">
-        <input type="text" id="cwEdit-link-label" class="inp" placeholder="Label" style="flex:1">
-        <select id="cwEdit-link-tab" class="inp" style="width:110px">
+      <input type="text" id="cwEdit-link-label" class="inp" style="margin-top:6px;margin-bottom:6px" placeholder="Button name">
+      <input type="text" id="cwEdit-link-url" class="inp" style="margin-bottom:6px" placeholder="paste a link" onkeydown="if(event.key==='Enter')addEditLinkItem()">
+      <select id="cwEdit-link-tab" class="inp" style="margin-bottom:8px">
+        <option value="">Use the link above</option>
           <option value="dash">🏠 Home</option>
           <option value="pomo">⏱ Pomo</option>
           <option value="habits">✅ Habits</option>
@@ -3288,9 +4100,8 @@ a,
           <option value="sched">🗓 Timetable & Cal</option>
           <option value="road">🗺 Roadmap</option>
           <option value="body">💪 Body</option>
-        </select>
-      </div>
-      <button onclick="addEditLinkItem()" class="btn b-gh sm" style="width:100%;margin-bottom:8px">+ Add Button</button>
+      </select>
+      <button onclick="addEditLinkItem()" class="btn b-gh sm" style="width:100%;margin-bottom:8px">+ Add button</button>
       <div id="cwef-links-list"></div>
     </div>
     <!-- Checklist: only the title is edited here — items/sub-items are managed directly on the card -->
@@ -3410,6 +4221,14 @@ const START = new Date("2026-06-15");
 
 // ═══ QUOTES ═══
 const QUOTES = [
+  {
+    text: "The first step of any meaningful pursuit is to severely underestimate its difficulty.",
+    author: "Sara Hooker",
+  },
+  {
+    text: "It's not what you are capable of; it's what you are willing to do. Plenty of people are capable. Fewer people are willing.",
+    author: "Mike Tomlin",
+  },
   { text: "Do or die. There is no try.", author: "Master Yoda" },
   { text: "Slow is smooth, smooth is fast.", author: "Navy SEAL" },
   { text: "Want to be the best? Work when they rest.", author: "Avikshit Mahajan" },
@@ -4446,6 +5265,7 @@ function gotoTab(id) {
   }
 }
 function openMo(id) {
+  if (id === "qTaskMo") clearQTaskForm();
   if (id === "acctMo") {
     document.getElementById("acctEmail").textContent = _user
       ? _user.email
@@ -4816,13 +5636,14 @@ function renderDash() {
   let tw = "";
   if (!rel.length) {
     tw =
-      '<div style="font-size:12px;color:var(--mt);text-align:center;padding:12px 0">No tasks in next 48 hrs</div>';
+      '<div class="rempty"><div class="big">\u25e6</div><div class="t">Nothing due in the next 48 hours</div><div class="s">Tap + to add a task.</div></div>';
   } else {
     rel.forEach((t) => {
-      let lbl, col;
+      let lbl, cls, dot;
       if (!t.date) {
         lbl = "No due date";
-        col = "var(--m2)";
+        cls = "";
+        dot = "var(--b2)";
       } else {
         const dt = new Date(t.date + "T" + (t.time || "23:59"));
         const ov = dt < now2;
@@ -4833,14 +5654,20 @@ function renderDash() {
             ? "Today"
             : t.date === nxtDay(tk)
               ? "Tomorrow"
-              : t.date;
-        col = ov ? "var(--rd)" : isT ? "var(--bd)" : "var(--m2)";
+              : fmtDue(t.date, tk);
+        cls = ov ? "is-over" : isT ? "is-today" : "is-soon";
+        dot = ov ? "var(--rd)" : isT ? "var(--wn)" : "var(--up)";
       }
-      tw += `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b)">
-      <button onclick="togTask('${t.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b2);background:none;cursor:pointer;flex-shrink:0"></button>
-      <div style="flex:1;min-width:0"><div style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.text}</div>
-      <div style="font-size:10px;color:${col};margin-top:2px">${lbl}${t.date && t.time ? " at " + t.time : ""}</div></div>
-      <button onclick="toggleTasksExpand()" style="background:none;border:none;color:var(--mt);font-size:16px;cursor:pointer">›</button>
+      tw += `<div class="row ${cls}" style="align-items:center">
+      <button class="rck" onclick="togTask('${t.id}')" title="Mark as done" aria-label="Mark as done">\u2713</button>
+      <div class="rbody" onclick="toggleTasksExpand()" style="cursor:pointer">
+        <div style="font-size:13.5px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(t.text)}</div>
+        <div style="font-size:11px;color:var(--m2);margin-top:3px;display:flex;align-items:center;gap:6px">
+          <span style="width:5px;height:5px;border-radius:99px;background:${dot};display:inline-block;flex-shrink:0"></span>
+          <span>${lbl}${t.date && t.time ? " \u00b7 " + fmtClock(t.time) : ""}</span>
+        </div>
+      </div>
+      <div class="racts"><button class="ract" onclick="toggleTasksExpand()" title="Open full task list" aria-label="Open full task list">\u203a</button></div>
     </div>`;
     });
   }
@@ -5371,15 +6198,41 @@ function resetHabDefs() {
 // ═══ WIDGET ITEM-BY-ITEM HELPERS ═══
 let _cwLinkItems = [];
 
+// A button points at either a web address or a section of this app.
+// Anything that is not http/https/mailto/tel is refused rather than trusted —
+// a "javascript:" address in an href would run as code the moment it is tapped.
+function normalizeUrl(u) {
+  u = (u || "").trim();
+  if (!u) return "";
+  if (/^(https?|mailto|tel):/i.test(u)) return u;
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(u)) return ""; // some other scheme — refuse it
+  return "https://" + u.replace(/^\/+/, "");
+}
+function linkDest(l) {
+  return l.url ? l.url.replace(/^https?:\/\//i, "") : l.tab || "";
+}
+
 function addLinkItem() {
   const label = document.getElementById("cw-link-label").value.trim();
+  const raw = document.getElementById("cw-link-url").value.trim();
+  const url = normalizeUrl(raw);
   const tab = document.getElementById("cw-link-tab").value;
   if (!label) {
-    banner("Enter a button label.");
+    banner("Give the button a name.");
     return;
   }
-  _cwLinkItems.push({ label, tab });
+  if (raw && !url) {
+    banner("That is not a web address. Paste one starting with https://");
+    return;
+  }
+  if (!url && !tab) {
+    banner("Paste a link, or pick a section to jump to.");
+    return;
+  }
+  _cwLinkItems.push(url ? { label, url } : { label, tab });
   document.getElementById("cw-link-label").value = "";
+  document.getElementById("cw-link-url").value = "";
+  document.getElementById("cw-link-tab").value = "";
   renderLinkItems();
   updateHiddenLinks();
 }
@@ -5395,16 +6248,16 @@ function renderLinkItems() {
   if (!el) return;
   if (!_cwLinkItems.length) {
     el.innerHTML =
-      '<div style="font-size:11px;color:var(--mt);padding:4px 0">No buttons added yet.</div>';
+      '<div style="font-size:11px;color:var(--mt);padding:4px 0">No buttons yet.</div>';
     return;
   }
   el.innerHTML = _cwLinkItems
     .map(
       (l, i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--s2);border-radius:8px;margin-bottom:5px">
-      <span style="flex:1;font-size:13px;color:var(--tx)">${l.label}</span>
-      <span style="font-size:10px;color:var(--mt)">${l.tab}</span>
-      <button onclick="removeLinkItem(${i})" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;padding:0 2px">×</button>
+      <span style="flex:1;min-width:0;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(l.label)}</span>
+      <span style="font-size:10px;color:var(--mt);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(linkDest(l))}</span>
+      <button onclick="removeLinkItem(${i})" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px;padding:0 2px">&times;</button>
     </div>`,
     )
     .join("");
@@ -5412,7 +6265,7 @@ function renderLinkItems() {
 
 function updateHiddenLinks() {
   const el = document.getElementById("cw-links");
-  if (el) el.value = _cwLinkItems.map((l) => l.label + "|" + l.tab).join("\n");
+  if (el) el.value = JSON.stringify(_cwLinkItems);
 }
 
 // ═══ UPSC BOOKS ═══
@@ -6081,6 +6934,44 @@ const NAV_TABS = [
 function getNavHidden() {
   return S.go("navHidden", {});
 }
+// Tab order is stored as a list of ids. Anything missing from the saved list
+// (a tab added in a later build) keeps its natural position at the end rather
+// than vanishing, so an old saved order can never hide a new section.
+function getNavOrder() {
+  const saved = S.go("navOrder", []);
+  const byId = {};
+  NAV_TABS.forEach((t) => (byId[t.id] = t));
+  const out = [];
+  saved.forEach((id) => {
+    if (byId[id] && out.indexOf(byId[id]) < 0) out.push(byId[id]);
+  });
+  NAV_TABS.forEach((t) => {
+    if (out.indexOf(t) < 0) out.push(t);
+  });
+  // Home is the app's front door; it is pinned first and never reorderable.
+  const home = out.filter((t) => t.id === "dash");
+  return home.concat(out.filter((t) => t.id !== "dash"));
+}
+function orderedNavTabs() {
+  return getNavOrder();
+}
+function moveNavTab(id, dir) {
+  if (id === "dash") return;
+  const order = getNavOrder().map((t) => t.id);
+  const i = order.indexOf(id);
+  const j = i + dir;
+  if (i < 0 || j < 1 || j >= order.length) return; // index 0 belongs to Home
+  order.splice(j, 0, order.splice(i, 1)[0]);
+  S.s("navOrder", order);
+  renderNavAll();
+  renderNavCfgList();
+}
+function resetNavOrder() {
+  S.d("navOrder");
+  renderNavAll();
+  renderNavCfgList();
+  banner("Tab order reset.");
+}
 function getNavLabels() {
   return S.go("navLabels", {});
 }
@@ -6098,7 +6989,7 @@ function escAttr(s) {
 
 function renderTopNav() {
   const hidden = getNavHidden();
-  let visible = NAV_TABS.filter((t) => !hidden[t.id]);
+  let visible = orderedNavTabs().filter((t) => !hidden[t.id]);
   if (!visible.length) visible = [NAV_TABS[0]]; // fail-safe: never leave the app with zero nav entries
   let html = "";
   visible.forEach((t) => {
@@ -6111,7 +7002,7 @@ function renderTopNav() {
 
 function renderBottomNav() {
   const hidden = getNavHidden();
-  const primary = NAV_TABS.filter((t) => t.primary && !hidden[t.id]);
+  const primary = orderedNavTabs().filter((t) => t.primary && !hidden[t.id]);
   let html = "";
   primary.forEach((t) => {
     html += `<button class="bnbt" onclick="showV('${t.id}')"><span class="ic">${t.icon}</span><span class="lbl">${navLabel(t).length > 8 ? t.shortLabel || navLabel(t) : navLabel(t)}</span></button>`;
@@ -6123,7 +7014,7 @@ function renderBottomNav() {
 
 function renderMoreMenu() {
   const hidden = getNavHidden();
-  const secondary = NAV_TABS.filter((t) => !t.primary && !hidden[t.id]);
+  const secondary = orderedNavTabs().filter((t) => !t.primary && !hidden[t.id]);
   let html = "";
   secondary.forEach((t) => {
     const action = t.pseudo
@@ -6140,7 +7031,7 @@ function renderMoreMenu() {
 
 function renderMobileNavCollapse() {
   const hidden = getNavHidden();
-  let visible = NAV_TABS.filter((t) => !hidden[t.id]);
+  let visible = orderedNavTabs().filter((t) => !hidden[t.id]);
   if (!visible.length) visible = [NAV_TABS[0]];
   let html = "";
   visible.forEach((t) => {
@@ -6213,18 +7104,29 @@ function renameNavTab(id, val) {
 function renderNavCfgList() {
   const hidden = getNavHidden();
   const labels = getNavLabels();
+  const tabs = orderedNavTabs().filter((t) => t.id !== "dash");
   let h = "";
-  NAV_TABS.filter((t) => t.id !== "dash").forEach((t) => {
+  tabs.forEach((t, i) => {
     const on = !hidden[t.id];
     const val = labels[t.id] || "";
-    h += `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--b)">
+    const up = i > 0;
+    const down = i < tabs.length - 1;
+    h += `<div style="display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:1px solid var(--b)">
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+        <button onclick="moveNavTab('${t.id}',-1)" ${up ? "" : "disabled"} title="Move up" aria-label="Move ${escAttr(navLabel(t))} up" style="background:var(--s2);border:1px solid var(--b);border-radius:6px;width:26px;height:19px;line-height:1;font-size:9px;color:var(--m2);cursor:${up ? "pointer" : "default"};opacity:${up ? 1 : 0.3};padding:0">&#9650;</button>
+        <button onclick="moveNavTab('${t.id}',1)" ${down ? "" : "disabled"} title="Move down" aria-label="Move ${escAttr(navLabel(t))} down" style="background:var(--s2);border:1px solid var(--b);border-radius:6px;width:26px;height:19px;line-height:1;font-size:9px;color:var(--m2);cursor:${down ? "pointer" : "default"};opacity:${down ? 1 : 0.3};padding:0">&#9660;</button>
+      </div>
       <span style="font-size:16px;flex-shrink:0">${t.icon}</span>
-      <input type="text" class="inp" style="flex:1;font-size:12px;padding:6px 9px" value="${escAttr(val)}" placeholder="${escAttr(t.label)}" onchange="renameNavTab('${t.id}',this.value)">
-      <button onclick="toggleNavTab('${t.id}')" style="background:${on ? "var(--ai)" : "var(--s3)"};border:none;border-radius:12px;width:44px;height:24px;cursor:pointer;position:relative;flex-shrink:0;transition:background .2s">
+      <input type="text" class="inp" style="flex:1;min-width:0;font-size:12px;padding:6px 9px" value="${escAttr(val)}" placeholder="${escAttr(t.label)}" onchange="renameNavTab('${t.id}',this.value)">
+      <button onclick="toggleNavTab('${t.id}')" title="${on ? "Hide this tab" : "Show this tab"}" aria-label="${on ? "Hide" : "Show"} ${escAttr(navLabel(t))}" style="background:${on ? "var(--ai)" : "var(--s3)"};border:none;border-radius:12px;width:44px;height:24px;cursor:pointer;position:relative;flex-shrink:0;transition:background .2s">
         <span style="position:absolute;top:3px;left:${on ? "22" : "3"}px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;display:block"></span>
       </button>
     </div>`;
   });
+  h += `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:10px">
+    <span style="font-size:11px;color:var(--mt)">Arrows reorder your tabs. Home always stays first.</span>
+    <button class="btn b-gh sm" onclick="resetNavOrder()">Reset order</button>
+  </div>`;
   const el = document.getElementById("navCfgList");
   if (el) el.innerHTML = h;
 }
@@ -6679,7 +7581,12 @@ function openDashCfg() {
     }
   }
   renderNavCfgList();
-  document.getElementById("dashCfgMo").classList.add("op");
+  const _dcMo = document.getElementById("dashCfgMo");
+  // Only wipe the composer when the panel is opening fresh — this function also
+  // re-runs after every toggle/delete, and clearing there would eat a title the
+  // user was halfway through typing.
+  if (_dcMo && !_dcMo.classList.contains("op")) resetCWForm();
+  _dcMo.classList.add("op");
 }
 
 function toggleDashWidget(id) {
@@ -6703,6 +7610,47 @@ function toggleCW(id) {
 
 function switchDCTab(tab) {
   /* no-op - tabs removed */
+}
+
+// ═══ ADD-WIDGET FORM RESET ═══
+// The composer used to keep whatever you last typed. Create "Gym plan", come
+// back to add a second widget, and "Gym plan" was still sitting in the title
+// box with its type still selected — so it looked like the previous widget had
+// come back. Clear it on every save AND every time the panel opens.
+function resetCWForm() {
+  _cwType = null;
+  try {
+    _cwLinkItems = [];
+    renderLinkItems();
+    updateHiddenLinks();
+  } catch (e) {}
+  [
+    "cwTitle",
+    "cw-date",
+    "cw-note",
+    "cw-links",
+    "cw-link-label",
+    "cw-link-url",
+    "cw-link-tab",
+  ].forEach((k) => {
+    const el = document.getElementById(k);
+    if (el) el.value = "";
+  });
+  ["countdown", "note", "links", "checklist"].forEach((t) => {
+    const f = document.getElementById("cwf-" + t);
+    if (f) f.style.display = "none";
+    const b = document.getElementById("cwt-" + t);
+    if (b) {
+      b.style.border = "1px solid var(--b)";
+      b.style.background = "var(--s2)";
+      b.style.color = "var(--m2)";
+    }
+  });
+  const hint = document.getElementById("cwTypeHint");
+  if (hint) {
+    hint.textContent = "Pick a type above to start.";
+    hint.style.color = "var(--mt)";
+  }
 }
 
 function setCWType(type) {
@@ -6772,20 +7720,12 @@ function addCustomWidget() {
       enabled: true,
     };
   } else if (_cwType === "links") {
-    const rawEl = document.getElementById("cw-links");
-    const raw = (rawEl ? rawEl.value : "").trim();
-    const links = raw
-      .split("\n")
-      .map((l) => {
-        const p = l.split("|");
-        return { label: (p[0] || "").trim(), tab: (p[1] || "").trim() };
-      })
-      .filter((l) => l.label && l.tab);
+    const links = _cwLinkItems.filter((l) => l.label && (l.url || l.tab));
     if (!links.length) {
-      banner("Format: Label | tab-id  e.g. UPSC | upsc");
+      banner("Add at least one button first.");
       return;
     }
-    widget = { id, type: "links", title, links, enabled: true };
+    widget = { id, type: "links", title, links: [...links], enabled: true };
   } else if (_cwType === "checklist") {
     widget = { id, type: "checklist", title, items: [], enabled: true };
   }
@@ -6798,6 +7738,10 @@ function addCustomWidget() {
   const cw = S.go("customWidgets", []);
   cw.push(widget);
   S.s("customWidgets", cw);
+
+  // Wipe the composer so the next "add" starts blank instead of showing the
+  // widget that was just created.
+  resetCWForm();
 
   // Close modal and go to dashboard
   closeMo("dashCfgMo");
@@ -6925,13 +7869,25 @@ function saveEditCW() {
 
 function addEditLinkItem() {
   const label = document.getElementById("cwEdit-link-label").value.trim();
+  const raw = document.getElementById("cwEdit-link-url").value.trim();
+  const url = normalizeUrl(raw);
   const tab = document.getElementById("cwEdit-link-tab").value;
   if (!label) {
-    banner("Enter a label.");
+    banner("Give the button a name.");
     return;
   }
-  _editLinkItems.push({ label, tab });
+  if (raw && !url) {
+    banner("That is not a web address. Paste one starting with https://");
+    return;
+  }
+  if (!url && !tab) {
+    banner("Paste a link, or pick a section to jump to.");
+    return;
+  }
+  _editLinkItems.push(url ? { label, url } : { label, tab });
   document.getElementById("cwEdit-link-label").value = "";
+  document.getElementById("cwEdit-link-url").value = "";
+  document.getElementById("cwEdit-link-tab").value = "";
   renderEditLinkItems();
 }
 
@@ -6947,7 +7903,7 @@ function renderEditLinkItems() {
     ? _editLinkItems
         .map(
           (l, i) =>
-            `<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:var(--s2);border-radius:8px;margin-bottom:4px"><span style="flex:1;font-size:13px;color:var(--tx)">${l.label}</span><span style="font-size:10px;color:var(--mt)">${l.tab}</span><button onclick="removeEditLinkItem(${i})" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px">×</button></div>`,
+            `<div style="display:flex;align-items:center;gap:8px;padding:5px 9px;background:var(--s2);border-radius:8px;margin-bottom:4px"><span style="flex:1;min-width:0;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(l.label)}</span><span style="font-size:10px;color:var(--mt);max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(linkDest(l))}</span><button onclick="removeEditLinkItem(${i})" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:15px">&times;</button></div>`,
         )
         .join("")
     : '<div style="font-size:11px;color:var(--mt);padding:4px 0">No buttons yet.</div>';
@@ -7382,31 +8338,34 @@ function toggleClDone(wid) {
   _clDoneOpen[wid] = !_clDoneOpen[wid];
   applyDashCfg();
 }
-function renderChecklistItems(items, wid) {
+function renderChecklistItems(items, wid, draggable) {
   if (!items || !items.length) return "";
+  const canDrag = draggable !== false;
   return items
     .map((it, idx) => {
       const nested = it.indent === 1;
-      const canIndent = !nested && idx > 0; // Keep rule: first item can never nest
+      const canIndent = !nested && idx > 0; // first item can never nest
       const canOutdent = nested;
-      // Indent/outdent buttons: Tab/Shift+Tab still work with a physical
-      // keyboard, but most phone on-screen keyboards have NO Tab key at all —
-      // that made nesting completely impossible to trigger on mobile. These
-      // small ⇥ / ⇤ buttons are the touch-friendly way to do the same thing.
+      // Tab / Shift+Tab still work on a real keyboard, but phone keyboards
+      // have no Tab key at all — these buttons are how nesting happens on
+      // touch. They used to be hidden behind :hover, which on a phone meant
+      // they were simply unreachable.
       const nestBtn = canIndent
-        ? `<button onclick="indentChecklistItem('${wid}','${it.id}')" title="Make sub-item" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:14px;padding:0 3px;flex-shrink:0;line-height:1">⇥</button>`
+        ? `<button class="ract" onclick="indentChecklistItem('${wid}','${it.id}')" title="Make sub-item" aria-label="Make sub-item">&#8677;</button>`
         : canOutdent
-          ? `<button onclick="outdentChecklistItem('${wid}','${it.id}')" title="Un-nest" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:14px;padding:0 3px;flex-shrink:0;line-height:1">⇤</button>`
-          : `<span style="width:19px;flex-shrink:0"></span>`;
-      return `<div class="cli" data-id="${it.id}" data-indent="${it.indent || 0}" style="display:flex;align-items:center;gap:5px;padding:5px 0;${nested ? "margin-left:34px" : ""}">
-      ${nested ? "" : `<span onpointerdown="cliPointerStart(event,'${wid}','${it.id}')" style="cursor:grab;touch-action:none;color:var(--mt);font-size:14px;flex-shrink:0;user-select:none;letter-spacing:-2px;line-height:1;padding:4px 2px">⠿⠿</span>`}
-      <button onclick="toggleChecklistItem('${wid}','${it.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${it.done ? "var(--ai)" : "var(--b2)"};background:${it.done ? "var(--ai)" : "none"};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${it.done ? "✓" : ""}</button>
-      <input type="text" id="cli-${it.id}" class="cli-inp" value="${escAttr(it.text || "")}" placeholder="List item"
+          ? `<button class="ract" onclick="outdentChecklistItem('${wid}','${it.id}')" title="Move back out" aria-label="Move back out">&#8676;</button>`
+          : "";
+      const grab =
+        nested || !canDrag
+          ? ""
+          : `<span class="ract grab" onpointerdown="cliPointerStart(event,'${wid}','${it.id}')" title="Drag to reorder">&#10287;</span>`;
+      return `<div class="row cli${nested ? " nest" : ""}${it.done ? " is-done" : ""}" data-id="${it.id}" data-indent="${it.indent || 0}" style="align-items:center">
+      ${grab}
+      <button class="rck${it.done ? " on" : ""}" onclick="toggleChecklistItem('${wid}','${it.id}')" title="${it.done ? "Mark as not done" : "Mark as done"}" aria-label="${it.done ? "Mark as not done" : "Mark as done"}">&#10003;</button>
+      <input type="text" id="cli-${it.id}" class="rtext cli-inp" style="flex:1;min-width:0" value="${escAttr(it.text || "")}" placeholder="List item"
         oninput="updateChecklistText('${wid}','${it.id}',this.value)"
-        onkeydown="handleChecklistKeydown(event,'${wid}','${it.id}')"
-        style="flex:1;min-width:0;background:none;border:none;outline:none;font-size:14px;font-family:inherit;padding:5px 0;color:${it.done ? "var(--m2)" : "var(--tx)"};text-decoration:${it.done ? "line-through" : "none"}">
-      ${nestBtn}
-      <button onclick="deleteChecklistItem('${wid}','${it.id}')" title="Delete" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;line-height:1">×</button>
+        onkeydown="handleChecklistKeydown(event,'${wid}','${it.id}')">
+      <div class="racts">${nestBtn}<button class="ract del" onclick="deleteChecklistItem('${wid}','${it.id}')" title="Delete item" aria-label="Delete item">&times;</button></div>
     </div>`;
     })
     .join("");
@@ -7503,42 +8462,58 @@ function renderCWWidget(w) {
     </div>`;
   }
   if (w.type === "links") {
+    // A web button is a real <a>, so one tap opens it — nothing intercepts the
+    // click, and long-press / middle-click behave the way links should.
     const btns = (w.links || [])
-      .map(
-        (l) =>
-          `<button onclick="gotoTab('${l.tab}')" class="btn b-gh" style="flex:1;min-width:90px;padding:10px;font-size:12px;border-radius:9px">${l.label}</button>`,
-      )
+      .map((l) => {
+        const label = escAttr(l.label || "");
+        if (l.url) {
+          const href = normalizeUrl(l.url);
+          if (!href) return "";
+          return `<a class="lnkbtn" href="${escAttr(href)}" target="_blank" rel="noopener noreferrer" title="${escAttr(href)}"><span class="lb">${label}</span><span class="ext">&#8599;</span></a>`;
+        }
+        return `<button class="lnkbtn" onclick="gotoTab('${l.tab}')"><span class="lb">${label}</span></button>`;
+      })
       .join("");
-    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title}</div><div style="display:flex;flex-wrap:wrap;gap:7px">${btns}</div></div>`;
+    return `<div class="wc"><div class="clhead"><div class="t">${escAttr(w.title)}</div></div><div class="lnkwrap">${btns || '<div style="font-size:11px;color:var(--mt)">No buttons yet — edit this widget to add one.</div>'}</div></div>`;
   }
   if (w.type === "checklist") {
     const items = w.items || [];
     const { total, done } = countChecklistProgress(items);
+    const pct = total ? Math.round((done / total) * 100) : 0;
     // Split into blocks (a top-level item + its nested sub-items) so a fully
-    // checked-off item drops down into the Completed dropdown as one group,
-    // while items still in progress stay up top in their working order.
+    // checked-off item drops into the Completed drawer as one group, while
+    // anything still in progress stays up top in its working order.
     const blocks = splitChecklistBlocks(items);
-    const activeBlocks = blocks.filter((b) => !b.parent || !b.parent.done);
-    const doneBlocks = blocks.filter((b) => b.parent && b.parent.done);
-    const activeItems = flattenChecklistBlocks(activeBlocks);
-    const doneItems = flattenChecklistBlocks(doneBlocks);
-    const activeRows = renderChecklistItems(activeItems, w.id);
+    const activeItems = flattenChecklistBlocks(
+      blocks.filter((b) => !b.parent || !b.parent.done),
+    );
+    const doneItems = flattenChecklistBlocks(
+      blocks.filter((b) => b.parent && b.parent.done),
+    );
+    const activeRows = renderChecklistItems(activeItems, w.id, true);
     const isOpen = !!_clDoneOpen[w.id];
     const doneSection = doneItems.length
-      ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--b)">
-          <div onclick="toggleClDone('${w.id}')" style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;padding:4px 0;font-size:12px;color:var(--m2)">
-            <span style="display:inline-block;transition:transform .15s ease;transform:rotate(${isOpen ? 90 : 0}deg);font-size:10px">▶</span>
-            <span>Completed (${doneItems.length})</span>
-          </div>
-          <div style="display:${isOpen ? "block" : "none"}">${renderChecklistItems(doneItems, w.id)}</div>
-        </div>`
+      ? `<div class="rdone-tog${isOpen ? " open" : ""}" onclick="toggleClDone('${w.id}')">
+          <span class="caret">&#9654;</span><span>Completed</span><span class="n" style="color:var(--mt)">${doneItems.length}</span>
+        </div>
+        <div style="display:${isOpen ? "block" : "none"}">${renderChecklistItems(doneItems, w.id, false)}</div>`
       : "";
-    return `<div class="wc"><div class="ct" style="font-size:14px;font-weight:600">${w.title} <span style="font-size:11px;font-weight:400;color:var(--m2)">${done}/${total}</span></div>
-      <div id="clw-${w.id}">${activeRows}${doneSection}</div>
-      <div onclick="addTopChecklistItem('${w.id}')" style="display:flex;align-items:center;gap:8px;padding:7px 0 2px;cursor:text;color:var(--mt)">
-        <span style="font-size:16px;width:20px;text-align:center;flex-shrink:0">+</span>
-        <span style="font-size:14px">List item</span>
+    const emptyState = !total
+      ? `<div class="rempty" style="padding:14px 10px"><div class="t">This list is empty</div><div class="s">Add your first item below.</div></div>`
+      : "";
+    return `<div class="wc">
+      <div class="clhead">
+        <div class="t">${escAttr(w.title)}</div>
+        <div class="n">${done}/${total}</div>
       </div>
+      <div class="clbar"><i style="width:${pct}%"></i></div>
+      ${emptyState}
+      <div id="clw-${w.id}">${activeRows}</div>
+      <div class="cladd" onclick="addTopChecklistItem('${w.id}')">
+        <span style="font-size:15px;line-height:1">+</span><span>Add item</span>
+      </div>
+      ${doneSection}
     </div>`;
   }
   return "";
@@ -7579,6 +8554,159 @@ function applyTheme() {
   if (meta) meta.content = colors[t] || "#0c0c0f";
 }
 
+// ═══ LEAF ICONS (pink theme) ═══
+// While the pink theme is on, every emoji in the interface is swapped for one
+// of four hand-drawn leaves. The swap is reversible: each leaf keeps the emoji
+// it replaced in data-e, so switching themes puts the original characters back
+// without needing a reload.
+const LEAF_EMOJI_RE =
+  /\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu;
+const LEAF_HAS_EMOJI =
+  /\p{Extended_Pictographic}/u;
+const LEAF_SKIP_TAGS = {
+  SCRIPT: 1,
+  STYLE: 1,
+  TEXTAREA: 1,
+  INPUT: 1,
+  SELECT: 1,
+  OPTION: 1,
+  NOSCRIPT: 1,
+};
+let _leafOn = false;
+let _leafBusy = false;
+let _leafScheduled = false;
+let _leafObs = null;
+let _leafQueue = new Set();
+
+// Same emoji -> same leaf, every time.
+function leafIndexFor(str) {
+  let h = 0;
+  for (const ch of str) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return (h % 4) + 1;
+}
+
+function leafSkippable(node) {
+  let p = node.parentNode;
+  while (p && p !== document.documentElement) {
+    if (p.nodeType === 1) {
+      if (LEAF_SKIP_TAGS[p.tagName]) return true;
+      if (p.classList && p.classList.contains("leafico")) return true;
+      if (p.id === "pinkFloat" || p.id === "pinkCursor") return true;
+      if (p.isContentEditable) return true;
+    }
+    p = p.parentNode;
+  }
+  return false;
+}
+
+function leafify(root) {
+  if (!root || !root.isConnected) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const hits = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    if (!n.nodeValue || !LEAF_HAS_EMOJI.test(n.nodeValue)) continue;
+    if (leafSkippable(n)) continue;
+    hits.push(n);
+  }
+  hits.forEach((node) => {
+    const s = node.nodeValue;
+    const frag = document.createDocumentFragment();
+    let last = 0,
+      m;
+    LEAF_EMOJI_RE.lastIndex = 0;
+    while ((m = LEAF_EMOJI_RE.exec(s))) {
+      if (m.index > last)
+        frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+      const sp = document.createElement("span");
+      sp.className = "leafico lf" + leafIndexFor(m[0]);
+      sp.setAttribute("data-e", m[0]);
+      sp.setAttribute("role", "img");
+      sp.setAttribute("aria-label", m[0]);
+      frag.appendChild(sp);
+      last = m.index + m[0].length;
+    }
+    if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+    if (node.parentNode) node.parentNode.replaceChild(frag, node);
+  });
+}
+
+function unleafify() {
+  document.querySelectorAll(".leafico[data-e]").forEach((sp) => {
+    if (sp.parentNode)
+      sp.parentNode.replaceChild(
+        document.createTextNode(sp.getAttribute("data-e")),
+        sp,
+      );
+  });
+}
+
+function scheduleLeafPass() {
+  if (_leafScheduled) return;
+  _leafScheduled = true;
+  requestAnimationFrame(() => {
+    _leafScheduled = false;
+    if (!_leafOn) {
+      _leafQueue.clear();
+      return;
+    }
+    const roots = Array.from(_leafQueue);
+    _leafQueue.clear();
+    _leafBusy = true;
+    try {
+      roots.forEach(leafify);
+    } finally {
+      _leafBusy = false;
+    }
+  });
+}
+
+function startLeafIcons() {
+  if (_leafOn) return;
+  _leafOn = true;
+  _leafBusy = true;
+  try {
+    leafify(document.body);
+  } finally {
+    _leafBusy = false;
+  }
+  if (!_leafObs) {
+    // The app re-renders constantly, so rather than re-scanning the whole page
+    // every time, only the subtrees that actually changed get queued.
+    _leafObs = new MutationObserver((muts) => {
+      if (_leafBusy || !_leafOn) return;
+      muts.forEach((mu) => {
+        if (mu.type === "childList") {
+          mu.addedNodes.forEach((nd) => {
+            const el = nd.nodeType === 3 ? nd.parentNode : nd;
+            if (el && el.nodeType === 1) _leafQueue.add(el);
+          });
+        } else if (mu.type === "characterData" && mu.target.parentNode) {
+          _leafQueue.add(mu.target.parentNode);
+        }
+      });
+      if (_leafQueue.size) scheduleLeafPass();
+    });
+  }
+  _leafObs.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
+}
+
+function stopLeafIcons() {
+  _leafOn = false;
+  _leafQueue.clear();
+  if (_leafObs) _leafObs.disconnect();
+  _leafBusy = true;
+  try {
+    unleafify();
+  } finally {
+    _leafBusy = false;
+  }
+}
+
 // ═══ PINK EFFECTS ═══
 let _pinkInt = null;
 const PINK_EMOJIS = [
@@ -7605,17 +8733,20 @@ const PINK_EMOJIS = [
 ];
 
 function startPinkEffects() {
+  startLeafIcons();
   if (_pinkInt) return;
-  // Launch a floating emoji every 1.2s
-  _pinkInt = setInterval(launchFloatEmoji, 1200);
-  // Launch a few immediately
-  for (let i = 0; i < 4; i++) setTimeout(launchFloatEmoji, i * 300);
+  // A new leaf roughly every 0.9s keeps a steady light flurry on screen
+  // without ever having too many mid-air at once.
+  _pinkInt = setInterval(launchFloatEmoji, 900);
+  // Launch a handful immediately so the effect doesn't start empty.
+  for (let i = 0; i < 6; i++) setTimeout(launchFloatEmoji, i * 220);
   // Cursor sparkle trail
   document.addEventListener("mousemove", pinkCursorTrail);
   document.addEventListener("touchmove", pinkTouchTrail, { passive: true });
 }
 
 function stopPinkEffects() {
+  stopLeafIcons();
   if (_pinkInt) {
     clearInterval(_pinkInt);
     _pinkInt = null;
@@ -7626,19 +8757,55 @@ function stopPinkEffects() {
   document.removeEventListener("touchmove", pinkTouchTrail);
 }
 
+// One leaf, carried across the screen like wind is taking it. The outer
+// .pf-leaf div drifts through four random horizontal waypoints while
+// falling (the "swirl"); the inner .leafico span flutters on its own axis
+// at a different, faster rate, so the two rotations never sync up and the
+// motion doesn't look mechanical.
 function launchFloatEmoji() {
   if (!document.body.classList.contains("pink")) return;
   const fc = document.getElementById("pinkFloat");
   if (!fc) return;
   const el = document.createElement("div");
-  el.className = "pf-emoji";
-  el.textContent = PINK_EMOJIS[Math.floor(Math.random() * PINK_EMOJIS.length)];
-  const dur = 5 + Math.random() * 7; // 5-12s
+  el.className = "pf-leaf";
+  const lf = document.createElement("span");
+  lf.className = "leafico lf" + (1 + Math.floor(Math.random() * 4));
+  lf.setAttribute("aria-hidden", "true");
+  el.appendChild(lf);
+
+  const dur = 8 + Math.random() * 8; // 8-16s to cross the screen
   const left = Math.random() * 100;
-  const size = 14 + Math.random() * 16; // 14-30px
-  el.style.cssText = `left:${left}%;font-size:${size}px;animation-duration:${dur}s;animation-delay:${Math.random() * 2}s;opacity:0.7;`;
+  const size = 16 + Math.random() * 18; // 16-34px
+  const drift = 35 + Math.random() * 55; // px of sideways travel per waypoint
+  // Alternating signs (+, -, +, -) with a random starting side is what
+  // reads as "gust, settle, gust" rather than one smooth diagonal glide.
+  const sign = Math.random() < 0.5 ? 1 : -1;
+  const x1 = sign * (drift * (0.5 + Math.random() * 0.5));
+  const x2 = -sign * (drift * (0.7 + Math.random() * 0.6));
+  const x3 = sign * (drift * (0.6 + Math.random() * 0.6));
+  const x4 = -sign * (drift * (0.3 + Math.random() * 0.5));
+  // Rotation keeps accumulating in one direction (real leaves tumbling in
+  // wind don't reverse spin), with enough randomness per waypoint that
+  // leaves don't all turn in lockstep.
+  const spin = Math.random() < 0.5 ? 1 : -1;
+  const r1 = spin * (60 + Math.random() * 60);
+  const r2 = spin * (160 + Math.random() * 90);
+  const r3 = spin * (280 + Math.random() * 100);
+  const r4 = spin * (400 + Math.random() * 140);
+  const op = (0.55 + Math.random() * 0.3).toFixed(2);
+  const flutterDur = (0.8 + Math.random() * 0.9).toFixed(2);
+
+  el.style.cssText =
+    `left:${left}%;font-size:${size}px;` +
+    `animation-duration:${dur}s;animation-delay:${(Math.random() * 3).toFixed(2)}s;` +
+    `--x1:${x1.toFixed(0)}px;--x2:${x2.toFixed(0)}px;--x3:${x3.toFixed(0)}px;--x4:${x4.toFixed(0)}px;` +
+    `--r1:${r1.toFixed(0)}deg;--r2:${r2.toFixed(0)}deg;--r3:${r3.toFixed(0)}deg;--r4:${r4.toFixed(0)}deg;` +
+    `--lf-op:${op};`;
+  lf.style.animationDuration = flutterDur + "s";
+  lf.style.animationDelay = (Math.random() * 1).toFixed(2) + "s";
+
   fc.appendChild(el);
-  setTimeout(() => el.remove(), (dur + 2) * 1000);
+  setTimeout(() => el.remove(), (dur + 3) * 1000);
 }
 
 const SPARKLE_COLORS = [
@@ -8391,13 +9558,56 @@ function toggleTasksExpand() {
     renderTasks();
   }
 }
+// ═══ TASK LIST (rebuilt) ═══
+// Each row carries its state on a 3px left rail, so urgency is readable
+// before you read the text. Date/time are chips with the native input laid
+// invisibly on top — same events as before, none of the dd/mm/yyyy clutter.
+function openPicker(inp) {
+  if (!inp) return;
+  try {
+    inp.showPicker();
+  } catch (e) {
+    try {
+      inp.focus();
+    } catch (e2) {}
+  }
+}
+function fmtDue(d, tk) {
+  if (!d) return "";
+  if (d === tk) return "Today";
+  if (d === nxtDay(tk)) return "Tomorrow";
+  const dt = new Date(d + "T00:00");
+  if (isNaN(dt)) return d;
+  const opts =
+    dt.getFullYear() === new Date().getFullYear()
+      ? { day: "numeric", month: "short" }
+      : { day: "numeric", month: "short", year: "numeric" };
+  return dt.toLocaleDateString(undefined, opts);
+}
+function fmtClock(t) {
+  if (!t) return "";
+  const p = t.split(":");
+  const h = Number(p[0]),
+    m = p[1] || "00";
+  if (isNaN(h)) return t;
+  const ap = h >= 12 ? "pm" : "am";
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return hh + ":" + m + ap;
+}
+function taskState(t, tk) {
+  if (t.done) return "done";
+  if (!t.date) return "none";
+  if (t.date < tk) return "over";
+  if (t.date === tk) return "today";
+  return "soon";
+}
+
 function renderTasks() {
   try {
     updateLiveNotification();
   } catch (e) {}
   const tasks = getTasks();
   const tk = TK();
-  const now = new Date();
   let active = [],
     done = [];
 
@@ -8411,13 +9621,12 @@ function renderTasks() {
     active = [];
     done = tasks.filter((t) => t.done);
   } else {
-    // all
     active = tasks.filter((t) => !t.done);
     done = tasks.filter((t) => t.done);
   }
 
-  // Sort active: tasks with no due date float to the top (highest priority to
-  // surface since they're not yet scheduled); dated tasks follow, soonest first.
+  // Undated tasks float to the top (nothing has claimed a slot for them yet),
+  // then dated tasks soonest-first.
   active.sort((a, b) => {
     if (!a.date && !b.date) return 0;
     if (!a.date) return -1;
@@ -8427,55 +9636,117 @@ function renderTasks() {
     return da - db;
   });
 
+  function taskRow(t) {
+    const st = taskState(t, tk);
+    const cls =
+      st === "done"
+        ? "is-done"
+        : st === "over"
+          ? "is-over"
+          : st === "today"
+            ? "is-today"
+            : st === "soon"
+              ? "is-soon"
+              : "";
+
+    // Unscheduled tasks get one quiet "Schedule" chip instead of two empty
+    // pickers shouting dd/mm/yyyy and --:-- at you.
+    let meta;
+    if (!t.date && !t.time) {
+      meta = `<label class="chip" title="Set a due date">
+        <span class="ico">📅</span><span>Schedule</span>
+        <input type="date" value="" onclick="openPicker(this)" onchange="updateTaskDate('${t.id}',this.value)">
+      </label>`;
+    } else {
+      const dCls = st === "over" ? "chip bad" : st === "today" ? "chip warn" : "chip set";
+      meta = `<label class="${t.date ? dCls : "chip"}" title="Due date">
+        <span class="ico">📅</span><span>${t.date ? fmtDue(t.date, tk) : "Add date"}</span>
+        <input type="date" value="${t.date || ""}" onclick="openPicker(this)" onchange="updateTaskDate('${t.id}',this.value)">
+      </label>
+      <label class="chip${t.time ? " set" : ""}" title="Due time">
+        <span class="ico">⏱</span><span>${t.time ? fmtClock(t.time) : "Add time"}</span>
+        <input type="time" value="${t.time || ""}" onclick="openPicker(this)" onchange="updateTaskTime('${t.id}',this.value)">
+      </label>`;
+    }
+
+    return `<div class="row ${cls}">
+      <button class="rck${t.done ? " on" : ""}" onclick="togTask('${t.id}')" title="${t.done ? "Mark as not done" : "Mark as done"}" aria-label="${t.done ? "Mark as not done" : "Mark as done"}">✓</button>
+      <div class="rbody">
+        <input type="text" class="rtext" value="${escAttr(t.text)}" placeholder="Untitled task"
+          oninput="updateTaskText('${t.id}',this.value)" onblur="renderDash()">
+        <div class="rmeta">${meta}</div>
+      </div>
+      <div class="racts">
+        <button class="ract del" onclick="deleteTaskInline('${t.id}')" title="Delete task" aria-label="Delete task">×</button>
+      </div>
+    </div>`;
+  }
+
+  function group(label, colour, list) {
+    if (!list.length) return "";
+    return (
+      `<div class="rgroup"><span class="dot" style="background:${colour}"></span><span>${label}</span><span class="n">${list.length}</span><span class="line"></span></div>` +
+      list.map(taskRow).join("")
+    );
+  }
+
+  const el = document.getElementById("tskList");
+  if (!el) return;
+
   if (!active.length && !done.length) {
-    document.getElementById("tskList").innerHTML =
-      `<div style="text-align:center;padding:32px;color:var(--mt);font-size:13px">No tasks here.</div>`;
+    const msg =
+      _tf === "done"
+        ? ["Nothing finished yet", "Tick a task off and it lands here."]
+        : _tf === "today"
+          ? ["Nothing due today", "Enjoy it, or pull something forward."]
+          : _tf === "up"
+            ? ["Nothing scheduled ahead", "Give a task a date to see it here."]
+            : ["No tasks yet", "Add the first one above."];
+    el.innerHTML = `<div class="rempty"><div class="big">◦</div><div class="t">${msg[0]}</div><div class="s">${msg[1]}</div></div>`;
     return;
   }
 
-  function taskCard(t) {
-    let ov = false,
-      isT = false;
-    if (t.date) {
-      if (t.date === tk) isT = true;
-      else if (t.date < tk && !t.done) ov = true;
-    } else if (t.time) isT = true;
-    const border = ov
-      ? "rgba(232,96,96,.35)"
-      : isT && !t.done
-        ? "rgba(232,150,90,.35)"
-        : "var(--b)";
-    return `<div class="tsk-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid ${border}">
-      <button onclick="togTask('${t.id}')" style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${t.done ? "var(--ai)" : "var(--b2)"};background:${t.done ? "var(--ai)" : "none"};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${t.done ? "✓" : ""}</button>
-      <input type="text" value="${escAttr(t.text)}" oninput="updateTaskText('${t.id}',this.value)" onblur="renderDash()" style="flex:1;min-width:80px;background:none;border:none;outline:none;font-size:13px;font-family:inherit;padding:4px 0;color:${t.done ? "var(--m2)" : "var(--tx)"};text-decoration:${t.done ? "line-through" : "none"}">
-      <input type="date" value="${t.date || ""}" onchange="updateTaskDate('${t.id}',this.value)" title="Due date" style="background:none;border:none;outline:none;font-size:11px;color:${ov ? "var(--rd)" : "var(--m2)"};width:118px;flex-shrink:0">
-      <input type="time" value="${t.time || ""}" onchange="updateTaskTime('${t.id}',this.value)" title="Due time" style="background:none;border:none;outline:none;font-size:11px;color:var(--m2);width:82px;flex-shrink:0">
-      <button onclick="deleteTaskInline('${t.id}')" title="Delete" style="background:none;border:none;color:var(--mt);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;line-height:1">×</button>
-    </div>`;
+  let h = "";
+  if (_tf === "all") {
+    // Grouping only earns its place on the unfiltered list, where the mix of
+    // overdue/today/later is exactly what you need to see at a glance.
+    h += group(
+      "Overdue",
+      "var(--rd)",
+      active.filter((t) => taskState(t, tk) === "over"),
+    );
+    h += group(
+      "Today",
+      "var(--wn)",
+      active.filter((t) => taskState(t, tk) === "today"),
+    );
+    h += group(
+      "Upcoming",
+      "var(--up)",
+      active.filter((t) => taskState(t, tk) === "soon"),
+    );
+    h += group(
+      "No date",
+      "var(--b2)",
+      active.filter((t) => taskState(t, tk) === "none"),
+    );
+  } else {
+    h += active.map(taskRow).join("");
   }
 
-  let h = "";
-  if (active.length) {
-    active.forEach((t) => {
-      h += taskCard(t);
-    });
-  }
   if (done.length) {
-    // When the Done filter itself is active there's nothing else to hide it
-    // behind, so show the list open; otherwise keep it a collapsed dropdown
-    // (tap to expand) that stays attached under the active tasks.
     const forceOpen = _tf === "done";
     const isOpen = forceOpen || _taskDoneOpen;
-    h += `<div style="margin-top:14px;padding-top:9px;border-top:1px solid var(--b)">
-      <div ${forceOpen ? "" : `onclick="toggleTaskDone()"`} style="display:flex;align-items:center;gap:6px;${forceOpen ? "" : "cursor:pointer;"}user-select:none;padding:4px 0;font-size:11px;color:var(--mt);letter-spacing:.08em">
-        ${forceOpen ? "" : `<span style="display:inline-block;transition:transform .15s ease;transform:rotate(${isOpen ? 90 : 0}deg);font-size:9px">▶</span>`}
-        <span>COMPLETED (${done.length})</span>
-      </div>
-      <div style="display:${isOpen ? "block" : "none"}">${done.map(taskCard).join("")}</div>
-    </div>`;
+    h += forceOpen
+      ? done.map(taskRow).join("")
+      : `<div class="rdone-tog${isOpen ? " open" : ""}" onclick="toggleTaskDone()">
+          <span class="caret">▶</span><span>Completed</span><span class="n" style="color:var(--mt)">${done.length}</span>
+        </div>
+        <div style="display:${isOpen ? "block" : "none"}">${done.map(taskRow).join("")}</div>`;
   }
-  document.getElementById("tskList").innerHTML = h;
+  el.innerHTML = h;
 }
+
 function togTask(id) {
   const tasks = getTasks();
   const t = tasks.find((x) => x.id === id);
@@ -8526,6 +9797,15 @@ function clearDone() {
   saveTasks(getTasks().filter((t) => !t.done));
   renderTasks();
 }
+// The quick-add box kept whatever you typed last time, so opening it again
+// showed the previous task still sitting in the field. Wipe it after saving
+// and again on open, so it is always empty when you start typing.
+function clearQTaskForm() {
+  ["qTskTxt", "qTskDate", "qTskTime"].forEach((k) => {
+    const el = document.getElementById(k);
+    if (el) el.value = "";
+  });
+}
 function saveQTask() {
   const txt = document.getElementById("qTskTxt").value.trim();
   if (!txt) return;
@@ -8543,6 +9823,7 @@ function saveQTask() {
   tasks.unshift(task);
   saveTasks(tasks);
   if (date && time) schedTN(task);
+  clearQTaskForm();
   closeMo("qTaskMo");
   renderTasks();
   renderDash();
@@ -9780,6 +11061,7 @@ function getAllKeys() {
     "theme",
     "guestMode",
     "navHidden",
+    "navOrder",
     "navLabels",
     "pomSessions",
     "upscHidden",
@@ -10385,12 +11667,13 @@ if (!_cloudOK) {
   }
 }
 
-// Auto-pull every 5 min if logged in
+// Auto-pull every 2 min if logged in (was 5 — cross-device edits now show
+// up faster without polling aggressively enough to matter for battery/data).
 setInterval(
   () => {
     if (_user) pull();
   },
-  5 * 60 * 1000,
+  2 * 60 * 1000,
 );
 
 // Pull-on-resume: the 5-min interval alone means switching back to this tab/app

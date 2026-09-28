@@ -29,11 +29,26 @@ console.log("M2028 build: checklist-resume-sync-v4");
     // Apply saved theme INSTANTLY before any HTML renders — prevents dark flash
     // Custom background/font colours (Account → Colors). Defined here, before
     // the body renders, so a saved choice is applied instantly with no flash.
-    window.applyCustomColors = function (cc) {
+    // Girl mode's default look is Baby Pink. Used whenever girl mode has no saved
+    // colors of its own (never picked one, or pressed "Reset to theme").
+    window.ccDefaultFor = function (t) {
+      return t === "pink" ? { bg: "#ffd6e7", tx: "#4a1230", t: "pink" } : null;
+    };
+    // The colors that should actually be showing: the saved ones if they belong
+    // to this theme, otherwise the theme's default (or null = plain theme).
+    window.ccEffective = function (cc, t) {
+      // Older saves have no theme tag and still apply in dark/light, but girl mode
+      // only uses colors saved in girl mode, so it always starts on Baby Pink.
+      const mine = cc && (cc.t ? cc.t === t : t !== "pink");
+      return mine && cc.bg && cc.tx ? cc : window.ccDefaultFor(t);
+    };
+    window.applyCustomColors = function (cc, theme) {
       const old = document.getElementById("ccStyle");
       if (old) old.remove();
       const root = document.documentElement;
-      if (!cc || !cc.bg || !cc.tx) {
+      // Colors are saved with the theme (dark/light/pink) they were picked in and
+      // only apply while that theme is active. Older saves have no tag and apply everywhere.
+      if (!cc || !cc.bg || !cc.tx || (cc.t && theme && cc.t !== theme)) {
         root.classList.remove("ucolors");
         return;
       }
@@ -70,7 +85,8 @@ console.log("M2028 build: checklist-resume-sync-v4");
       if (meta) meta.content = css(bg);
     };
     try {
-      window.applyCustomColors(JSON.parse(localStorage.getItem("m_customColors")));
+      const th0 = JSON.parse(localStorage.getItem("m_theme") || '"dark"');
+      window.applyCustomColors(window.ccEffective(JSON.parse(localStorage.getItem("m_customColors")), th0), th0);
     } catch (e) {}
     const theme = JSON.parse(localStorage.getItem("m_theme") || '"dark"');
     if (theme === "light" || theme === "pink") {
@@ -377,43 +393,88 @@ body.pink .ov {
     opacity: 0;
   }
 }
-/* Wind-blown fall: four waypoints of horizontal drift (--x1..--x4) layered
-   onto a steady vertical descent, plus rotation that keeps turning the same
-   direction rather than snapping back — a leaf caught in a gust doesn't
-   reverse mid-air. */
+/* Wind-blown fall. Three layers move independently so the leaf never follows a
+   mechanical path:
+   1. .pf-leaf   falls and is pushed along by the wind: eight waypoints
+                 (--x1..--x8) form a sweeping S-curve in the wind's direction.
+   2. .pf-eddy   carries the leaf round in a small loop, like an eddy of air
+                 catching it (radius --sr).
+   3. .leafico   tumbles on its own axis, turning edge-on and flat again. */
 @keyframes leafFall {
   0% {
     transform: translate(0, -8vh) rotate(0deg);
     opacity: 0;
   }
-  7% {
+  6% {
     opacity: var(--lf-op, 0.75);
   }
+  12.5% {
+    transform: translate(var(--x1, 30px), 6.5vh) rotate(var(--r1, 40deg));
+  }
   25% {
-    transform: translate(var(--x1, 40px), 23vh) rotate(var(--r1, 80deg));
+    transform: translate(var(--x2, 80px), 21vh) rotate(var(--r2, 90deg));
+  }
+  37.5% {
+    transform: translate(var(--x3, 40px), 35.5vh) rotate(var(--r3, 140deg));
   }
   50% {
-    transform: translate(var(--x2, -30px), 48vh) rotate(var(--r2, 190deg));
+    transform: translate(var(--x4, 120px), 50vh) rotate(var(--r4, 190deg));
+  }
+  62.5% {
+    transform: translate(var(--x5, 70px), 64.5vh) rotate(var(--r5, 240deg));
   }
   75% {
-    transform: translate(var(--x3, 45px), 73vh) rotate(var(--r3, 300deg));
+    transform: translate(var(--x6, 170px), 79vh) rotate(var(--r6, 290deg));
+  }
+  87.5% {
+    transform: translate(var(--x7, 120px), 93.5vh) rotate(var(--r7, 340deg));
   }
   92% {
     opacity: var(--lf-op, 0.75);
   }
   100% {
-    transform: translate(var(--x4, -15px), 108vh) rotate(var(--r4, 430deg));
+    transform: translate(var(--x8, 220px), 108vh) rotate(var(--r8, 390deg));
     opacity: 0;
   }
 }
-/* Fast wobble on the leaf's own axis, independent of the drift above. */
+/* A flattened loop (wider than tall) so it reads as a leaf circling in a gust. */
+@keyframes leafSwirl {
+  0% {
+    transform: translate(var(--sr, 24px), 0);
+  }
+  12.5% {
+    transform: translate(calc(var(--sr, 24px) * 0.7071), calc(var(--sr, 24px) * 0.42));
+  }
+  25% {
+    transform: translate(0, calc(var(--sr, 24px) * 0.6));
+  }
+  37.5% {
+    transform: translate(calc(var(--sr, 24px) * -0.7071), calc(var(--sr, 24px) * 0.42));
+  }
+  50% {
+    transform: translate(calc(var(--sr, 24px) * -1), 0);
+  }
+  62.5% {
+    transform: translate(calc(var(--sr, 24px) * -0.7071), calc(var(--sr, 24px) * -0.42));
+  }
+  75% {
+    transform: translate(0, calc(var(--sr, 24px) * -0.6));
+  }
+  87.5% {
+    transform: translate(calc(var(--sr, 24px) * 0.7071), calc(var(--sr, 24px) * -0.42));
+  }
+  100% {
+    transform: translate(var(--sr, 24px), 0);
+  }
+}
+/* Tumble on the leaf's own axis: swings side to side while turning edge-on. */
 @keyframes leafFlutter {
   0%,
   100% {
-    transform: rotate(-16deg) scale(1);
+    transform: rotate(-28deg) scaleX(1);
   }
   50% {
-    transform: rotate(16deg) scale(0.9);
+    transform: rotate(28deg) scaleX(0.55);
   }
 }
 @keyframes sway {
@@ -498,6 +559,11 @@ body.pink #pinkFloat {
   will-change: transform, opacity;
   user-select: none;
   pointer-events: none;
+}
+.pf-eddy {
+  display: block;
+  animation: leafSwirl linear infinite;
+  will-change: transform;
 }
 .pf-leaf .leafico {
   display: block;
@@ -4461,7 +4527,7 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
         <input type="color" id="ccTx" value="#e0dff0" oninput="ccPick()" style="width:44px;height:30px;border:none;background:none;padding:0;cursor:pointer">
       </label>
     </div>
-    <div style="font-size:11px;color:var(--m2);margin-bottom:8px">Quick combos</div>
+    <div id="ccPresetLbl" style="font-size:11px;color:var(--m2);margin-bottom:8px">Quick combos</div>
     <div id="ccPresets" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px"></div>
     <div style="display:flex;gap:8px">
       <button class="btn b-gh" style="flex:1" onclick="ccReset()">↺ Reset to theme</button>
@@ -6490,16 +6556,46 @@ function checkAutoScorecard() {
 // active (dark/light/pink). applyCustomColors (defined in <head> so it runs
 // before first paint) derives card surfaces, muted text and borders from the
 // two picks, so everything stays readable. Accent colors are left alone.
-const CC_PRESETS = [
-  ["#0c0c0f", "#e0dff0", "Midnight"],
-  ["#f5f5f7", "#1a1a2e", "Paper"],
-  ["#0b1a2e", "#dcecff", "Ocean"],
-  ["#12201a", "#e2f5e8", "Forest"],
-  ["#2b1b12", "#f6e6d4", "Cocoa"],
-  ["#1a0a14", "#ffe4f0", "Rose"],
-  ["#fdf3e3", "#3b2a1a", "Cream"],
-  ["#000000", "#ffffff", "Contrast"],
-];
+const CC_PRESETS = {
+  dark: [
+    ["#0c0c0f", "#e0dff0", "Midnight"],
+    ["#0b1a2e", "#dcecff", "Ocean"],
+    ["#12201a", "#e2f5e8", "Forest"],
+    ["#2b1b12", "#f6e6d4", "Cocoa"],
+    ["#1a1d24", "#e6e9f0", "Slate"],
+    ["#14123a", "#e4e2ff", "Indigo"],
+    ["#161616", "#eaeaea", "Graphite"],
+    ["#000000", "#ffffff", "Contrast"],
+  ],
+  light: [
+    ["#f5f5f7", "#1a1a2e", "Paper"],
+    ["#fdf3e3", "#3b2a1a", "Cream"],
+    ["#e8f3fd", "#12304d", "Sky"],
+    ["#e6f6ee", "#123524", "Mint"],
+    ["#eeeafb", "#2a1f4d", "Lavender"],
+    ["#f3ece0", "#3a2f22", "Sand"],
+    ["#fff8dc", "#3d3300", "Butter"],
+    ["#ffffff", "#111111", "Snow"],
+  ],
+  // Girl mode: deep pink/purple combos, plus Baby Pink (a light background). In
+  // pink mode a light background keeps the pink theme and layers the light
+  // surfaces on top of it (see ccBodyClasses), so girl mode is never lost.
+  pink: [
+    ["#ffd6e7", "#4a1230", "Baby Pink"], // the girl-mode default (keep in sync with ccDefaultFor in <head>)
+    ["#1a0a14", "#ffe4f0", "Rose"],
+    ["#2a0f26", "#ffd9f2", "Berry"],
+    ["#23102e", "#f5dcff", "Plum"],
+    ["#2d1420", "#ffe0ea", "Blush Night"],
+    ["#2b1a24", "#f7dfe9", "Mauve"],
+    ["#2a0d1a", "#ffd6e4", "Wine"],
+    ["#1f1030", "#f0d9ff", "Orchid"],
+    ["#300f1c", "#ffdde6", "Cherry"],
+  ],
+};
+const ccTheme = () => S.go("theme", "dark");
+const ccPresetList = () => CC_PRESETS[ccTheme()] || CC_PRESETS.dark;
+// Saved colors only count while the theme they were picked in is active.
+const ccActive = (cc, t) => !!(cc && cc.bg && cc.tx && (!cc.t || cc.t === t));
 // Which base theme (dark / light / pink) the custom colors sit on. The app's
 // built-in light theme restyles many hard-coded dark surfaces, so a light
 // background must switch to it (and a dark background off it), otherwise
@@ -6509,25 +6605,32 @@ function ccIsLight(hex) {
   const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
   return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) >= 0.25;
 }
+// Which classes <body> should carry. "light" follows the background's brightness
+// (or the light theme itself); "pink" always follows the pink theme, so a light
+// background such as Baby Pink in girl mode gives light + pink together.
+function ccBodyClasses(t, bg) {
+  const light = bg ? ccIsLight(bg) : t === "light";
+  return { light, pink: t === "pink" };
+}
 function ccApplyAll() {
-  const cc = S.go("customColors", null);
-  const on = cc && cc.bg && cc.tx;
-  window.applyCustomColors(on ? cc : null);
-  const t = S.go("theme", "dark");
-  const eff = !on ? t : ccIsLight(cc.bg) ? "light" : t === "pink" ? "pink" : "dark";
+  const t = ccTheme();
+  const cc = window.ccEffective(S.go("customColors", null), t); // saved colors, else the theme's default
+  const on = !!cc;
+  window.applyCustomColors(cc, t);
+  const cls = ccBodyClasses(t, on ? cc.bg : null);
   if (!on) {
     const meta = document.getElementById("themeColorMeta");
     if (meta) meta.content = { dark: "#0c0c0f", light: "#f5f5f7", pink: "#1a0a14" }[t] || "#0c0c0f";
   }
   document.body.classList.remove("light", "pink");
-  if (eff === "light") document.body.classList.add("light");
-  if (eff === "pink") {
+  if (cls.light) document.body.classList.add("light");
+  if (cls.pink) {
     document.body.classList.add("pink");
     startPinkEffects();
   } else stopPinkEffects();
 }
 function openColorMo() {
-  const cc = S.go("customColors", null);
+  const cc = window.ccEffective(S.go("customColors", null), ccTheme());
   const toHex = (c, fallback) => {
     c = (c || "").trim();
     if (/^#[0-9a-f]{6}$/i.test(c)) return c;
@@ -6536,17 +6639,20 @@ function openColorMo() {
     return m && m.length >= 3 ? "#" + m.slice(0, 3).map((n) => (+n).toString(16).padStart(2, "0")).join("") : fallback;
   };
   const cs = getComputedStyle(document.body);
-  const on = cc && cc.bg && cc.tx;
+  const on = !!cc;
   // Prefer the theme's own --bg/--tx values; fall back to the painted colors.
   document.getElementById("ccBg").value = on ? cc.bg : toHex(cs.getPropertyValue("--bg") || cs.backgroundColor, "#0c0c0f");
   document.getElementById("ccTx").value = on ? cc.tx : toHex(cs.getPropertyValue("--tx") || cs.color, "#e0dff0");
   const box = document.getElementById("ccPresets");
-  if (!box.children.length) {
-    box.innerHTML = CC_PRESETS.map(
+  const names = { dark: "Dark", light: "Light", pink: "Girl" };
+  const lbl = document.getElementById("ccPresetLbl");
+  if (lbl) lbl.textContent = "Quick combos · " + (names[ccTheme()] || "Dark") + " mode";
+  box.innerHTML = ccPresetList()
+    .map(
       (p, i) =>
         `<button onclick="ccPreset(${i})" title="${p[2]}" style="background:${p[0]};color:${p[1]};border:1px solid rgba(128,128,128,.4);border-radius:10px;padding:10px 0;font-size:15px;font-weight:700;cursor:pointer">Aa</button>`,
-    ).join("");
-  }
+    )
+    .join("");
   openMo("colorMo");
 }
 // Dragging a color picker fires dozens of events a second. Each one used to
@@ -6556,11 +6662,13 @@ function openColorMo() {
 let _ccTimer = null;
 let _ccPending = null;
 function ccPreview(bg, tx) {
-  _ccPending = { bg, tx };
-  window.applyCustomColors(_ccPending);
-  const eff = ccIsLight(bg) ? "light" : S.go("theme", "dark") === "pink" ? "pink" : "dark";
+  const t = ccTheme();
+  _ccPending = { bg, tx, t };
+  window.applyCustomColors(_ccPending, t);
+  const cls = ccBodyClasses(t, bg);
   document.body.classList.remove("light", "pink");
-  if (eff !== "dark") document.body.classList.add(eff);
+  if (cls.light) document.body.classList.add("light");
+  if (cls.pink) document.body.classList.add("pink");
   clearTimeout(_ccTimer);
   _ccTimer = setTimeout(ccCommit, 700);
 }
@@ -6576,7 +6684,7 @@ function ccPick() {
   ccPreview(document.getElementById("ccBg").value, document.getElementById("ccTx").value);
 }
 function ccPreset(i) {
-  const p = CC_PRESETS[i];
+  const p = ccPresetList()[i];
   document.getElementById("ccBg").value = p[0];
   document.getElementById("ccTx").value = p[1];
   ccPreview(p[0], p[1]);
@@ -9621,55 +9729,74 @@ function stopPinkEffects() {
   document.removeEventListener("touchmove", pinkTouchTrail);
 }
 
-// One leaf, carried across the screen like wind is taking it. The outer
-// .pf-leaf div drifts through four random horizontal waypoints while
-// falling (the "swirl"); the inner .leafico span flutters on its own axis
-// at a different, faster rate, so the two rotations never sync up and the
-// motion doesn't look mechanical.
+// The wind is shared by every leaf, so they lean the same way together and
+// change together: every 6-14s a new gust arrives that may reverse direction
+// (about 1 in 3) and blows harder or softer than the last one.
+let _wind = { dir: Math.random() < 0.5 ? 1 : -1, power: 1, until: 0 };
+function windNow() {
+  const now = Date.now();
+  if (now > _wind.until) {
+    if (Math.random() < 0.35) _wind.dir *= -1;
+    _wind.power = 0.7 + Math.random() * 0.8;
+    _wind.until = now + 6000 + Math.random() * 8000;
+  }
+  return _wind;
+}
+
+// One leaf, carried across the screen by the wind. It falls along a sweeping
+// S-curve in the wind's direction (outer .pf-leaf), circles in a small eddy
+// (.pf-eddy) and tumbles edge-on and flat on its own axis (.leafico). Each
+// runs at a different speed, so the motion never repeats in lockstep.
 function launchFloatEmoji() {
   if (!document.body.classList.contains("pink")) return;
   const fc = document.getElementById("pinkFloat");
   if (!fc) return;
+  const w = windNow();
   const el = document.createElement("div");
   el.className = "pf-leaf";
+  const eddy = document.createElement("div");
+  eddy.className = "pf-eddy";
   const lf = document.createElement("span");
   lf.className = "leafico lf" + (1 + Math.floor(Math.random() * 4));
   lf.setAttribute("aria-hidden", "true");
-  el.appendChild(lf);
+  eddy.appendChild(lf);
+  el.appendChild(eddy);
 
-  const dur = 8 + Math.random() * 8; // 8-16s to cross the screen
-  const left = Math.random() * 100;
+  const vw = Math.max(320, window.innerWidth);
+  const dur = 9 + Math.random() * 7; // 9-16s to cross the screen
+  // Start upwind so the leaf has room to be carried across the screen.
+  const left = w.dir > 0 ? -5 + Math.random() * 75 : 30 + Math.random() * 75;
   const size = 16 + Math.random() * 18; // 16-34px
-  const drift = 35 + Math.random() * 55; // px of sideways travel per waypoint
-  // Alternating signs (+, -, +, -) with a random starting side is what
-  // reads as "gust, settle, gust" rather than one smooth diagonal glide.
-  const sign = Math.random() < 0.5 ? 1 : -1;
-  const x1 = sign * (drift * (0.5 + Math.random() * 0.5));
-  const x2 = -sign * (drift * (0.7 + Math.random() * 0.6));
-  const x3 = sign * (drift * (0.6 + Math.random() * 0.6));
-  const x4 = -sign * (drift * (0.3 + Math.random() * 0.5));
-  // Rotation keeps accumulating in one direction (real leaves tumbling in
-  // wind don't reverse spin), with enough randomness per waypoint that
-  // leaves don't all turn in lockstep.
+  // Total push along the wind, plus a sinuous gust on top of it (the S-curve).
+  const push = w.dir * vw * (0.14 + Math.random() * 0.2) * w.power;
+  // Gust size scales with screen width so leaves stay in view on a phone.
+  const gust = Math.min(140, vw * (0.07 + Math.random() * 0.1)) * w.power;
+  const phase = Math.random() * Math.PI * 2;
+  const wave = 1.1 + Math.random() * 0.5;
+  // Rotation keeps accumulating one way (leaves in wind don't reverse spin).
   const spin = Math.random() < 0.5 ? 1 : -1;
-  const r1 = spin * (60 + Math.random() * 60);
-  const r2 = spin * (160 + Math.random() * 90);
-  const r3 = spin * (280 + Math.random() * 100);
-  const r4 = spin * (400 + Math.random() * 140);
-  const op = (0.55 + Math.random() * 0.3).toFixed(2);
-  const flutterDur = (0.8 + Math.random() * 0.9).toFixed(2);
-
+  const spinStep = 35 + Math.random() * 40;
+  let vars = "";
+  for (let i = 1; i <= 8; i++) {
+    const x = push * (i / 8) + gust * Math.sin(i * wave + phase);
+    vars += `--x${i}:${x.toFixed(0)}px;--r${i}:${(spin * spinStep * i).toFixed(0)}deg;`;
+  }
   el.style.cssText =
     `left:${left}%;font-size:${size}px;` +
     `animation-duration:${dur}s;animation-delay:${(Math.random() * 3).toFixed(2)}s;` +
-    `--x1:${x1.toFixed(0)}px;--x2:${x2.toFixed(0)}px;--x3:${x3.toFixed(0)}px;--x4:${x4.toFixed(0)}px;` +
-    `--r1:${r1.toFixed(0)}deg;--r2:${r2.toFixed(0)}deg;--r3:${r3.toFixed(0)}deg;--r4:${r4.toFixed(0)}deg;` +
-    `--lf-op:${op};`;
-  lf.style.animationDuration = flutterDur + "s";
-  lf.style.animationDelay = (Math.random() * 1).toFixed(2) + "s";
+    vars +
+    `--lf-op:${(0.55 + Math.random() * 0.3).toFixed(2)};`;
+  // Eddy loop: 2-5s per circle, 14-36px wide, turning either way.
+  eddy.style.cssText =
+    `--sr:${(14 + Math.random() * 22).toFixed(0)}px;` +
+    `animation-duration:${(2 + Math.random() * 3).toFixed(2)}s;` +
+    `animation-delay:${(-Math.random() * 3).toFixed(2)}s;` +
+    `animation-direction:${Math.random() < 0.5 ? "normal" : "reverse"};`;
+  lf.style.animationDuration = (0.7 + Math.random() * 0.9).toFixed(2) + "s";
+  lf.style.animationDelay = (-Math.random()).toFixed(2) + "s";
 
   fc.appendChild(el);
-  setTimeout(() => el.remove(), (dur + 3) * 1000);
+  setTimeout(() => el.remove(), (dur + 3.5) * 1000);
 }
 
 const SPARKLE_COLORS = [

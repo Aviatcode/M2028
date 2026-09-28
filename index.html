@@ -21,7 +21,7 @@
 <title>M2028</title>
 <!-- INSTANT LOAD: runs before body renders, no flicker for returning users -->
 <script>
-console.log("M2028 build: checklist-resume-sync-v4");
+console.log("M2028 build: instant-sync-v5");
 </script>
 <script>
 (function () {
@@ -6518,7 +6518,8 @@ function renderDash() {
     : '<div style="font-size:11px;color:var(--mt);padding:8px 0">Tap ✏️ to set plan</div>';
   // Hindu highlight
   const hl = S.go("hl", {});
-  document.getElementById("hlTA").value = hl[tk] || "";
+  const _hlEl = document.getElementById("hlTA");
+  if (_hlEl && document.activeElement !== _hlEl) _hlEl.value = hl[tk] || ""; // don't clobber while typing
 }
 
 function saveHL() {
@@ -12333,6 +12334,65 @@ let _user = null;
 let _cloudOK = false;
 let _realtimeChannel = null; // live Postgres-changes subscription — see setupRealtimeSync()
 
+// ═══ SYNC STATE (v5) ═══
+// _dirty = keys with local edits the cloud hasn't confirmed yet. Ordering between devices is
+// decided by this (not by device clocks), so clock skew can no longer make one device "win".
+const _dirty = new Set();
+let _legacy = false; // first run after upgrade: no dirty log yet, use timestamps once
+try {
+  const _d = localStorage.getItem("m_sync_dirty");
+  if (_d === null) _legacy = true;
+  else JSON.parse(_d).forEach((k) => _dirty.add(k));
+} catch (e) { _legacy = true; }
+function _saveDirty() {
+  try { localStorage.setItem("m_sync_dirty", JSON.stringify([..._dirty])); } catch (e) {}
+}
+const _ver = {}, _inflight = {}, _again = {}, _sent = {}, _seen = {}, _retry = {};
+let _rtLive = false, _rtRetry = null;
+const _ts = (x) => (x ? new Date(x).getTime() : 0);
+function _canon(v) { // key-order independent (Postgres jsonb reorders keys)
+  if (v === undefined) return "u";
+  if (v && typeof v === "object") {
+    if (Array.isArray(v)) return "[" + v.map(_canon).join(",") + "]";
+    return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + _canon(v[k])).join(",") + "}";
+  }
+  return JSON.stringify(v);
+}
+const _isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+const _idArr = (a) => Array.isArray(a) && a.every((x) => x && typeof x === "object" && x.id !== undefined);
+// 3-way merge (base = last cloud value we saw, l = local, c = incoming cloud): edits to
+// DIFFERENT habits/tasks/widgets/items made on two devices both survive.
+function _m3(b, l, c) {
+  const cl = _canon(l), cc = _canon(c), cb = _canon(b);
+  if (cl === cc) return l;
+  if (cl === cb) return c;
+  if (cc === cb) return l;
+  if (_isObj(l) && _isObj(c)) {
+    const bb = _isObj(b) ? b : {}, out = {};
+    new Set([...Object.keys(c), ...Object.keys(l)]).forEach((k) => {
+      const r = _m3(bb[k], l[k], c[k]);
+      if (r !== undefined) out[k] = r;
+    });
+    return out;
+  }
+  if (_idArr(l) && _idArr(c)) {
+    const bm = new Map((_idArr(b) ? b : []).map((x) => [x.id, x]));
+    const lm = new Map(l.map((x) => [x.id, x])), cm = new Map(c.map((x) => [x.id, x]));
+    const seen = new Set(), out = [];
+    [...c, ...l].forEach((x) => {
+      if (seen.has(x.id)) return;
+      seen.add(x.id);
+      const r = _m3(bm.get(x.id), lm.get(x.id), cm.get(x.id));
+      if (r !== undefined) out.push(r);
+    });
+    return out;
+  }
+  return l; // both changed the same value: keep this device's
+}
+function _isDirty(key, cloudTs) {
+  return _dirty.has(key) || (_legacy && _getLocalTs(key) > cloudTs);
+}
+
 // ═══ SYNC-READY GATE ═══
 // BUG THIS FIXES: the app renders instantly from whatever's cached locally
 // (that's why it feels fast on reopen), then confirms the real account and
@@ -12419,67 +12479,48 @@ function getAllKeys() {
   return keys;
 }
 
-// Push one key to cloud
-async function push(key, force) {
-  if (!_user || !_cloudOK) return;
-  // Hold outgoing writes until we've confirmed real cloud state at least
-  // once this session — see _syncReady comment above. Local saves already
-  // happened (S.s wrote to localStorage before calling push), so nothing
-  // the user did is lost; the network write just waits a moment.
-  // `force` bypasses this for the explicit sign-out flush below, where the
-  // user has already been actively using this exact session's real data —
-  // there's no "did we load the right account yet" ambiguity to protect
-  // against there, and we specifically don't want to silently drop their
-  // last few edits on the way out.
-  if (!_syncReady && !force) {
-    _pendingPushKeys.add(key);
-    return;
-  }
+// Push one key to cloud. Serialised per key (two in-flight upserts could land out of order and
+// let the OLDER value win), errors are actually checked (supabase-js returns {error}, it does
+// not throw) and failed pushes retry with backoff instead of being silently lost.
+function push(key, force) {
+  if (!_user || !_cloudOK) return Promise.resolve();
+  if (!_syncReady && !force) { _pendingPushKeys.add(key); return Promise.resolve(); }
+  if (_inflight[key]) { _again[key] = true; return _inflight[key]; }
+  const p = _doPush(key, force).finally(() => {
+    delete _inflight[key];
+    if (_again[key]) { _again[key] = false; return push(key, force); }
+  });
+  _inflight[key] = p;
+  return p;
+}
+async function _doPush(key, force) {
   const val = S.g(key);
   if (val === null) return;
-  // Safety net for irreplaceable keys: if we're about to overwrite a cloud
-  // value we know was real/non-empty with something empty, back the old
-  // value up first (as a plain sibling row in the same table, so it costs
-  // nothing extra) instead of just letting it vanish. This does NOT block
-  // the push — an intentional "delete everything" still works and still
-  // syncs — it just guarantees a one-query undo exists if it wasn't
-  // intentional.
-  if (
-    GUARD_KEYS.includes(key) &&
-    _isEmptyValue(val) &&
-    !_isEmptyValue(_lastCloudValues[key])
-  ) {
+  if (GUARD_KEYS.includes(key) && _isEmptyValue(val) && !_isEmptyValue(_lastCloudValues[key])) {
     try {
       await supa.from("user_data").upsert(
-        {
-          user_id: _user.id,
-          data_key: key + "__backup",
-          data_value: _lastCloudValues[key],
-          updated_at: new Date().toISOString(),
-        },
+        { user_id: _user.id, data_key: key + "__backup", data_value: _lastCloudValues[key], updated_at: new Date().toISOString() },
         { onConflict: "user_id,data_key" },
       );
-      console.warn(
-        `Backed up previous '${key}' before overwriting with an empty value. Restore with restoreFromBackup("${key}") if this wasn't intentional.`,
-      );
-    } catch (e) {
-      console.warn("Backup-before-overwrite failed:", e);
-    }
+      console.warn(`Backed up previous '${key}' before overwriting with an empty value. Restore with restoreFromBackup("${key}") if this wasn't intentional.`);
+    } catch (e) { console.warn("Backup-before-overwrite failed:", e); }
   }
+  const v0 = _ver[key] || 0, stamp = Date.now();
+  (_sent[key] = _sent[key] || []).push(stamp); // remembered BEFORE the request: the echo can beat the response
+  if (_sent[key].length > 8) _sent[key].shift();
   try {
-    await supa
-      .from("user_data")
-      .upsert(
-        {
-          user_id: _user.id,
-          data_key: key,
-          data_value: val,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,data_key" },
-      );
+    const { error } = await supa.from("user_data").upsert(
+      { user_id: _user.id, data_key: key, data_value: val, updated_at: new Date(stamp).toISOString() },
+      { onConflict: "user_id,data_key" },
+    );
+    if (error) throw error;
+    _seen[key] = stamp;
+    _retry[key] = 0;
+    if ((_ver[key] || 0) === v0 && _dirty.delete(key)) _saveDirty();
   } catch (e) {
-    console.warn("Push failed:", e);
+    console.warn("Push failed, will retry:", e);
+    const n = (_retry[key] = (_retry[key] || 0) + 1);
+    setTimeout(() => push(key, force), Math.min(30000, 1000 * Math.pow(2, n)));
   }
 }
 
@@ -12525,19 +12566,9 @@ async function restoreFromBackup(key) {
   }
 }
 
-// Pull all data from cloud → local.
-// FIX: this used to blindly overwrite every local key with whatever was in the
-// cloud, no matter how fresh the local copy was. That's what caused the
-// Pomodoro bug: finish a session while the phone is locked → local 'pd'
-// (today's counts) and 'pomSessions' (the log) update instantly → but before
-// that update reaches the cloud, the app reopens/reloads → pull() runs → the
-// OLDER cloud copy stomps the just-earned session right back to 0 and wipes
-// the log — while flashing "✓ Synced from cloud", which is exactly what was
-// being seen. Now: 'pd' and 'pomSessions' are merged (never lose data from
-// either side) and every other key uses last-write-wins based on a local
-// modified-timestamp, so a local change made after the last push is protected
-// instead of being clobbered.
-async function pull() {
+// Full pull (sign-in, startup, reconnect). Only the parts of the UI whose data actually
+// changed are refreshed, and only when something changed.
+async function pull(opts) {
   if (!_user || !_cloudOK) return;
   try {
     const { data, error } = await supa
@@ -12545,115 +12576,91 @@ async function pull() {
       .select("data_key,data_value,updated_at")
       .eq("user_id", _user.id);
     if (error) throw error;
-    // We've now actually heard from the cloud (even if it came back empty,
-    // e.g. a brand new account) — safe to allow outgoing pushes again from
-    // this point on. Set BEFORE merging so any "local is genuinely newer,
-    // push it" decisions made during the merge below still go through.
-    _syncReady = true;
-    if (data && data.length) {
-      data.forEach((r) =>
-        mergeCloudValue(r.data_key, r.data_value, r.updated_at),
-      );
-      banner("✓ Synced from cloud");
-    }
-    // Anything saved before syncing was ready (see push()) either just got
-    // re-sent above because the merge found its key genuinely newer than an
-    // existing cloud row, or — if there was no cloud row at all yet for that
-    // key — never got a retry at all. Flush whatever's left explicitly so
-    // neither case can strand a change on one device.
+    _syncReady = true; // we've heard from the cloud — outgoing pushes are safe now
+    const rows = (data || []).filter((r) => !r.data_key.endsWith("__backup"));
+    const changed = _applyRows(rows);
+    const have = new Set(rows.map((r) => r.data_key));
+    _dirty.forEach((k) => { if (!have.has(k)) push(k); }); // local-only edits the cloud never got
+    if (_legacy) { _legacy = false; _saveDirty(); }
     if (_pendingPushKeys.size) {
       const pending = Array.from(_pendingPushKeys);
       _pendingPushKeys.clear();
       pending.forEach((k) => push(k));
     }
+    if (changed.length && opts && opts.banner) banner("✓ Synced from cloud");
   } catch (e) {
     console.warn("Pull failed:", e);
   }
 }
-function sessionSig(s) {
-  return (
-    ((s && s.d) || "") +
-    "|" +
-    ((s && s.t) || "") +
-    "|" +
-    ((s && s.sub) || "") +
-    "|" +
-    ((s && s.dur) || "")
-  );
+// Cheap poll: fetch only key+timestamp (a few hundred bytes), then download values only for
+// rows that changed. Used as the realtime fallback and for catch-up after sleep/offline.
+let _polling = false;
+async function pollChanges() {
+  if (!_user || !_cloudOK || !_syncReady || _polling) return;
+  _polling = true;
+  try {
+    const { data, error } = await supa.from("user_data").select("data_key,updated_at").eq("user_id", _user.id);
+    if (error || !data) return;
+    const stale = data
+      .filter((r) => !r.data_key.endsWith("__backup") && _seen[r.data_key] !== _ts(r.updated_at))
+      .map((r) => r.data_key);
+    if (!stale.length) return;
+    const res = await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id", _user.id).in("data_key", stale);
+    if (!res.error && res.data) _applyRows(res.data);
+  } catch (e) {
+    console.warn("Poll failed:", e);
+  } finally {
+    _polling = false;
+  }
 }
+function _applyRows(rows) {
+  const changed = [];
+  rows.forEach((r) => {
+    const k = r.data_key;
+    if (!k || k.endsWith("__backup")) return;
+    const ts = _ts(r.updated_at);
+    _seen[k] = ts;
+    if ((_sent[k] || []).includes(ts)) { _lastCloudValues[k] = r.data_value; return; } // echo of our own write
+    try { if (mergeCloudValue(k, r.data_value, r.updated_at)) changed.push(k); }
+    catch (e) { console.warn("Merge failed for", k, e); }
+  });
+  if (changed.length) _queueRefresh(changed);
+  return changed;
+}
+function sessionSig(s) {
+  return ((s && s.d) || "") + "|" + ((s && s.t) || "") + "|" + ((s && s.sub) || "") + "|" + ((s && s.dur) || "");
+}
+// Returns true if the LOCAL value changed (i.e. the screen needs refreshing).
 function mergeCloudValue(key, cloudVal, updatedAt) {
+  const base = _lastCloudValues[key];
   _lastCloudValues[key] = cloudVal;
-  if (key === "pd") {
-    // Daily Pomodoro-session counts: {date: count}. Take the max per date so
-    // a session logged on either device is never lost.
-    const local = S.g(key) || {};
-    const merged = { ...local };
-    Object.keys(cloudVal || {}).forEach((d) => {
-      merged[d] = Math.max(merged[d] || 0, cloudVal[d] || 0);
-    });
-    S.s(key, merged);
-    return;
+  const local = S.g(key), cloudTs = _ts(updatedAt);
+  let merged;
+  if (key === "pd") { // daily pomodoro counts: max per date, never lose a session
+    merged = { ...(local || {}) };
+    Object.keys(cloudVal || {}).forEach((d) => { merged[d] = Math.max(merged[d] || 0, cloudVal[d] || 0); });
+  } else if (key === "pomSessions") { // session log: union, de-duped
+    const seen = new Set((local || []).map(sessionSig));
+    merged = (local || []).slice();
+    (cloudVal || []).forEach((x) => { const g = sessionSig(x); if (!seen.has(g)) { merged.push(x); seen.add(g); } });
+    merged.sort((a, b) => ((a.d || "") + (a.t || "")).localeCompare((b.d || "") + (b.t || "")));
+  } else {
+    merged = local !== null && _isDirty(key, cloudTs) ? _m3(base, local, cloudVal) : cloudVal;
   }
-  if (key === "customWidgets") {
-    // Union by id instead of picking one whole array over the other, so an
-    // addition made on the other device is never silently discarded just
-    // because this device's copy of the list happens to look newer.
-    const local = S.g(key) || [];
-    const cloud = cloudVal || [];
-    const cloudTs = updatedAt ? new Date(updatedAt).getTime() : 0;
-    const localTs = _getLocalTs(key);
-    const preferLocal = localTs && localTs > cloudTs;
-    const base = (preferLocal ? local : cloud).slice();
-    const other = preferLocal ? cloud : local;
-    const baseIds = new Set(base.map((w) => w.id));
-    let addedFromOther = false;
-    other.forEach((w) => {
-      if (!baseIds.has(w.id)) {
-        base.push(w);
-        baseIds.add(w.id);
-        addedFromOther = true;
-      }
-    });
-    if (addedFromOther) {
-      // The union picked up a widget the other side had that this copy was
-      // missing — save AND push the merged list so the other device
-      // converges on the same full set too, instead of staying out of sync
-      // in the opposite direction.
-      S.s(key, base);
-    } else if (!preferLocal) {
-      _origS(key, base);
-      _setLocalTs(key, cloudTs || Date.now());
-    }
-    return;
+  const same = _canon(merged) === _canon(local);
+  const toCloud = _canon(merged) !== _canon(cloudVal);
+  if (same) {
+    if (toCloud) push(key);
+    else if (_dirty.delete(key)) _saveDirty();
+    return false;
   }
-  if (key === "pomSessions") {
-    // Session log: union both lists, de-duped by date+time+subject+duration.
-    const local = S.g(key) || [];
-    const seen = new Set(local.map(sessionSig));
-    const merged = local.slice();
-    (cloudVal || []).forEach((s) => {
-      const sig = sessionSig(s);
-      if (!seen.has(sig)) {
-        merged.push(s);
-        seen.add(sig);
-      }
-    });
-    merged.sort((a, b) =>
-      ((a.d || "") + (a.t || "")).localeCompare((b.d || "") + (b.t || "")),
-    );
-    S.s(key, merged);
-    return;
+  if (toCloud) S.s(key, merged); // merged result has something the cloud lacks: save + push it
+  else {
+    _origS(key, merged);
+    _setLocalTs(key, cloudTs || Date.now());
+    if (_dirty.delete(key)) _saveDirty();
   }
-  const cloudTs = updatedAt ? new Date(updatedAt).getTime() : 0;
-  const localTs = _getLocalTs(key);
-  if (localTs && localTs > cloudTs) {
-    // Local copy is newer than what's in the cloud (probably hasn't been
-    // pushed yet) — push it up instead of letting the stale cloud copy win.
-    push(key);
-    return;
-  }
-  _origS(key, cloudVal);
-  _setLocalTs(key, cloudTs || Date.now());
+  return true;
 }
 
 // Push all local data to cloud
@@ -12720,81 +12727,113 @@ function _setLocalTs(k, ts) {
   } catch (e) {}
 }
 
-// ═══ REALTIME SYNC ═══
-// Without this, a change made on one device only reaches another device
-// when that device's app either (a) hits the 5-minute auto-pull interval, or
-// (b) gets refocused/reopened. If both devices are just sitting open side by
-// side, that's exactly the "doesn't sync immediately / takes a long time"
-// gap. This subscribes to live Postgres changes on this user's rows, so a
-// push from one device reaches every other open device within roughly a
-// second over the same websocket connection Supabase already uses for auth.
-// The 5-minute interval and focus-triggered pull stay in place as a fallback
-// in case the realtime connection ever drops.
-let _rtRerenderTimer = null;
-function _scheduleRealtimeRerender() {
-  // A single change on one device can touch a few rows in a row (e.g. a
-  // "mark all done"), so debounce a burst of incoming events into one
-  // re-render + one banner instead of flickering repeatedly.
-  clearTimeout(_rtRerenderTimer);
-  _rtRerenderTimer = setTimeout(() => {
-    try {
-      renderDash();
-      renderHabits();
-      renderTasks();
-      applyDashCfg();
-      ccApplyAll(); // another device may have changed the app colors
-    } catch (e) {}
-    banner("✓ Synced from cloud");
-  }, 250);
+// ═══ REALTIME SYNC (v5) ═══
+// Postgres-changes over the existing websocket. Own writes are recognised and ignored (they
+// used to re-render the whole dashboard + flash a banner after every tap), the connection
+// status is watched, and if realtime is down a cheap 3-second poll takes over automatically.
+const _pendRefresh = new Set();
+let _refT = null;
+function _queueRefresh(keys) {
+  keys.forEach((k) => _pendRefresh.add(k));
+  clearTimeout(_refT);
+  _refT = setTimeout(_flushRefresh, 30);
+}
+function _typing(el) { // never rebuild a widget the user is typing in
+  const a = document.activeElement;
+  return !!(a && el && el.contains(a) && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.isContentEditable));
+}
+function _syncCW() { // update custom widgets in place; returns false if something was skipped
+  const wrap = document.getElementById("dashWidgets");
+  if (!wrap) return true;
+  const cw = S.go("customWidgets", []).filter((w) => w.enabled !== false);
+  const have = Array.from(wrap.querySelectorAll('.dash-w[data-wid^="cw:"]')).map((e) => e.dataset.wid.slice(3));
+  if (have.length !== cw.length || !cw.every((w) => have.includes(w.id))) {
+    if (_typing(wrap)) return false;
+    applyDashCfg();
+    return true;
+  }
+  let ok = true;
+  cw.forEach((w) => {
+    const el = wrap.querySelector(`.dash-w[data-wid="cw:${w.id}"]`);
+    if (_typing(el)) { ok = false; return; }
+    rerenderSingleCWWidget(w.id);
+  });
+  return ok;
+}
+function _flushRefresh() {
+  const keys = new Set(_pendRefresh);
+  _pendRefresh.clear();
+  if (!keys.size) return;
+  const t = (f) => { try { f(); } catch (e) {} };
+  const has = (...a) => a.some((k) => keys.has(k));
+  const wrap = document.getElementById("dashWidgets");
+  let dash = false;
+  if (has("habs", "hd")) { t(() => renderHabits()); t(() => renderCal()); dash = true; }
+  if (has("tasks")) { t(() => renderTasks()); dash = true; }
+  if (has("customWidgets") && !_syncCW()) _pendRefresh.add("customWidgets");
+  if (has("dashCfg")) { if (_typing(wrap)) _pendRefresh.add("dashCfg"); else t(() => applyDashCfg()); }
+  if (has("theme", "customColors")) t(() => ccApplyAll());
+  const handled = ["habs", "hd", "tasks", "customWidgets", "dashCfg", "theme", "customColors"];
+  if ([...keys].some((k) => !handled.includes(k))) { t(() => renderHabits()); t(() => renderTasks()); dash = true; }
+  if (dash) t(() => renderDash());
 }
 function setupRealtimeSync() {
   if (!_user || !_cloudOK || !supa) return;
   teardownRealtimeSync(); // avoid stacking duplicate subscriptions on repeated sign-ins
   try {
-    _realtimeChannel = supa
-      .channel("user_data_" + _user.id)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_data",
-          filter: `user_id=eq.${_user.id}`,
-        },
-        (payload) => {
-          const row = payload.new || payload.old;
-          if (!row || !row.data_key) return;
-          mergeCloudValue(row.data_key, row.data_value, row.updated_at);
-          _scheduleRealtimeRerender();
-        },
-      )
-      .subscribe();
+    const ch = supa.channel("user_data_" + _user.id);
+    _realtimeChannel = ch;
+    ch.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "user_data", filter: `user_id=eq.${_user.id}` },
+      (p) => {
+        const row = p.new;
+        if (!row || !row.data_key) return;
+        if (row.data_value === undefined) { pollChanges(); return; } // oversized payload: fetch it instead
+        _applyRows([row]);
+      },
+    ).subscribe((status) => {
+      if (_realtimeChannel !== ch) return; // event from a channel we already replaced
+      if (status === "SUBSCRIBED") {
+        const was = _rtLive;
+        _rtLive = true;
+        clearTimeout(_rtRetry);
+        if (!was) (_syncReady ? pollChanges() : pull()); // catch up on anything missed while disconnected
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        _rtLive = false; // the 3s poll below covers us until we're back
+        clearTimeout(_rtRetry);
+        _rtRetry = setTimeout(() => { if (_user && !_rtLive) setupRealtimeSync(); }, 4000);
+      }
+    });
   } catch (e) {
     console.warn("Realtime sync setup failed, falling back to polling:", e);
   }
 }
 function teardownRealtimeSync() {
-  if (_realtimeChannel && supa) {
-    try {
-      supa.removeChannel(_realtimeChannel);
-    } catch (e) {}
-    _realtimeChannel = null;
-  }
+  clearTimeout(_rtRetry);
+  _rtLive = false;
+  const ch = _realtimeChannel;
+  _realtimeChannel = null;
+  if (ch && supa) { try { supa.removeChannel(ch); } catch (e) {} }
 }
 
-// Override S.s to also push to cloud on every save
+// Every save marks the key dirty (until the cloud confirms it) and pushes.
 const _origS = S.s.bind(S);
+function _markLocal(k) {
+  _ver[k] = (_ver[k] || 0) + 1;
+  _dirty.add(k);
+  _saveDirty();
+  _setLocalTs(k, Date.now());
+}
 S.s = (k, v) => {
   _origS(k, v);
-  _setLocalTs(k, Date.now());
+  _markLocal(k);
   if (_user && _cloudOK) push(k);
 };
-// Used by rapid-fire callers (e.g. checklist typing) that want to save to
-// localStorage immediately but debounce the cloud push themselves instead of
-// firing a network request on every call.
+// For rapid-fire callers (checklist typing): save locally now, debounce the push themselves.
 S.sLocalOnly = (k, v) => {
   _origS(k, v);
-  _setLocalTs(k, Date.now());
+  _markLocal(k);
 };
 S.sPushOnly = (k) => {
   if (_user && _cloudOK) push(k);
@@ -12822,6 +12861,7 @@ function clearLocalAppData() {
     if (k && k.startsWith("m_") && k !== "m_theme" && k !== "m_customColors" && k !== "m_wallpaper" && k !== "m_wpDim") toRemove.push(k);
   }
   toRemove.forEach((k) => localStorage.removeItem(k));
+  _dirty.clear();
   try {
     localStorage.removeItem(POM_KEY);
   } catch (e) {}
@@ -13088,43 +13128,30 @@ if (!_cloudOK) {
   }
 }
 
-// Auto-pull every 60s if logged in (was 5 min, then 2 min). This is only a
-// safety net — setupRealtimeSync() below is the actual live sync path and
-// reflects changes instantly; this timer just re-syncs in case that
-// real-time channel ever silently drops, so polling it this often costs
-// one small query a minute, not a heavier sync.
-setInterval(
-  () => {
-    if (_user) pull();
-  },
-  60 * 1000,
-);
-
-// Pull-on-resume: the 5-min interval alone means switching back to this tab/app
-// after editing on another device could show stale data for up to 5 minutes.
-// Fix: pull immediately whenever this tab/app becomes visible again (screen
-// unlock, tab switch, app foregrounded) — throttled so rapid focus/visibility
-// flapping doesn't spam the network.
+// Safety nets. With realtime live these are just a cheap check every ~21s; if realtime is down
+// they poll every 3s. Coming back to the tab / regaining network catches up immediately.
+let _tick = 0;
+setInterval(() => {
+  if (!_user || document.hidden) return;
+  _tick++;
+  if (!_rtLive || _tick % 7 === 0) pollChanges();
+}, 3000);
+setInterval(() => { if (_user && !document.hidden) pull(); }, 5 * 60 * 1000); // full re-sync
 let _lastResumePull = 0;
 function _resumePull() {
   if (!_user || !_cloudOK) return;
   const now = Date.now();
-  if (now - _lastResumePull < 3000) return; // throttle: max once per 3s
+  if (now - _lastResumePull < 1500) return;
   _lastResumePull = now;
-  pull().then(() => {
-    try {
-      renderDash();
-      renderHabits();
-      renderTasks();
-      applyDashCfg();
-    } catch (e) {}
-  });
+  if (!_realtimeChannel) setupRealtimeSync();
+  _syncReady ? pollChanges() : pull();
 }
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) _resumePull();
-});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) _resumePull(); });
 window.addEventListener("focus", _resumePull);
 window.addEventListener("pageshow", _resumePull);
+window.addEventListener("online", _resumePull);
+// Anything skipped because you were typing gets applied as soon as you leave the field.
+document.addEventListener("focusout", () => { if (_pendRefresh.size) setTimeout(_flushRefresh, 150); });
 
 // ═══ SAME-BROWSER MULTI-TAB SYNC ═══
 // If this account is open in two tabs on the same browser at once, each tab

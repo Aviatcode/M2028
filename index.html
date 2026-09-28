@@ -3663,6 +3663,86 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
   0% { transform: translate(0, 0) scale(0.4); opacity: 1; }
   100% { transform: translate(var(--sx), var(--sy)) scale(1.1); opacity: 0; }
 }
+
+/* ═══ POMODORO — laptop sizing ═══
+   Bigger timer, bigger widgets and slightly bigger text from 900px up. Phones and
+   tablets keep their current sizes. (!important is needed where the markup carries
+   inline sizes.) */
+@media (min-width: 900px) {
+  #v-pomo .ph { margin-bottom: 28px; }
+  #v-pomo .ph-t { font-size: 32px; }
+  #v-pomo .ph-s { font-size: 15px; }
+  #v-pomo .g2 { grid-template-columns: 1.05fr 1fr; gap: 22px; align-items: stretch; }
+  #v-pomo .card { padding: 24px 28px; margin-bottom: 20px; border-radius: 18px; }
+  #v-pomo .g2 > .card:first-child {
+    display: flex; flex-direction: column; justify-content: flex-start;
+    align-self: start; padding: 28px 32px; margin-bottom: 0;
+    /* the timer scales with the window height so Start is always on screen */
+    --pr: clamp(210px, 33vh, 290px);
+  }
+  #v-pomo .ct { font-size: 16px; margin-bottom: 14px; }
+  #v-pomo #pomLbl { font-size: 13px !important; letter-spacing: .22em !important; margin-bottom: 20px !important; }
+  #v-pomo .pr { width: var(--pr, 250px); height: var(--pr, 250px); margin-bottom: 20px; }
+  #v-pomo .pi { width: calc(var(--pr, 250px) - 36px); height: calc(var(--pr, 250px) - 36px); }
+  #v-pomo .pm { font-size: calc(var(--pr, 250px) * 0.26); }
+  #v-pomo .pse { font-size: calc(var(--pr, 250px) * 0.08); }
+  #v-pomo .pom-txt { font-size: 15px !important; }
+  #v-pomo .pom-sess { margin-bottom: 16px !important; }
+  #v-pomo #pomAdjRow { gap: 14px !important; margin-bottom: 18px !important; }
+  #v-pomo #pomAdjRow .btn { font-size: 16px !important; padding: 13px 24px !important; border-radius: 12px; }
+  #v-pomo #pomAdjRow .btn.b-gh { font-size: 22px !important; padding: 9px 20px !important; }
+  #v-pomo #pomBtn { min-width: 140px !important; }
+  #v-pomo .pom-endrow { justify-content: center; }
+  #v-pomo .pom-endrow .btn { font-size: 15px; padding: 12px 28px; }
+  #v-pomo .btn.sm { font-size: 14px; padding: 10px 18px; }
+  #v-pomo #pomLog { font-size: 14px !important; max-height: 240px !important; }
+  #v-pomo .pom-sum { font-size: 16px !important; }
+  #v-pomo #pomSoundStyleSel { font-size: 15px !important; padding: 11px !important; }
+  /* ── THEATER MODE: Susurrus becomes a wide, centered, cinematic player
+     (like YouTube's theater view) with the controls overlaid along the bottom ── */
+  #v-pomo #susurrusCard {
+    width: 100%; margin: 4px auto 22px !important;
+    background: #000 !important; border: 0 !important; border-radius: 18px !important;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
+  }
+  #v-pomo .susurrus-art { height: auto !important; aspect-ratio: 21 / 9; min-height: 300px; max-height: 64vh; }
+  #v-pomo .susurrus-art > div:last-child { padding-bottom: 76px; }
+  #v-pomo .susurrus-title { font-size: 56px !important; }
+  #v-pomo .susurrus-sub { font-size: 15px !important; }
+  #v-pomo #susurrusCard > div:last-child {
+    position: absolute !important; left: 0; right: 0; bottom: 0;
+    padding: 48px 32px 18px !important;
+    background: linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,.55) 58%, transparent) !important;
+  }
+  #v-pomo #nsdrPlayBtn { width: 56px !important; height: 56px !important; font-size: 24px !important; }
+  #v-pomo #nsdrCur, #v-pomo #nsdrDur { font-size: 12px !important; }
+  #v-pomo .susurrus-hint { font-size: 13px !important; margin-top: 12px !important; }
+}
+@media (min-width: 1300px) {
+  #v-pomo .ph-t { font-size: 36px; }
+  #v-pomo .susurrus-title { font-size: 68px !important; }
+}
+
+/* ═══ POMODORO — keep everything in this tab centered on laptop ═══ */
+@media (min-width: 900px) {
+  #v-pomo { max-width: 1100px; margin-inline: auto; }
+  #v-pomo .ph { text-align: center; }
+  #v-pomo .g2 { text-align: center; margin-bottom: 22px; }
+  #v-pomo .g2 > div { display: flex; flex-direction: column; justify-content: center; gap: 20px; }
+  #v-pomo .g2 > div > .card { margin-bottom: 0; }
+  #v-pomo .ct { justify-content: center; }
+  #v-pomo #pomLog { text-align: center; }
+  #v-pomo details.card { max-width: 420px; margin-left: auto; margin-right: auto; text-align: center; }
+}
+
+/* ═══ WALLPAPER TAB ═══
+   The tab itself is empty. The picture is already on a fixed layer behind the app, so
+   here the dim is lifted and the picture shows at full strength. */
+html.haswp body.onwall::after { background: transparent; }
+html.haswp body::after { transition: background 0.3s; }
+#v-wall { min-height: 60vh; }
+#v-wall .wall-hint { display: none; text-align: center; padding: 18vh 20px 0; }
+html:not(.haswp) #v-wall .wall-hint { display: block; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -3854,29 +3934,32 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
     <div class="card" style="text-align:center">
       <div id="pomLbl" style="font-size:10px;color:var(--m2);letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px">FOCUS SESSION</div>
       <div class="pr" id="pomRing"><div class="pi"><div class="pm" id="pomM">50</div><div class="pse" id="pomS">:00</div></div></div>
-      <div style="font-size:12px;color:var(--m2);margin-bottom:14px">Session <span id="pomSess">1</span> / <span id="pomTot">4</span></div>
+      <div class="pom-txt pom-sess" style="font-size:12px;color:var(--m2);margin-bottom:14px">Session <span id="pomSess">1</span> / <span id="pomTot">4</span></div>
       <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:12px" id="pomAdjRow">
         <button class="btn b-gh" style="padding:6px 14px;font-size:18px" onclick="adjS(-1)">−</button>
         <button class="btn b-ai" id="pomBtn" onclick="pomToggle()" style="min-width:88px">▶ Start</button>
         <button class="btn b-gh" style="padding:6px 14px;font-size:18px" onclick="adjS(1)">+</button>
       </div>
-      <div style="display:flex;gap:8px">
+      <div class="pom-endrow" style="display:flex;gap:8px">
         <button class="btn b-gh" onclick="pomEndSession()" style="flex:1">⏹ End Session</button>
       </div>
-      <div style="font-size:12px;color:var(--mt);margin-top:10px">Today: <span style="color:var(--ai)" id="pomToday">0</span> sessions</div>
+      <div class="pom-txt" style="font-size:12px;color:var(--mt);margin-top:10px">Today: <span style="color:var(--ai)" id="pomToday">0</span> sessions</div>
     </div>
     <div>
       <div class="card">
         <div class="ct" style="margin-bottom:10px">Studying now</div>
-        <div style="font-size:13px;color:var(--m2);margin-bottom:10px">Now: <strong style="color:var(--tx)" id="subDisp">Not set</strong></div>
+        <div class="pom-txt" style="font-size:13px;color:var(--m2);margin-bottom:10px">Now: <strong style="color:var(--tx)" id="subDisp">Not set</strong></div>
         <button class="btn b-gh sm" style="width:100%" onclick="openPomSubjectModal()">✏️ Change subject</button>
       </div>
       <div class="card"><div class="ct" style="margin-bottom:8px">Session log</div><div id="pomLog" style="font-size:12px;color:var(--m2);max-height:160px;overflow-y:auto">No sessions yet.</div></div>
+    </div>
+  </div><!-- /g2 -->
+
       <!-- Susurrus Player -->
       <div class="card" id="susurrusCard" style="margin-bottom:14px;padding:0;overflow:hidden;border-radius:14px;position:relative">
         <!-- Sunset background SVG -->
         <div class="susurrus-art" style="position:relative;width:100%;height:180px;overflow:hidden;flex-shrink:0">
-          <svg viewBox="0 0 400 180" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+          <svg viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
             <!-- Sky gradient -->
             <defs>
               <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -3935,7 +4018,7 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
           <!-- Title overlay -->
           <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
             <div class="susurrus-title" style="font-size:26px;font-weight:700;color:#fff;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.6);font-family:Georgia,serif">Susurrus</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)">10-Minute NSDR · Dr. Andrew Huberman</div>
+            <div class="susurrus-sub" style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.5)">10-Minute NSDR · Dr. Andrew Huberman</div>
           </div>
         </div>
         <!-- Audio player -->
@@ -3957,13 +4040,13 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
             </div>
             <button onclick="nsdrRestart()" style="background:none;border:none;color:var(--m2);font-size:16px;cursor:pointer;padding:0 4px" title="Restart">↺</button>
           </div>
-          <div style="font-size:11px;color:var(--mt);margin-top:8px;text-align:center">Best during Pomodoro break · eyes closed · breathe slowly</div>
+          <div class="susurrus-hint" style="font-size:11px;color:var(--mt);margin-top:8px;text-align:center">Best during Pomodoro break · eyes closed · breathe slowly</div>
         </div>
       </div>
 
       <!-- Sound settings — collapsed to a single line; pick a sound and it previews itself, nothing else stays visible -->
       <details class="card" style="margin-bottom:0">
-        <summary style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;list-style:none">🔊 Sound</summary>
+        <summary class="pom-sum" style="font-size:13px;font-weight:600;color:var(--tx);cursor:pointer;list-style:none">🔊 Sound</summary>
         <select id="pomSoundStyleSel" onchange="setPomSoundStyle(this.value);pomSound('session')" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:1px solid var(--b);background:var(--s2);color:var(--tx);font-size:13px">
           <option value="bell">🔔 Classic Bell</option>
           <option value="chime">✨ Soft Chime</option>
@@ -3972,10 +4055,17 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
           <option value="pulse">💫 Ping Pulse</option>
         </select>
       </details>
-    </div>
-  </div>
 </div>
 
+
+<!-- WALLPAPER TAB: intentionally empty, so only the wallpaper shows -->
+<div id="v-wall" class="vw">
+  <div class="wall-hint">
+    <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:6px">No wallpaper yet</div>
+    <div style="font-size:13px;color:var(--m2);margin-bottom:14px">Pick a picture and it will fill this whole tab.</div>
+    <button class="btn b-ai" onclick="openWallpaperMo()">🖼️ Choose wallpaper</button>
+  </div>
+</div>
 
 <!-- HABITS -->
 <!-- UPSC BOOKS -->
@@ -5666,6 +5756,7 @@ let _sub = null,
 // ═══ HELPERS ═══
 function showV(id) {
   document.querySelectorAll(".vw").forEach((v) => v.classList.remove("on"));
+  document.body.classList.toggle("onwall", id === "wall");
   const el = document.getElementById("v-" + id);
   if (el) el.classList.add("on");
   const renders = {
@@ -8104,6 +8195,8 @@ const NAV_TABS = [
     primary: false,
   },
   { id: "road", label: "Roadmap", icon: "🗺", group: "Track", primary: false },
+  // Empty on purpose: it shows nothing but the wallpaper.
+  { id: "wall", label: "Wallpaper", icon: "🖼️", group: "Today", primary: false },
   { id: "body", label: "Body", icon: "💪", group: "Track", primary: false },
 ];
 function getNavHidden() {

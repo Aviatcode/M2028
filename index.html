@@ -32,15 +32,26 @@ console.log("M2028 build: checklist-resume-sync-v4");
     // Girl mode's default look is Baby Pink. Used whenever girl mode has no saved
     // colors of its own (never picked one, or pressed "Reset to theme").
     window.ccDefaultFor = function (t) {
+      if (t === "light") return { bg: "#ffffff", tx: "#1a1a2e", t: "light" }; // white mode is true white
       return t === "pink" ? { bg: "#ffd6e7", tx: "#4a1230", t: "pink" } : null;
+    };
+    window.ccIsLightHex = function (hex) {
+      const n = parseInt(String(hex).replace("#", ""), 16);
+      const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+      return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) >= 0.25;
     };
     // The colors that should actually be showing: the saved ones if they belong
     // to this theme, otherwise the theme's default (or null = plain theme).
     window.ccEffective = function (cc, t) {
-      // Older saves have no theme tag and still apply in dark/light, but girl mode
-      // only uses colors saved in girl mode, so it always starts on Baby Pink.
-      const mine = cc && (cc.t ? cc.t === t : t !== "pink");
-      return mine && cc.bg && cc.tx ? cc : window.ccDefaultFor(t);
+      // Saves made in a theme carry its tag. Older saves have no tag: they only apply
+      // in dark/white mode when their brightness matches (a dark navy never shows up
+      // in white mode) and never in girl mode, which always starts on Baby Pink.
+      if (cc && cc.bg && cc.tx) {
+        if (cc.t) {
+          if (cc.t === t) return cc;
+        } else if (t !== "pink" && window.ccIsLightHex(cc.bg) === (t === "light")) return cc;
+      }
+      return window.ccDefaultFor(t);
     };
     window.applyCustomColors = function (cc, theme) {
       const old = document.getElementById("ccStyle");
@@ -84,6 +95,32 @@ console.log("M2028 build: checklist-resume-sync-v4");
       const meta = document.getElementById("themeColorMeta");
       if (meta) meta.content = css(bg);
     };
+    // Wallpaper: a picture behind the whole app, like a chat wallpaper. Kept on this
+    // device only (a photo is too big to sync) and applied before first paint.
+    window.applyWallpaper = function () {
+      const root = document.documentElement;
+      const old = document.getElementById("wpImg");
+      if (old) old.remove();
+      try {
+        const img = localStorage.getItem("m_wallpaper");
+        const dim = parseFloat(localStorage.getItem("m_wpDim"));
+        if (img && /^data:image\//.test(img)) {
+          // The picture lives in one style rule (a single copy, and not inherited by
+          // every element the way a CSS variable would be). :root raises its
+          // specificity above the layer's base rule further down.
+          const st = document.createElement("style");
+          st.id = "wpImg";
+          st.textContent = ':root.haswp body::before{background-image:url("' + img + '")}';
+          document.head.appendChild(st);
+          root.style.setProperty("--wpdim", isNaN(dim) ? 0.3 : dim);
+          root.classList.add("haswp");
+          return;
+        }
+      } catch (e) {}
+      root.style.removeProperty("--wpdim");
+      root.classList.remove("haswp");
+    };
+    window.applyWallpaper();
     try {
       const th0 = JSON.parse(localStorage.getItem("m_theme") || '"dark"');
       window.applyCustomColors(window.ccEffective(JSON.parse(localStorage.getItem("m_customColors")), th0), th0);
@@ -139,7 +176,7 @@ console.log("M2028 build: checklist-resume-sync-v4");
 /* Instant pre-theme — applied before JS runs to prevent flash */
 html.pre-light,
 html.pre-light body {
-  background: #f5f5f7 !important;
+  background: #ffffff !important;
   color: #1a1a2e !important;
 }
 html.pre-pink,
@@ -148,7 +185,7 @@ html.pre-pink body {
   color: #ffe4f0 !important;
 }
 body.light {
-  --bg: #f5f5f7;
+  --bg: #ffffff;
   --s1: #ffffff;
   --s2: #f0f0f3;
   --s3: #e4e4e8;
@@ -159,7 +196,7 @@ body.light {
   --m2: #6e6e80;
 }
 body.light .tb {
-  background: rgba(245, 245, 247, 0.97) !important;
+  background: rgba(255, 255, 255, 0.97) !important;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 body.light .sb {
@@ -194,7 +231,7 @@ body.light .ci {
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 body.light .bnb {
-  background: rgba(245, 245, 247, 0.97) !important;
+  background: rgba(255, 255, 255, 0.97) !important;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 body.light .nb {
@@ -225,7 +262,7 @@ body.light .inp::placeholder,
   background: var(--bg);
 }
 body.light #loginScr {
-  background: #f5f5f7 !important;
+  background: #ffffff !important;
 }
 body.pink #loginScr {
   background: #1a0a14 !important;
@@ -637,31 +674,10 @@ body.pink .sp {
   animation: heartbeat 1.5s ease infinite;
 }
 
-/* Pink topbar bunny — anchored to the streak pill itself (rather than a
-   fixed offset from the top bar's edge) so it always hops above the
-   streak count and never drifts onto whichever button happens to sit at
-   that pixel distance, regardless of how many icons share the top bar. */
-body.pink .sp::after {
-  content: "🐰";
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 18px;
-  animation: bounce 2s ease infinite;
-  pointer-events: none;
-}
-
 /* Pink page title with star */
 body.pink .ph-t::after {
   content: " ✨";
   font-size: 16px;
-}
-
-/* Pink section headers with flower */
-body.pink .ct::before {
-  content: "🌸 ";
-  font-size: 12px;
 }
 
 /* Pink habit checkmark becomes heart */
@@ -696,6 +712,11 @@ body.pink .mo::before {
   right: 14px;
   font-size: 18px;
   pointer-events: none;
+}
+/* No flower on the Account menu */
+body.pink #acctMo .mo::before,
+body.pink #wallpaperMo .mo::before {
+  content: none;
 }
 body.pink .mo {
   position: relative;
@@ -760,12 +781,53 @@ body {
     color 0.25s;
 }
 body.light {
-  background: #f5f5f7 !important;
+  background: #ffffff !important;
   color: #1a1a2e !important;
 }
 body.pink {
   background: #1a0a14 !important;
   color: #ffe4f0 !important;
+}
+/* ═══ WALLPAPER ═══
+   The picture lives on a fixed layer behind the app. The body's own background is
+   made transparent so the layer shows through the gaps between widgets; cards,
+   the top bar and the bottom nav keep their solid colors so text stays readable. */
+html.haswp body,
+html.haswp body.light,
+html.haswp body.pink,
+html.haswp.ucolors body,
+html.haswp.ucolors body.light,
+html.haswp.ucolors body.pink,
+html.haswp.pre-light body,
+html.haswp.pre-pink body {
+  background: transparent !important;
+}
+html.haswp body::before,
+html.haswp body::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh; /* the largest viewport, so the picture doesn't resize when a phone's address bar hides or shows */
+  z-index: -1;
+  pointer-events: none;
+}
+/* Picture layer: colour, position and size only. The picture itself is added by
+   applyWallpaper() in <head> as :root.haswp body::before { background-image }. */
+html.haswp body::before {
+  background-color: var(--bg, #0c0c0f);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+/* Dim layer above the picture: black in dark/girl mode, white in white mode. */
+html.haswp body::after {
+  background: rgba(0, 0, 0, var(--wpdim, 0.3));
+}
+html.haswp body.light::after {
+  background: rgba(255, 255, 255, var(--wpdim, 0.3));
 }
 .tb {
   position: fixed;
@@ -836,7 +898,7 @@ body.pink {
   text-align: center;
 }
 body.light .collapse-nav {
-  background: rgba(245, 245, 247, 0.98) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
 }
 body.pink .collapse-nav {
   background: rgba(26, 10, 20, 0.98);
@@ -4507,6 +4569,7 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
       <button class="btn b-ai" id="syncBtn" onclick="doManualSync()">🔄 Sync</button>
       <button class="btn b-gh" onclick="reqNotif()" id="nBtn">🔔 Enable Notifications</button>
       <button class="btn b-gh" onclick="closeMo('acctMo');openColorMo()">🎨 App Colors</button>
+      <button class="btn b-gh" onclick="closeMo('acctMo');openWallpaperMo()">🖼️ Wallpaper</button>
       <button class="btn b-rd" onclick="doSignOut()" style="margin-top:4px">Sign Out</button>
     </div>
   </div>
@@ -4533,6 +4596,28 @@ body.pink #quoteCard::before { right: auto; left: 14px; }
       <button class="btn b-gh" style="flex:1" onclick="ccReset()">↺ Reset to theme</button>
       <button class="btn b-ai" style="flex:1" onclick="ccClose()">Done</button>
     </div>
+  </div>
+</div>
+
+<!-- WALLPAPER (own screen, opened from the Account menu) -->
+<div class="ov" id="wallpaperMo" onclick="if(event.target===this)closeMo('wallpaperMo')">
+  <div class="mo" style="max-width:340px">
+    <div class="mot">🖼️ Wallpaper</div>
+    <div style="font-size:12px;color:var(--m2);margin-bottom:14px">Saved on this device only. The picture is resized automatically to fit your screen, in portrait or landscape.</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+      <div id="wpThumb" style="width:54px;height:72px;border-radius:10px;border:1px solid var(--b2);background:var(--s2) center/cover no-repeat;flex-shrink:0"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <button class="btn b-gh" onclick="document.getElementById('wpFile').click()">🖼️ Choose picture</button>
+        <button class="btn b-gh" id="wpRemoveBtn" onclick="wpRemove()">Remove wallpaper</button>
+      </div>
+    </div>
+    <div id="wpNote" style="display:none;font-size:11px;color:var(--m2);margin:-2px 0 10px"></div>
+    <input type="file" id="wpFile" accept="image/*" style="display:none" onchange="wpPick(this)">
+    <label id="wpDimRow" style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--m2);margin-bottom:14px">
+      <span style="width:52px">Dim</span>
+      <input type="range" id="wpDim" min="0" max="80" value="30" oninput="wpSetDim(this.value)" style="flex:1">
+    </label>
+    <button class="btn b-ai" style="width:100%" onclick="closeMo('wallpaperMo')">Done</button>
   </div>
 </div>
 
@@ -6568,6 +6653,7 @@ const CC_PRESETS = {
     ["#000000", "#ffffff", "Contrast"],
   ],
   light: [
+    ["#ffffff", "#1a1a2e", "White"], // the white-mode default (keep in sync with ccDefaultFor in <head>)
     ["#f5f5f7", "#1a1a2e", "Paper"],
     ["#fdf3e3", "#3b2a1a", "Cream"],
     ["#e8f3fd", "#12304d", "Sky"],
@@ -6575,7 +6661,6 @@ const CC_PRESETS = {
     ["#eeeafb", "#2a1f4d", "Lavender"],
     ["#f3ece0", "#3a2f22", "Sand"],
     ["#fff8dc", "#3d3300", "Butter"],
-    ["#ffffff", "#111111", "Snow"],
   ],
   // Girl mode: deep pink/purple combos, plus Baby Pink (a light background). In
   // pink mode a light background keeps the pink theme and layers the light
@@ -6620,7 +6705,7 @@ function ccApplyAll() {
   const cls = ccBodyClasses(t, on ? cc.bg : null);
   if (!on) {
     const meta = document.getElementById("themeColorMeta");
-    if (meta) meta.content = { dark: "#0c0c0f", light: "#f5f5f7", pink: "#1a0a14" }[t] || "#0c0c0f";
+    if (meta) meta.content = { dark: "#0c0c0f", light: "#ffffff", pink: "#1a0a14" }[t] || "#0c0c0f";
   }
   document.body.classList.remove("light", "pink");
   if (cls.light) document.body.classList.add("light");
@@ -6654,6 +6739,173 @@ function openColorMo() {
     )
     .join("");
   openMo("colorMo");
+}
+// ═══ WALLPAPER ═══
+function openWallpaperMo() {
+  const n = document.getElementById("wpNote");
+  if (n) n.style.display = "none"; // no stale message from last time
+  wpRefreshUI();
+  openMo("wallpaperMo");
+}
+// The picked photo is shrunk and re-saved as a JPEG (a phone photo can be 10MB+,
+// far over the browser's storage limit), then applied by applyWallpaper() in <head>.
+function wpRefreshUI() {
+  let img = null;
+  try {
+    img = localStorage.getItem("m_wallpaper");
+  } catch (e) {}
+  const th = document.getElementById("wpThumb");
+  if (th) th.style.backgroundImage = img ? 'url("' + img + '")' : "none";
+  const rm = document.getElementById("wpRemoveBtn");
+  if (rm) rm.style.display = img ? "" : "none";
+  const row = document.getElementById("wpDimRow");
+  if (row) row.style.display = img ? "flex" : "none";
+  const sl = document.getElementById("wpDim");
+  if (sl) {
+    const d = parseFloat(localStorage.getItem("m_wpDim"));
+    sl.value = Math.round((isNaN(d) ? 0.3 : d) * 100);
+  }
+}
+// How big should the saved picture be? Big enough to cover this screen at its real
+// pixel density (so it is sharp) in BOTH orientations (so rotating a phone or tablet
+// doesn't stretch it), never bigger than the original (no blurry upscaling) and
+// never more than 2560px on its longest side (memory + storage).
+// Pure function so it can be tested: screen size in device pixels, and whether the
+// window is currently landscape.
+function wpPlanSize(iw, ih, sw, sh, landscape) {
+  if ((sw > sh) !== landscape) [sw, sh] = [sh, sw];
+  const need = Math.max(sw / iw, sh / ih); // scale at which the picture just covers the screen as it is now
+  const long = Math.max(sw, sh);
+  const needAny = Math.max(long / iw, long / ih); // ...and when the device is turned the other way
+  let scale = Math.min(1, needAny);
+  const big = Math.max(iw, ih) * scale;
+  if (big > 2560) scale *= 2560 / big;
+  return {
+    w: Math.max(1, Math.round(iw * scale)),
+    h: Math.max(1, Math.round(ih * scale)),
+    small: need > 1.05, // the original is smaller than the screen, so it will look soft
+  };
+}
+// Decode with the browser's own decoder, honouring the photo's rotation (EXIF).
+async function wpDecode(file) {
+  if (window.createImageBitmap) {
+    try {
+      return await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch (e) {}
+    try {
+      return await createImageBitmap(file);
+    } catch (e) {}
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    return await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("decode"));
+      im.src = url;
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+// Encode as WebP where this browser can (about 30% smaller), otherwise JPEG, and
+// keep trying smaller/lighter versions until it fits in storage.
+function wpEncodeAndSave(src, w, h) {
+  const MAX = 1400000; // characters of data URL; leaves plenty of the ~5MB for the rest of the app
+  let prev = null;
+  try {
+    prev = localStorage.getItem("m_wallpaper");
+  } catch (e) {}
+  const tries = [[1, 0.82], [1, 0.68], [1, 0.55], [0.8, 0.6], [0.65, 0.55], [0.5, 0.5]];
+  for (const [k, q] of tries) {
+    const cw = Math.max(1, Math.round(w * k));
+    const ch = Math.max(1, Math.round(h * k));
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const ctx = c.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#fff"; // transparent PNGs would otherwise turn black
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(src, 0, 0, cw, ch);
+    let data = c.toDataURL("image/webp", q);
+    if (!data.startsWith("data:image/webp")) data = c.toDataURL("image/jpeg", q);
+    c.width = c.height = 0; // free the canvas memory right away (matters on phones)
+    if (data.length > MAX) continue;
+    try {
+      localStorage.removeItem("m_wallpaper"); // replace, don't add to, the old one
+      localStorage.setItem("m_wallpaper", data);
+      return data;
+    } catch (e) {} // storage full: try a lighter one
+  }
+  try {
+    if (prev) localStorage.setItem("m_wallpaper", prev); // keep the old wallpaper if nothing fit
+  } catch (e) {}
+  return null;
+}
+async function wpPick(inp) {
+  const f = inp.files && inp.files[0];
+  inp.value = "";
+  if (!f) return;
+  const note = document.getElementById("wpNote");
+  const say = (t) => {
+    if (!note) return;
+    note.textContent = t || "";
+    note.style.display = t ? "block" : "none";
+  };
+  say("Optimising picture…");
+  let src;
+  try {
+    src = await wpDecode(f);
+  } catch (e) {
+    say("");
+    alert("Couldn't open that picture. Try a JPG, PNG or WebP.");
+    return;
+  }
+  const iw = src.naturalWidth || src.width;
+  const ih = src.naturalHeight || src.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const plan = wpPlanSize(iw, ih, (screen.width || 390) * dpr, (screen.height || 844) * dpr, window.innerWidth > window.innerHeight);
+  const saved = wpEncodeAndSave(src, plan.w, plan.h);
+  if (src.close) src.close();
+  if (!saved) {
+    say("");
+    alert("Couldn't fit that picture on this device. Try a smaller one.");
+    return;
+  }
+  // Make sure the browser can really show what was saved before switching to it.
+  const ok = await new Promise((res) => {
+    const t = new Image();
+    t.onload = () => res(true);
+    t.onerror = () => res(false);
+    t.src = saved;
+  });
+  if (!ok) {
+    wpRemove();
+    say("");
+    alert("That picture couldn't be displayed. Try a different one.");
+    return;
+  }
+  window.applyWallpaper();
+  wpRefreshUI();
+  say(plan.small ? "This picture is smaller than your screen, so it may look a little soft." : "");
+}
+function wpSetDim(v) {
+  try {
+    localStorage.setItem("m_wpDim", String(Math.min(80, Math.max(0, +v)) / 100));
+  } catch (e) {}
+  window.applyWallpaper();
+}
+function wpRemove() {
+  try {
+    localStorage.removeItem("m_wallpaper");
+    localStorage.removeItem("m_wpDim");
+  } catch (e) {}
+  window.applyWallpaper();
+  wpRefreshUI();
+  const n = document.getElementById("wpNote");
+  if (n) n.style.display = "none";
 }
 // Dragging a color picker fires dozens of events a second. Each one used to
 // be saved + pushed to the cloud immediately, which flooded sync (and its
@@ -9481,18 +9733,30 @@ function renderCWWidget(w) {
 }
 
 // ═══ THEME TOGGLE ═══
+// The theme button shows a moon / sun, and in girl mode the same hand-drawn leaf that
+// replaces every emoji elsewhere in that theme (not a real emoji). It has no data-e,
+// so leaving girl mode never turns it back into text; the next call redraws it.
+function setThemeBtnIcon(theme, icons) {
+  const btn = document.getElementById("themeBtn");
+  if (!btn) return;
+  if (theme === "pink") {
+    const idx = typeof leafIndexFor === "function" ? leafIndexFor("🌸") : 1;
+    btn.innerHTML = '<span class="leafico lf' + idx + '" role="img" aria-label="Girl mode"></span>';
+  } else {
+    btn.textContent = icons[theme] || "🌙";
+  }
+}
 function toggleTheme() {
   const cur = S.go("theme", "dark");
   const cycle = { dark: "light", light: "pink", pink: "dark" };
-  const icons = { dark: "🌙", light: "☀️", pink: "🌸" };
-  const colors = { dark: "#0c0c0f", light: "#f5f5f7", pink: "#1a0a14" };
+  const icons = { dark: "🌙", light: "☀️", pink: "" }; // girl mode shows the app's own leaf (see setThemeBtnIcon)
+  const colors = { dark: "#0c0c0f", light: "#ffffff", pink: "#1a0a14" };
   const next = cycle[cur] || "light";
   document.body.classList.remove("light", "pink");
   if (next === "light") document.body.classList.add("light");
   if (next === "pink") document.body.classList.add("pink");
   S.s("theme", next);
-  const btn = document.getElementById("themeBtn");
-  if (btn) btn.textContent = icons[next];
+  setThemeBtnIcon(next, icons);
   const meta = document.getElementById("themeColorMeta");
   if (meta) meta.content = colors[next] || "#0c0c0f";
   ccApplyAll(); // also handles pink effects, and keeps the light/dark base in step with any custom colors
@@ -9501,15 +9765,14 @@ function applyTheme() {
   const t = S.go("theme", "dark");
   document.body.classList.remove("light", "pink");
   document.documentElement.classList.remove("pre-light", "pre-pink");
-  const icons = { dark: "🌙", light: "☀️", pink: "🌸" };
-  const colors = { dark: "#0c0c0f", light: "#f5f5f7", pink: "#1a0a14" };
+  const icons = { dark: "🌙", light: "☀️", pink: "" }; // girl mode shows the app's own leaf (see setThemeBtnIcon)
+  const colors = { dark: "#0c0c0f", light: "#ffffff", pink: "#1a0a14" };
   if (t === "light") document.body.classList.add("light");
   if (t === "pink") {
     document.body.classList.add("pink");
     startPinkEffects();
   }
-  const btn = document.getElementById("themeBtn");
-  if (btn) btn.textContent = icons[t] || "🌙";
+  setThemeBtnIcon(t, icons);
   const meta = document.getElementById("themeColorMeta");
   if (meta) meta.content = colors[t] || "#0c0c0f";
   ccApplyAll(); // re-apply custom colors (and the matching base theme) after a cloud pull may have changed them
@@ -12463,7 +12726,7 @@ function clearLocalAppData() {
   const toRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith("m_") && k !== "m_theme" && k !== "m_customColors") toRemove.push(k);
+    if (k && k.startsWith("m_") && k !== "m_theme" && k !== "m_customColors" && k !== "m_wallpaper" && k !== "m_wpDim") toRemove.push(k);
   }
   toRemove.forEach((k) => localStorage.removeItem(k));
   try {

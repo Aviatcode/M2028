@@ -1674,49 +1674,6 @@ a:focus-visible,
   font-weight: 700;
   margin-bottom: 13px;
 }
-/* ═══ TASK EMERGENCY ALERT ═══ */
-@keyframes taskAlertPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(232, 96, 96, 0.55);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(232, 96, 96, 0);
-  }
-}
-@keyframes taskAlertShake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-3px);
-  }
-  40% {
-    transform: translateX(3px);
-  }
-  60% {
-    transform: translateX(-2px);
-  }
-  80% {
-    transform: translateX(2px);
-  }
-}
-.task-alert-ov {
-  z-index: 400;
-  background: rgba(20, 4, 4, 0.82);
-}
-.task-alert-mo {
-  border: 2px solid var(--rd);
-  animation: taskAlertPulse 1.6s ease-out infinite;
-  text-align: center;
-}
-.task-alert-icon {
-  font-size: 34px;
-  margin-bottom: 6px;
-  animation: taskAlertShake 0.7s ease-in-out infinite;
-  display: inline-block;
-}
 .wd {
   flex: 1;
   text-align: center;
@@ -1894,17 +1851,9 @@ a:focus-visible,
     grid-template-columns: 1fr !important;
   }
 
-  /* Tasks widget: on phones, "Show all" reveals the add-task row, filters,
-     and the full task list all at once inside this widget on the home
-     page — combined with the keyboard opening to type a new task, that
-     used to grow tall enough to need a lot of scrolling. Shrink it down
-     and cap the list's height (with its own internal scroll) so the add
-     row and the ✓/× controls stay comfortably reachable on screen. */
-  #dw-tasks #tasksFullSection {
-    margin-top: 9px !important;
-    padding-top: 9px !important;
-  }
-  #dw-tasks #tasksFullSection > div:first-child {
+  /* Tasks widget on phones: tighter add row, and the list scrolls inside
+     the widget so the add box and the ✓/× buttons stay easy to reach. */
+  #dw-tasks .tcompose {
     gap: 6px !important;
     margin-bottom: 8px !important;
   }
@@ -1914,12 +1863,6 @@ a:focus-visible,
   }
   #tskInp {
     min-width: 110px !important;
-  }
-  #tskDate {
-    width: 100px !important;
-  }
-  #tskTime {
-    width: 78px !important;
   }
   #dw-tasks .tsk-row {
     padding: 6px 0 !important;
@@ -3027,7 +2970,7 @@ body.light .rck.on {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border-radius: 99px;
   border: 1px solid var(--b);
   background: var(--s2);
@@ -3035,7 +2978,7 @@ body.light .rck.on {
   font-weight: 550;
   color: var(--m2);
   cursor: pointer;
-  line-height: 1.6;
+  line-height: 1.5;
   white-space: nowrap;
   transition:
     border-color 0.15s ease,
@@ -3057,20 +3000,6 @@ body.light .rck.on {
   color: var(--rd);
   border-color: rgba(226, 87, 79, 0.35);
   background: var(--r2);
-}
-.chip input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  opacity: 0;
-  border: none;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  background: none;
 }
 .chip .ico {
   opacity: 0.75;
@@ -3866,32 +3795,12 @@ html:not(.haswp) #v-wall .wall-hint { display: block; }
   <span class="dragHandle" onpointerdown="_onHandlePointerDown(event)">⠿</span>
   <span class="resizeHandle" onpointerdown="_onResizePointerDown(event)" ondblclick="_resetWidgetSize(event)" title="Drag to resize, double-click to reset">⤡</span>
   <div class="wc">
-    <div class="ct">☑️ Tasks
-      <div style="display:flex;gap:6px">
-        <button onclick="openMo('qTaskMo')" style="background:var(--ai);color:#000;border:none;border-radius:50%;width:26px;height:26px;font-size:18px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center">+</button>
-        <button class="btn b-gh sm" onclick="toggleTasksExpand()" id="tasksExpandBtn">Show all ▾</button>
-      </div>
+    <div class="ct">☑️ Tasks <span id="tskCount" style="font-size:11px;font-weight:500;color:var(--mt)"></span></div>
+    <div class="tcompose">
+      <input type="text" id="tskInp" class="inp" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTask()">
+      <button class="btn b-ai" onclick="addTask()">Add</button>
     </div>
-    <div id="wTasks"></div>
-    <!-- Expanded full task manager, hidden by default -->
-    <div id="tasksFullSection" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--b)">
-      <div class="tcompose">
-        <input type="text" id="tskInp" class="inp" placeholder="Add a task" onkeydown="if(event.key==='Enter')addTask()">
-        <input type="date" id="tskDate" class="inp" style="width:132px" title="Due date">
-        <input type="time" id="tskTime" class="inp" style="width:104px" title="Due time">
-        <button class="btn b-ai" onclick="addTask()">Add task</button>
-      </div>
-      <div class="tfilters">
-        <div class="seg">
-          <button class="btn b-ai sm" id="tf-all" onclick="setTF('all')">All</button>
-          <button class="btn b-gh sm" id="tf-today" onclick="setTF('today')">Today</button>
-          <button class="btn b-gh sm" id="tf-up" onclick="setTF('up')">Upcoming</button>
-          <button class="btn b-gh sm" id="tf-done" onclick="setTF('done')">Done</button>
-        </div>
-        <button class="btn b-rd sm" style="margin-left:auto" onclick="clearDone()">Clear completed</button>
-      </div>
-      <div id="tskList"></div>
-    </div>
+    <div id="tskList"></div>
   </div>
   </div>
   <!-- Progress + Plan -->
@@ -4297,30 +4206,6 @@ html:not(.haswp) #v-wall .wall-hint { display: block; }
     </div>
   </div>
 </div>
-<div class="ov" id="qTaskMo" onclick="if(event.target===this)closeMo('qTaskMo')">
-  <div class="mo"><div class="mot">+ Quick Add Task</div>
-    <input type="text" id="qTskTxt" class="inp" style="margin-bottom:9px" placeholder="Task name..." onkeydown="if(event.key==='Enter')saveQTask()">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-      <div><label style="font-size:11px;color:var(--m2)">Date</label><input type="date" id="qTskDate" class="inp" style="margin-top:3px"></div>
-      <div><label style="font-size:11px;color:var(--m2)">Time</label><input type="time" id="qTskTime" class="inp" style="margin-top:3px"></div>
-    </div>
-    <div style="display:flex;gap:7px"><button class="btn b-ai" onclick="saveQTask()">Add</button><button class="btn b-gh" onclick="closeMo('qTaskMo')">Cancel</button></div>
-  </div>
-</div>
-<!-- TASK EMERGENCY ALERT — no backdrop-close by design; must be acted on -->
-<div class="ov task-alert-ov" id="taskAlertOv">
-  <div class="mo task-alert-mo" style="max-width:340px">
-    <div class="task-alert-icon">🚨</div>
-    <div class="mot" id="taskAlertTitle" style="color:var(--rd)">Due Today</div>
-    <div style="font-size:15px;font-weight:700;color:var(--tx);margin-bottom:6px;word-break:break-word" id="taskAlertText"></div>
-    <div style="font-size:12px;color:var(--m2);margin-bottom:18px" id="taskAlertWhen"></div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn b-ai" onclick="taskAlertMarkDone()">✓ Mark Done</button>
-      <button class="btn b-gh" onclick="taskAlertSnooze()">⏰ Snooze 10 min</button>
-      <button class="btn b-gh sm" onclick="taskAlertDismiss()" style="opacity:.7">Dismiss</button>
-    </div>
-  </div>
-</div>
 <div class="ov" id="pomSubMo" onclick="if(event.target===this)closeMo('pomSubMo')">
   <div class="mo"><div class="mot">What are you studying?</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
@@ -4638,6 +4523,27 @@ html:not(.haswp) #v-wall .wall-hint { display: block; }
     <div style="display:flex;gap:7px">
       <button class="btn b-ai" onclick="saveCustomBook()" style="flex:1">Save Book</button>
       <button class="btn b-rd sm" id="delBookBtn" onclick="delCustomBook(this)" style="display:none">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="tskDtMo" onclick="if(event.target===this)closeMo('tskDtMo')">
+  <div class="mo" style="max-width:340px">
+    <div class="mot">When's this due?</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--m2)">Date</label>
+        <input type="date" id="tskDtDate" class="inp" style="margin-top:4px">
+      </div>
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--m2)">Time (optional)</label>
+        <input type="time" id="tskDtTime" class="inp" style="margin-top:4px">
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--mt);margin:-8px 0 14px">Set a time and you'll get a reminder 30 min before. Date only reminds you the day before and the day of.</div>
+    <div style="display:flex;gap:7px">
+      <button class="btn b-ai" onclick="saveTskDt()" style="flex:1">Save</button>
+      <button class="btn b-gh" onclick="closeMo('tskDtMo')">Skip</button>
     </div>
   </div>
 </div>
@@ -5750,7 +5656,6 @@ const PF = 50 * 60,
 let _sub = null,
   _schedKey = "mwf",
   _schedSub = "timetable",
-  _tf = "all",
   _cwType = null;
 
 // ═══ HELPERS ═══
@@ -5797,8 +5702,6 @@ function gotoTab(id) {
   if (id === "tasks") {
     showV("dash");
     setTimeout(() => {
-      const sec = document.getElementById("tasksFullSection");
-      if (sec && sec.style.display === "none") toggleTasksExpand();
       const dw = document.getElementById("dw-tasks");
       if (dw) dw.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
@@ -5815,7 +5718,6 @@ function gotoTab(id) {
   }
 }
 function openMo(id) {
-  if (id === "qTaskMo") clearQTaskForm();
   if (id === "acctMo") {
     document.getElementById("acctEmail").textContent = _user
       ? _user.email
@@ -6442,66 +6344,6 @@ function renderDash() {
     </div>`;
   }
   document.getElementById("wCalStrip").innerHTML = cs;
-  // Tasks widget — undated tasks always shown first (no due date = top priority
-  // to surface), followed by dated tasks due within the next 48hrs, soonest first.
-  const tasks = S.go("tasks", []);
-  const now2 = new Date();
-  const cut = new Date(now2.getTime() + 48 * 60 * 60 * 1000);
-  const rel = tasks
-    .filter((t) => {
-      if (t.done) return false;
-      if (!t.date) return true;
-      const dt = new Date(t.date + "T" + (t.time || "23:59"));
-      return dt <= cut;
-    })
-    .sort((a, b) => {
-      if (!a.date && !b.date) return 0;
-      if (!a.date) return -1;
-      if (!b.date) return 1;
-      return (
-        new Date(a.date + "T" + (a.time || "23:59")) -
-        new Date(b.date + "T" + (b.time || "23:59"))
-      );
-    });
-  let tw = "";
-  if (!rel.length) {
-    tw =
-      '<div class="rempty"><div class="big">\u25e6</div><div class="t">Nothing due in the next 48 hours</div><div class="s">Tap + to add a task.</div></div>';
-  } else {
-    rel.forEach((t) => {
-      let lbl, cls, dot;
-      if (!t.date) {
-        lbl = "No due date";
-        cls = "";
-        dot = "var(--b2)";
-      } else {
-        const dt = new Date(t.date + "T" + (t.time || "23:59"));
-        const ov = dt < now2;
-        const isT = t.date === tk;
-        lbl = ov
-          ? "Overdue"
-          : isT
-            ? "Today"
-            : t.date === nxtDay(tk)
-              ? "Tomorrow"
-              : fmtDue(t.date, tk);
-        cls = ov ? "is-over" : isT ? "is-today" : "is-soon";
-        dot = ov ? "var(--rd)" : isT ? "var(--wn)" : "var(--up)";
-      }
-      tw += `<div class="row ${cls}" style="align-items:center">
-      <button class="rck" onclick="togTask('${t.id}')" title="Mark as done" aria-label="Mark as done">\u2713</button>
-      <div class="rbody" onclick="toggleTasksExpand()" style="cursor:pointer">
-        <div style="font-size:13.5px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escAttr(t.text)}</div>
-        <div style="font-size:11px;color:var(--m2);margin-top:3px;display:flex;align-items:center;gap:6px">
-          <span style="width:5px;height:5px;border-radius:99px;background:${dot};display:inline-block;flex-shrink:0"></span>
-          <span>${lbl}${t.date && t.time ? " \u00b7 " + fmtClock(t.time) : ""}</span>
-        </div>
-      </div>
-      <div class="racts"><button class="ract" onclick="toggleTasksExpand()" title="Open full task list" aria-label="Open full task list">\u203a</button></div>
-    </div>`;
-    });
-  }
-  document.getElementById("wTasks").innerHTML = tw;
   // Plan
   const plans = S.go("plans", {});
   const pt = plans[tk] || "";
@@ -8404,7 +8246,7 @@ function renderNavCfgList() {
 const DASH_WIDGETS = [
   { id: "habits", label: "✅ Daily Habits" },
   { id: "cal", label: "📆 Calendar Strip" },
-  { id: "tasks", label: "☑️ 48hr Tasks" },
+  { id: "tasks", label: "☑️ Tasks" },
   { id: "progress", label: "📊 Progress + Plan" },
 ];
 function getDashCfg() {
@@ -8429,6 +8271,7 @@ function getDashOrder() {
     "habits",
     "cal",
     "tasks",
+    "taskRemindersFired",
     "progress",
     ...cw.map((w) => "cw:" + w.id),
   ];
@@ -10683,203 +10526,56 @@ function delMeasure(idx) {
 }
 
 // ═══ TASKS ═══
+// A task starts as just text. Date and time are optional, added afterwards
+// from chips on the task's own row (tap "＋ Date", then "＋ Time" appears).
+//  - Time set  -> in-app reminder 30 minutes before that moment.
+//  - Date only -> in-app reminder on the due day, and the day before.
 function getTasks() {
   return S.go("tasks", []);
 }
 function saveTasks(t) {
   S.s("tasks", t);
 }
+function _taskAge(t) {
+  return Number(t.id) || Date.parse(t.created) || 0;
+}
+function getPendingTasks() {
+  return getTasks()
+    .filter((t) => !t.done)
+    .sort(_taskSort);
+}
+// Dated tasks first (soonest/most overdue at the top), undated after (newest first).
+function _taskSort(a, b) {
+  const da = a.date ? Date.parse(a.date + "T" + (a.time || "23:59")) : Infinity;
+  const db = b.date ? Date.parse(b.date + "T" + (b.time || "23:59")) : Infinity;
+  if (da !== db) return da - db;
+  return _taskAge(b) - _taskAge(a);
+}
 function addTask() {
-  const txt = document.getElementById("tskInp").value.trim();
+  const inp = document.getElementById("tskInp");
+  const txt = inp.value.trim();
   if (!txt) return;
-  const date = document.getElementById("tskDate").value;
-  const time = document.getElementById("tskTime").value;
+  const tasks = getTasks();
   const task = {
     id: Date.now().toString(),
     text: txt,
-    date: date || null,
-    time: time || null,
+    date: null,
+    time: null,
     done: false,
     created: new Date().toISOString(),
   };
-  const tasks = getTasks();
   tasks.unshift(task);
   saveTasks(tasks);
-  document.getElementById("tskInp").value = "";
-  document.getElementById("tskDate").value = "";
-  document.getElementById("tskTime").value = "";
-  if (date && time) schedTN(task);
+  inp.value = "";
   renderTasks();
-  renderDash();
-}
-function schedTN(task) {
-  if (Notification.permission !== "granted" || !task.date || !task.time) return;
-  const target = new Date(task.date + "T" + task.time);
-  const diff = target - new Date();
-  if (diff <= 0) return;
-  setTimeout(() => {
-    const tasks = getTasks();
-    const t = tasks.find((x) => x.id === task.id);
-    if (t && !t.done) sendNotif("⏰ Task reminder", t.text);
-  }, diff);
+  openTskDtModal(task.id); // one prompt, right after adding, to set date + time
 }
 
-// ═══ TASK EMERGENCY ALERTS ═══
-// Full-screen, on-screen alert (works whether or not OS notification
-// permission was ever granted) that fires:
-//  1) once a task's due date becomes today
-//  2) again ~1 hour before a timed task's deadline
-// 'taskAlertsFired' remembers which (task, alert-type) pairs already fired so
-// re-checking on an interval / reopening the tab never spams duplicates.
-// 'taskAlertSnoozeUntil' holds a per-key timestamp so "Snooze" can push a
-// specific alert 10 minutes out without it firing again immediately.
-let _taskAlertQueue = [];
-let _taskAlertShowing = false;
-let _activeTaskAlertId = null;
-let _activeTaskAlertKey = null;
-function getFiredTaskAlerts() {
-  return S.go("taskAlertsFired", {});
-}
-function markTaskAlertFired(key) {
-  const fired = getFiredTaskAlerts();
-  fired[key] = Date.now();
-  const cutoff = Date.now() - 14 * 86400000; // drop entries older than 14 days
-  Object.keys(fired).forEach((k) => {
-    if (fired[k] < cutoff) delete fired[k];
-  });
-  S.s("taskAlertsFired", fired);
-}
-function checkTaskAlerts() {
-  const tasks = getTasks().filter((t) => !t.done && t.date);
-  const fired = getFiredTaskAlerts();
-  const snooze = S.go("taskAlertSnoozeUntil", {});
-  const isSnoozed = (key) => snooze[key] && Date.now() < snooze[key];
-  const now = new Date();
-  const today = TK();
-  tasks.forEach((t) => {
-    const todayKey = `${t.id}_today_${t.date}`;
-    if (t.date === today && !fired[todayKey] && !isSnoozed(todayKey)) {
-      queueTaskAlert(t, "today", todayKey);
-    }
-    if (t.time) {
-      const due = new Date(t.date + "T" + t.time);
-      const minsLeft = (due - now) / 60000;
-      const hourKey = `${t.id}_1hr`;
-      if (
-        minsLeft <= 60 &&
-        minsLeft > 0 &&
-        !fired[hourKey] &&
-        !isSnoozed(hourKey)
-      ) {
-        queueTaskAlert(t, "1hr", hourKey);
-      }
-    }
-  });
-}
-function queueTaskAlert(task, type, key) {
-  markTaskAlertFired(key);
-  _taskAlertQueue.push({ task, type, key });
-  if (!_taskAlertShowing) showNextTaskAlert();
-}
-function showNextTaskAlert() {
-  if (!_taskAlertQueue.length) {
-    _taskAlertShowing = false;
-    return;
-  }
-  _taskAlertShowing = true;
-  const { task, type, key } = _taskAlertQueue.shift();
-  _activeTaskAlertId = task.id;
-  _activeTaskAlertKey = key;
-  const titleEl = document.getElementById("taskAlertTitle");
-  const textEl = document.getElementById("taskAlertText");
-  const whenEl = document.getElementById("taskAlertWhen");
-  if (titleEl)
-    titleEl.textContent = type === "1hr" ? "Due in 1 Hour" : "Due Today";
-  if (textEl) textEl.textContent = task.text;
-  if (whenEl)
-    whenEl.textContent = task.time
-      ? `Due ${task.time}${task.date !== TK() ? " · " + task.date : ""}`
-      : `Due ${task.date}`;
-  const ovEl = document.getElementById("taskAlertOv");
-  if (ovEl) ovEl.classList.add("op");
-  taskAlertSound();
-  if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-  sendNotif(type === "1hr" ? "⏰ Task due in 1 hour" : "🚨 Task due today", task.text);
-}
-function closeTaskAlertModal() {
-  const ovEl = document.getElementById("taskAlertOv");
-  if (ovEl) ovEl.classList.remove("op");
-  _activeTaskAlertId = null;
-  _activeTaskAlertKey = null;
-  setTimeout(showNextTaskAlert, 350);
-}
-function taskAlertMarkDone() {
-  if (_activeTaskAlertId) {
-    const tasks = getTasks();
-    const t = tasks.find((x) => x.id === _activeTaskAlertId);
-    if (t) t.done = true;
-    saveTasks(tasks);
-    renderTasks();
-    renderDash();
-  }
-  closeTaskAlertModal();
-}
-function taskAlertSnooze() {
-  if (_activeTaskAlertKey) {
-    const fired = getFiredTaskAlerts();
-    delete fired[_activeTaskAlertKey];
-    S.s("taskAlertsFired", fired);
-    const snooze = S.go("taskAlertSnoozeUntil", {});
-    snooze[_activeTaskAlertKey] = Date.now() + 10 * 60000;
-    S.s("taskAlertSnoozeUntil", snooze);
-  }
-  closeTaskAlertModal();
-}
-function taskAlertDismiss() {
-  closeTaskAlertModal();
-}
-// A sharper, more urgent alarm pattern than the calm Pomodoro chime, so a
-// due task is unmistakable at a glance.
-function taskAlertSound() {
-  const ctx = getAudioCtx();
-  if (!ctx) return;
-  const beep = (freq, t, dur) => {
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.frequency.value = freq;
-    o.type = "square";
-    g.gain.setValueAtTime(0, ctx.currentTime + t);
-    g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + dur);
-    o.start(ctx.currentTime + t);
-    o.stop(ctx.currentTime + t + dur + 0.05);
-  };
-  const play = () => {
-    try {
-      for (let r = 0; r < 5; r++) {
-        beep(880, r * 0.3, 0.15);
-        beep(660, r * 0.3 + 0.15, 0.15);
-      }
-    } catch (e) {}
-  };
-  if (ctx.state === "suspended") ctx.resume().then(play).catch(play);
-  else play();
-}
 // Collapsed by default so finished tasks stay out of the way but remain
 // one tap away, attached to the same list (mirrors the checklist dropdown).
 let _taskDoneOpen = false;
 function toggleTaskDone() {
   _taskDoneOpen = !_taskDoneOpen;
-  renderTasks();
-}
-function setTF(f) {
-  _tf = f;
-  ["all", "today", "up", "done"].forEach((k) => {
-    const b = document.getElementById("tf-" + k);
-    if (b) b.className = k === f ? "btn b-ai sm" : "btn b-gh sm";
-  });
   renderTasks();
 }
 function toggleHabitsExpand() {
@@ -10893,32 +10589,32 @@ function toggleHabitsExpand() {
   if (btn) btn.textContent = isOpen ? "Show all ▾" : "Hide ▴";
   if (!isOpen) renderHabits();
 }
-function toggleTasksExpand() {
-  const el = document.getElementById("tasksFullSection");
-  const btn = document.getElementById("tasksExpandBtn");
-  if (!el) return;
-  const isOpen = el.style.display !== "none";
-  el.style.display = isOpen ? "none" : "block";
-  if (btn) btn.textContent = isOpen ? "Show all ▾" : "Hide ▴";
-  if (!isOpen) {
-    if (!document.getElementById("tskDate").value)
-      document.getElementById("tskDate").value = TK();
+
+// ═══ TASK DATE/TIME (one modal, not inline pickers) ═══
+// A plain modal with two ordinary, always-visible native inputs is far more
+// reliable across browsers than a custom-styled invisible overlay control —
+// no showPicker()/focus() fallbacks, no hit-testing edge cases to fight.
+let _tskDtId = null;
+function openTskDtModal(id) {
+  _tskDtId = id;
+  const t = getTasks().find((x) => x.id === id);
+  document.getElementById("tskDtDate").value = (t && t.date) || "";
+  document.getElementById("tskDtTime").value = (t && t.time) || "";
+  openMo("tskDtMo");
+}
+function saveTskDt() {
+  if (!_tskDtId) return;
+  const date = document.getElementById("tskDtDate").value || null;
+  const time = document.getElementById("tskDtTime").value || null;
+  const tasks = getTasks();
+  const t = tasks.find((x) => x.id === _tskDtId);
+  if (t) {
+    t.date = date;
+    t.time = date ? time : null; // a time with no date can't be reminded about
+    saveTasks(tasks);
     renderTasks();
   }
-}
-// ═══ TASK LIST (rebuilt) ═══
-// Each row carries its state on a 3px left rail, so urgency is readable
-// before you read the text. Date/time are chips with the native input laid
-// invisibly on top — same events as before, none of the dd/mm/yyyy clutter.
-function openPicker(inp) {
-  if (!inp) return;
-  try {
-    inp.showPicker();
-  } catch (e) {
-    try {
-      inp.focus();
-    } catch (e2) {}
-  }
+  closeMo("tskDtMo");
 }
 function fmtDue(d, tk) {
   if (!d) return "";
@@ -10950,78 +10646,43 @@ function taskState(t, tk) {
   return "soon";
 }
 
+// ═══ TASK LIST ═══
 function renderTasks() {
   try {
     updateLiveNotification();
   } catch (e) {}
-  const tasks = getTasks();
+  const el = document.getElementById("tskList");
+  if (!el) return;
   const tk = TK();
-  let active = [],
-    done = [];
+  const all = getTasks();
+  const active = all.filter((t) => !t.done).sort(_taskSort);
+  const done = all.filter((t) => t.done).sort((a, b) => _taskAge(b) - _taskAge(a));
+  const cnt = document.getElementById("tskCount");
+  if (cnt) cnt.textContent = active.length ? active.length + " to do" : "";
 
-  if (_tf === "today") {
-    active = tasks.filter((t) => t.date === tk && !t.done);
-    done = tasks.filter((t) => t.date === tk && t.done);
-  } else if (_tf === "up") {
-    active = tasks.filter((t) => t.date && t.date > tk && !t.done);
-    done = [];
-  } else if (_tf === "done") {
-    active = [];
-    done = tasks.filter((t) => t.done);
-  } else {
-    active = tasks.filter((t) => !t.done);
-    done = tasks.filter((t) => t.done);
-  }
-
-  // Undated tasks float to the top (nothing has claimed a slot for them yet),
-  // then dated tasks soonest-first.
-  active.sort((a, b) => {
-    if (!a.date && !b.date) return 0;
-    if (!a.date) return -1;
-    if (!b.date) return 1;
-    const da = new Date(a.date + "T" + (a.time || "23:59"));
-    const db = new Date(b.date + "T" + (b.time || "23:59"));
-    return da - db;
-  });
-
-  function taskRow(t) {
+  function row(t) {
     const st = taskState(t, tk);
     const cls =
-      st === "done"
-        ? "is-done"
-        : st === "over"
-          ? "is-over"
-          : st === "today"
-            ? "is-today"
-            : st === "soon"
-              ? "is-soon"
-              : "";
-
-    // Unscheduled tasks get one quiet "Schedule" chip instead of two empty
-    // pickers shouting dd/mm/yyyy and --:-- at you.
+      st === "over" ? "is-over" : st === "today" ? "is-today" : st === "soon" ? "is-soon" : "";
+    // One tap on the meta pill (whether it's empty or already set) opens the
+    // single date+time modal — no inline pickers to fight with.
     let meta;
-    if (!t.date && !t.time) {
-      meta = `<label class="chip" title="Set a due date">
-        <span class="ico">📅</span><span>Schedule</span>
-        <input type="date" value="" onclick="openPicker(this)" onchange="updateTaskDate('${t.id}',this.value)">
-      </label>`;
+    if (!t.date) {
+      meta = `<span class="chip" title="Set a due date/time" onclick="openTskDtModal('${t.id}')">
+        <span class="ico">📅</span><span>Add date</span>
+      </span>`;
     } else {
       const dCls = st === "over" ? "chip bad" : st === "today" ? "chip warn" : "chip set";
-      meta = `<label class="${t.date ? dCls : "chip"}" title="Due date">
-        <span class="ico">📅</span><span>${t.date ? fmtDue(t.date, tk) : "Add date"}</span>
-        <input type="date" value="${t.date || ""}" onclick="openPicker(this)" onchange="updateTaskDate('${t.id}',this.value)">
-      </label>
-      <label class="chip${t.time ? " set" : ""}" title="Due time">
-        <span class="ico">⏱</span><span>${t.time ? fmtClock(t.time) : "Add time"}</span>
-        <input type="time" value="${t.time || ""}" onclick="openPicker(this)" onchange="updateTaskTime('${t.id}',this.value)">
-      </label>`;
+      const timeStr = t.time ? " · " + fmtClock(t.time) : "";
+      meta = `<span class="${dCls}" title="Tap to change" onclick="openTskDtModal('${t.id}')">
+        <span class="ico">📅</span><span>${fmtDue(t.date, tk)}${timeStr}</span>
+      </span>`;
     }
-
-    return `<div class="row ${cls}">
+    return `<div class="row ${t.done ? "is-done" : cls}">
       <button class="rck${t.done ? " on" : ""}" onclick="togTask('${t.id}')" title="${t.done ? "Mark as not done" : "Mark as done"}" aria-label="${t.done ? "Mark as not done" : "Mark as done"}">✓</button>
       <div class="rbody">
         <input type="text" class="rtext" value="${escAttr(t.text)}" placeholder="Untitled task"
-          oninput="updateTaskText('${t.id}',this.value)" onblur="renderDash()">
+          oninput="updateTaskText('${t.id}',this.value)" onblur="flushTaskText()">
         <div class="rmeta">${meta}</div>
       </div>
       <div class="racts">
@@ -11030,67 +10691,20 @@ function renderTasks() {
     </div>`;
   }
 
-  function group(label, colour, list) {
-    if (!list.length) return "";
-    return (
-      `<div class="rgroup"><span class="dot" style="background:${colour}"></span><span>${label}</span><span class="n">${list.length}</span><span class="line"></span></div>` +
-      list.map(taskRow).join("")
-    );
-  }
-
-  const el = document.getElementById("tskList");
-  if (!el) return;
-
-  if (!active.length && !done.length) {
-    const msg =
-      _tf === "done"
-        ? ["Nothing finished yet", "Tick a task off and it lands here."]
-        : _tf === "today"
-          ? ["Nothing due today", "Enjoy it, or pull something forward."]
-          : _tf === "up"
-            ? ["Nothing scheduled ahead", "Give a task a date to see it here."]
-            : ["No tasks yet", "Add the first one above."];
-    el.innerHTML = `<div class="rempty"><div class="big">◦</div><div class="t">${msg[0]}</div><div class="s">${msg[1]}</div></div>`;
-    return;
-  }
-
   let h = "";
-  if (_tf === "all") {
-    // Grouping only earns its place on the unfiltered list, where the mix of
-    // overdue/today/later is exactly what you need to see at a glance.
-    h += group(
-      "Overdue",
-      "var(--rd)",
-      active.filter((t) => taskState(t, tk) === "over"),
-    );
-    h += group(
-      "Today",
-      "var(--wn)",
-      active.filter((t) => taskState(t, tk) === "today"),
-    );
-    h += group(
-      "Upcoming",
-      "var(--up)",
-      active.filter((t) => taskState(t, tk) === "soon"),
-    );
-    h += group(
-      "No date",
-      "var(--b2)",
-      active.filter((t) => taskState(t, tk) === "none"),
-    );
+  if (active.length) {
+    h += active.map(row).join("");
+  } else if (done.length) {
+    h += `<div class="rempty"><div class="big">🎉</div><div class="t">All done</div></div>`;
   } else {
-    h += active.map(taskRow).join("");
+    h += `<div class="rempty"><div class="big">◦</div><div class="t">No tasks yet</div><div class="s">Type one above and press Enter.</div></div>`;
   }
-
   if (done.length) {
-    const forceOpen = _tf === "done";
-    const isOpen = forceOpen || _taskDoneOpen;
-    h += forceOpen
-      ? done.map(taskRow).join("")
-      : `<div class="rdone-tog${isOpen ? " open" : ""}" onclick="toggleTaskDone()">
-          <span class="caret">▶</span><span>Completed</span><span class="n" style="color:var(--mt)">${done.length}</span>
-        </div>
-        <div style="display:${isOpen ? "block" : "none"}">${done.map(taskRow).join("")}</div>`;
+    h += `<div class="rdone-tog${_taskDoneOpen ? " open" : ""}" onclick="toggleTaskDone()">
+        <span class="caret">▶</span><span>Completed</span><span style="color:var(--mt)">${done.length}</span>
+        <button class="btn b-gh sm" style="margin-left:auto" onclick="event.stopPropagation();tapToConfirm(this,clearDone,'Clear all?')">Clear</button>
+      </div>
+      <div style="display:${_taskDoneOpen ? "block" : "none"}">${done.map(row).join("")}</div>`;
   }
   el.innerHTML = h;
 }
@@ -11098,83 +10712,91 @@ function renderTasks() {
 function togTask(id) {
   const tasks = getTasks();
   const t = tasks.find((x) => x.id === id);
-  if (t) t.done = !t.done;
+  if (!t) return;
+  t.done = !t.done;
   saveTasks(tasks);
   renderTasks();
-  renderDash();
 }
-// Text edits save silently without re-rendering the list (re-rendering mid-keystroke
-// would steal focus/cursor position) — the compact dashboard preview catches up onblur.
+// Typing saves to this device instantly and sends to the cloud once you pause
+// (or leave the field) — no re-render mid-keystroke, so the cursor never jumps.
+let _tskSaveTimer = null;
 function updateTaskText(id, val) {
   const tasks = getTasks();
   const t = tasks.find((x) => x.id === id);
-  if (t) {
-    t.text = val;
-    saveTasks(tasks);
-  }
+  if (!t) return;
+  t.text = val;
+  S.sLocalOnly("tasks", tasks);
+  clearTimeout(_tskSaveTimer);
+  _tskSaveTimer = setTimeout(() => S.sPushOnly("tasks"), 700);
 }
-function updateTaskDate(id, val) {
-  const tasks = getTasks();
-  const t = tasks.find((x) => x.id === id);
-  if (t) {
-    t.date = val || null;
-    if (t.date && t.time) schedTN(t);
-  }
-  saveTasks(tasks);
-  renderTasks();
-  renderDash();
-}
-function updateTaskTime(id, val) {
-  const tasks = getTasks();
-  const t = tasks.find((x) => x.id === id);
-  if (t) {
-    t.time = val || null;
-    if (t.date && t.time) schedTN(t);
-  }
-  saveTasks(tasks);
-  renderTasks();
-  renderDash();
+function flushTaskText() {
+  clearTimeout(_tskSaveTimer);
+  S.sPushOnly("tasks");
 }
 function deleteTaskInline(id) {
   saveTasks(getTasks().filter((x) => x.id !== id));
   renderTasks();
-  renderDash();
 }
 function clearDone() {
-  if (!confirm("Clear all completed tasks?")) return;
   saveTasks(getTasks().filter((t) => !t.done));
   renderTasks();
 }
-// The quick-add box kept whatever you typed last time, so opening it again
-// showed the previous task still sitting in the field. Wipe it after saving
-// and again on open, so it is always empty when you start typing.
-function clearQTaskForm() {
-  ["qTskTxt", "qTskDate", "qTskTime"].forEach((k) => {
-    const el = document.getElementById(k);
-    if (el) el.value = "";
-  });
+
+// ═══ TASK REMINDERS (in-app) ═══
+// Checked on an interval plus on focus/visibility (same safety-net pattern
+// used elsewhere in the app), rather than raw setTimeout, so a reminder
+// still lands correctly even if the tab/phone was asleep when it was due.
+//  - date + time -> fires once, 30 minutes before that moment.
+//  - date only   -> fires once on the day before, and once on the due day.
+// 'taskRemindersFired' remembers which (task, reminder-type) pairs already
+// fired so re-checking on an interval never repeats one.
+function _remindersFired() {
+  return S.go("taskRemindersFired", {});
 }
-function saveQTask() {
-  const txt = document.getElementById("qTskTxt").value.trim();
-  if (!txt) return;
-  const date = document.getElementById("qTskDate").value;
-  const time = document.getElementById("qTskTime").value;
-  const task = {
-    id: Date.now().toString(),
-    text: txt,
-    date: date || null,
-    time: time || null,
-    done: false,
-    created: new Date().toISOString(),
-  };
-  const tasks = getTasks();
-  tasks.unshift(task);
-  saveTasks(tasks);
-  if (date && time) schedTN(task);
-  clearQTaskForm();
-  closeMo("qTaskMo");
-  renderTasks();
-  renderDash();
+function _markReminderFired(key) {
+  const fired = _remindersFired();
+  fired[key] = Date.now();
+  const cutoff = Date.now() - 14 * 86400000; // drop entries older than 14 days
+  Object.keys(fired).forEach((k) => {
+    if (fired[k] < cutoff) delete fired[k];
+  });
+  S.s("taskRemindersFired", fired);
+}
+function _fireTaskReminder(task, text) {
+  banner("⏰ " + text);
+  try {
+    sendNotif("⏰ Task reminder", text);
+  } catch (e) {}
+}
+function checkTaskReminders() {
+  const tasks = getTasks().filter((t) => !t.done && t.date);
+  if (!tasks.length) return;
+  const fired = _remindersFired();
+  const now = new Date();
+  const today = TK();
+  tasks.forEach((t) => {
+    if (t.time) {
+      const key = `${t.id}_t_${t.date}_${t.time}`;
+      if (fired[key]) return;
+      const target = new Date(t.date + "T" + t.time);
+      const minsLeft = (target - now) / 60000;
+      if (minsLeft <= 30 && minsLeft > -5) {
+        // small grace window so a missed check (tab closed/asleep) still fires late rather than never
+        _fireTaskReminder(t, `"${t.text}" is due at ${fmtClock(t.time)}`);
+        _markReminderFired(key);
+      }
+    } else {
+      const todayKey = `${t.id}_d_${t.date}`;
+      const beforeKey = `${t.id}_db_${t.date}`;
+      if (t.date === today && !fired[todayKey]) {
+        _fireTaskReminder(t, `"${t.text}" is due today`);
+        _markReminderFired(todayKey);
+      } else if (t.date === nxtDay(today) && !fired[beforeKey]) {
+        _fireTaskReminder(t, `"${t.text}" is due tomorrow`);
+        _markReminderFired(beforeKey);
+      }
+    }
+  });
 }
 
 // ═══ POMODORO ═══
@@ -12026,9 +11648,7 @@ function sendNotif(title, body) {
 // website. It is not a substitute for a native app's guaranteed background
 // service.
 function getTodayTaskLines(limit) {
-  const tk = TK();
-  return getTasks()
-    .filter((t) => !t.done && t.date === tk)
+  return getPendingTasks()
     .slice(0, limit || 3)
     .map((t) => t.text);
 }
@@ -12073,7 +11693,7 @@ function updateLiveNotification() {
   const status = `⏱ ${timeStr} — ${modeLabel}`;
   const tasks = getTodayTaskLines(3);
   const body =
-    "Today: " + (tasks.length ? tasks.join(" • ") : "no tasks scheduled");
+    "To do: " + (tasks.length ? tasks.join(" • ") : "nothing pending");
   const icon =
     'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%234fd8a0"/></svg>';
   navigator.serviceWorker.ready
@@ -12168,19 +11788,6 @@ function schedNotifs() {
     const diff = t - now;
     if (diff > 0) setTimeout(() => sendNotif(c.t, c.b), diff);
   });
-  // Task reminders
-  getTasks()
-    .filter((t) => !t.done && t.date && t.time)
-    .forEach((t) => {
-      const target = new Date(t.date + "T" + t.time);
-      const diff = target - now;
-      if (diff > 0)
-        setTimeout(() => {
-          const tasks = getTasks();
-          const tk = tasks.find((x) => x.id === t.id);
-          if (tk && !tk.done) sendNotif("⏰ Task reminder", tk.text);
-        }, diff);
-    });
   // Re-schedule at next midnight using accurate recalculation
   const now2 = new Date();
   const nextMid = new Date(
@@ -12248,7 +11855,6 @@ document.addEventListener("visibilitychange", () => {
 // ═══ INIT (called after login) ═══
 function init() {
   document.getElementById("bfDate").value = TK();
-  document.getElementById("qTskDate").value = TK();
   if ("Notification" in window && Notification.permission === "granted") {
     document.getElementById("nBtn").textContent = "🔔✓ Notifications On";
     schedNotifs();
@@ -12304,18 +11910,16 @@ function init() {
   renderRoad();
   renderBody();
   renderTasks();
-  checkTaskAlerts();
+  checkTaskReminders();
   updatePomUI();
   if (pomRun) startLiveNotifLoop(); // resumes the notification loop only if a session was actually in progress when the app was reopened
 }
 setInterval(syncQuoteText, 60000);
-// Check every 30s (catches the "due today" + "1 hour before" windows soon
-// after they open) and again immediately whenever the tab regains focus, so
-// an alert that would've fired while the phone was locked still shows up
-// the moment the person looks at the app.
-setInterval(checkTaskAlerts, 30000);
+// Check every 30s, and again the instant the tab regains focus — catches a
+// reminder that would've fired while the phone was locked as soon as you look.
+setInterval(checkTaskReminders, 30000);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") checkTaskAlerts();
+  if (document.visibilityState === "visible") checkTaskReminders();
 });
 document.addEventListener("click", (e) => {
   const panel = document.getElementById("mobileNavCollapse");
@@ -12469,8 +12073,6 @@ function getAllKeys() {
     "navLabels",
     "pomSessions",
     "upscHidden",
-    "taskAlertsFired",
-    "taskAlertSnoozeUntil",
   ];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
@@ -12769,12 +12371,13 @@ function _flushRefresh() {
   const wrap = document.getElementById("dashWidgets");
   let dash = false;
   if (has("habs", "hd")) { t(() => renderHabits()); t(() => renderCal()); dash = true; }
-  if (has("tasks")) { t(() => renderTasks()); dash = true; }
+  const tskTyping = _typing(document.getElementById("tskList")); // don't rebuild a task you're editing
+  if (has("tasks")) { if (tskTyping) _pendRefresh.add("tasks"); else t(() => renderTasks()); }
   if (has("customWidgets") && !_syncCW()) _pendRefresh.add("customWidgets");
   if (has("dashCfg")) { if (_typing(wrap)) _pendRefresh.add("dashCfg"); else t(() => applyDashCfg()); }
   if (has("theme", "customColors")) t(() => ccApplyAll());
   const handled = ["habs", "hd", "tasks", "customWidgets", "dashCfg", "theme", "customColors"];
-  if ([...keys].some((k) => !handled.includes(k))) { t(() => renderHabits()); t(() => renderTasks()); dash = true; }
+  if ([...keys].some((k) => !handled.includes(k))) { t(() => renderHabits()); if (!tskTyping) t(() => renderTasks()); dash = true; }
   if (dash) t(() => renderDash());
 }
 function setupRealtimeSync() {

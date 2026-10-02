@@ -1,4 +1,4 @@
-# M2028 — Personal Master Planner
+# M2028 - Personal Master Planner
 
 A single-file Progressive Web App (PWA) that puts your habits, focus timer, tasks, study tracking and body goals in one clean dashboard. No frameworks, no build step — just open `index.html`.
 

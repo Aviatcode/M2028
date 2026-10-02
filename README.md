@@ -1,62 +1,82 @@
-M2028 — Personal Master Planner
+# M2028 — Personal Master Planner
 
-A single-file Progressive Web App (PWA) built for Aviatcode — a BCA student targeting AI Engineering by January 2028 and UPSC CSE, while tracking fitness goals.
+A single-file Progressive Web App (PWA) that puts your habits, focus timer, tasks, study tracking and body goals in one clean dashboard. No frameworks, no build step — just open `index.html`.
 
-Live:https://aviatcode.github.io/M2028/
+## Features
 
-What it does
-
-M2028 is an all-in-one personal productivity dashboard that replaces 6+ apps:
-
-| Feature | Description |
+| Feature | What it does |
 |---|---|
-|Daily Habits| Step-by-step habit builder with day picker, streak counter, one-tap check-off |
-|Pomodoro Timer| 50-min focus / 10-min break, subject tagging, session log, sounds + notifications |
-|Tasks| Due date + time, overdue alerts, notifications, completed section |
-|UPSC Book Tracker| All 36 books across 9 subjects, chapter-by-chapter progress, tier guidance |
-|AI Courses| 8-course track from CS50 → Harvard → Azure, adjusted around college exam blackouts |
-|Timetable| 4 schedules (MWF / TTh / Sat / Sun), tap-to-edit rows |
-|Calendar| Tap any date to see that day's habits done/missed, mark study/workout days |
-|Roadmap| 6-phase 2-year plan, fully editable (add/edit/delete/reorder phases) |
-|Body Tracker Body fat log, measurements, editable milestones (18% → 15%) |
-|Dashboard Widgets| Customisable homepage — countdown timers, note pads, link buttons, checklists |
+| **Daily Habits** | Build habits with a custom day picker, one-tap check-off, per-habit streaks and a monthly scorecard |
+| **Streak Milestones** | Celebrations with confetti and sound at 7, 15, 30, 50, 100 days and beyond |
+| **Pomodoro Timer** | 50 / 10 focus-break cycles, long break after a full round, subject tagging, weekly session log, five alert sounds |
+| **Live Timer Notification** | An ongoing notification shows the running timer and your next tasks |
+| **Tasks** | Due dates and times, reminders before and at the deadline, overdue alerts, completed section |
+| **Book Tracker** | Chapter-by-chapter progress, up to 10 revision rounds per book, add / edit / remove books |
+| **Course Tracker** | Ordered learning track with progress bars, links and drag-to-reorder |
+| **Project Log** | Track personal projects with status, tech stack, links and a dated progress log |
+| **Timetable** | Four editable schedules (Mon/Wed/Fri, Tue/Thu, Sat, Sun) |
+| **Calendar** | Tap any date to see what was done or missed; days are colour-coded |
+| **Roadmap** | Fully editable multi-phase plan — add, edit, delete and reorder phases |
+| **Body Tracker** | Body-fat log, measurements and editable milestones |
+| **Cycle Tracker** | Predictions, fertile window and history (shown in Girl mode) |
+| **Guided Relaxation Player** | Built-in 10-minute audio player for downtime between sessions |
 
-Tech Stack
+### Dashboard widgets
+Rearrange and resize everything on the home screen, and add your own widgets:
+- Countdown timers
+- Note pads (paste or attach photos)
+- Link buttons
+- Checklists with sub-items and drag-to-reorder
 
-- Frontend:Vanilla HTML + CSS + JavaScript — single file, no frameworks, no build step
-- Auth + Sync:[Supabase](https://supabase.com) (PostgreSQL + Row Level Security)
-- Hosting:[Github] https://aviatcode.github.io/M2028/
-- Offline:localStorage cache — works instantly without network, syncs in background
-- PWA:Installable on Android home screen via PWABuilder
+### Themes & personalisation
+- **Dark**, **Light** and **Girl mode** (falling leaves, sparkle cursor trail, shimmer effects)
+- Your last theme is remembered on each device
+- Custom background / text / accent colours for every theme, with quick presets
+- Wallpaper support with an adjustable dim level, plus a full-screen wallpaper tab
+- Rename, hide and reorder the navigation tabs
+- Responsive layouts: bottom bar on phones, labelled top bar on tablets, full dashboard on desktop
 
-Features
+### Accounts & sync
+- Email + password sign-in through Supabase, or **guest mode** (local only, no account)
+- Changes sync across your devices in real time and merge safely when edited in two places
+- Everything works from local storage first, so the app opens instantly
 
-🔐 Authentication
-- Email + password via Supabase Auth
-- Guest mode (local-only, no account needed)
-- Returning users bypass login screen — app loads instantly from cache
-- Cloud sync happens in background after homepage is visible
+### Offline & performance
+- Installable on Android, iOS and desktop
+- A service worker saves the app on your device: opens instantly, works offline, refreshes quietly in the background
+- Reminders and midnight auto-reset keep habits and tasks fresh each day
+- Single HTML file, no external JS frameworks
 
-🎨 Themes
-- Dark(default) — deep dark background
-- Light— clean white
-- Pink / Girls Mode— rose-black with floating emoji animations, sparkle cursor trail, shimmer effects
+## Tech stack
 
-⚡ Performance
-- Single 350KB HTML file — no external JS frameworks
-- Instant load from localStorage cache for returning users
-- Supabase data syncs silently in background
-- Midnight auto-reset — habits/tasks refresh at 12:00 AM without manual reload
+- **Frontend:** vanilla HTML, CSS and JavaScript
+- **Auth & sync:** [Supabase](https://supabase.com) (PostgreSQL + Row Level Security)
+- **Hosting:** GitHub Pages (any static host works)
+- **Storage:** `localStorage` first, background cloud sync
+- **PWA:** web manifest + service worker
 
-🔔 Notifications
-- Daily study reminders (6:30 AM, 4:30 PM, 6 PM, 7:30 PM, 8:30 PM)
-- Task reminders fire at exact scheduled time
-- Pomodoro session complete + break over alerts (with Web Audio API sounds)
-- Re-schedules at midnight automatically
+## Project files
 
-Database Setup (Supabase)
+| File | Purpose |
+|---|---|
+| `index.html` | The whole app |
+| `sw.js` | Service worker: offline caching and the live timer notification |
+| `manifest.json` | Install details (name, icons, colours) |
+| `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon-32.png` | App icons |
+| `sussurus1.mp3` | Audio for the relaxation player |
 
-Run this SQL once in Supabase SQL Editor:
+## Run it locally
+
+No setup needed for guest mode: open `index.html` in a browser. Service-worker features (offline mode, live notification) need the page served over `http://localhost` or `https`, for example:
+
+```bash
+python3 -m http.server 8000
+```
+
+## Set up your own sync (optional)
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. Run this once in the **SQL Editor**:
 
 ```sql
 create table if not exists user_data (
@@ -75,28 +95,14 @@ using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 ```
 
-Then:
-1. Authentication → Settings** → Disable "Enable email confirmations"
-2. Authentication → URL Configuration
+3. In `index.html`, replace the `SUPA_URL` and `SUPA_KEY` constants with your project's URL and anon key.
+4. In **Authentication → URL Configuration**, set the Site URL to where you host the app, and update the `emailRedirectTo` address in `index.html` to match.
+5. Optional: turn off **Enable email confirmations** if you want instant sign-up.
 
+## Deploying
 
-Roadmap (inside the app)
+Upload the files in this repo to any static host. On GitHub Pages: **Settings → Pages → Deploy from branch → `main`**.
 
-| Phase | Period | Focus |
-|---|---|---|
-| Foundation | May–Sep 2026 | CS50, Python basics, Polity + History NCERTs |
-| Exam Blackout 1 | Oct–Dec 2026 | College exams, revise only |
-| AI Depth | Jan–May 2027 | CS50 AI, HarvardX Data Science, Economics |
-| Engineering | Jun–Aug 2027 | HarvardX ML, MongoDB, Projects 1 & 2 |
-| Azure + Internship | Sep–Dec 2027 | 3 Azure certs, 20+ applications |
-| Consolidation | Dec 2027–Jan 2028 | All 36 books revised, AI baseline complete |
+After you publish an update, open the app twice to see the new version (the first open downloads it in the background). To force everyone onto a fresh copy right away, bump `VERSION` at the top of `sw.js`.
 
-Goal by Jan 2028:2 Harvard certs + 3 Azure certs, all 36 UPSC books read, 2 live projects, 15% body fat, internship active.
-
-Local Development
-
-No setup needed. Just open `index.html` in any browser.
-
-For Supabase features, you'll need to set your own project URL and anon key in the JS constants at the bottom of the file.
-
-Built with 💚 for the 2028 grind.
+Built with 💚 for the grind.

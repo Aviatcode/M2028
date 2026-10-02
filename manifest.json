@@ -2,10 +2,15 @@
   "name": "M2028",
   "short_name": "M2028",
   "description": "M2028 daily habits, Pomodoro, tasks and study tracker",
+  "lang": "en",
+  "categories": [
+    "productivity",
+    "education",
+    "lifestyle"
+  ],
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [

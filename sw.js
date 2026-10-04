@@ -33,7 +33,7 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 // it only shows what the page last told it to. If the browser suspends the
 // page for a long time the notification stops updating until the app reopens.
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
 const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'apple-touch-icon.png', 'push.js'];
@@ -124,18 +124,24 @@ self.addEventListener('fetch', (event) => {
   // anything else cross-origin (Supabase API, etc.) is never touched
 });
 
-// Tapping the live notification (or any notification) opens the app if it's
-// closed, or focuses the existing tab if it's already open.
+// Tapping ANY notification opens the installed app (the WebAPK on the home
+// screen), never a browser tab. We always ask for a window inside our own
+// scope: Android hands scope URLs to the installed app, and manifest.json's
+// launch_handler makes an already-open app window just come to the front.
+// Only if that fails do we fall back to focusing an existing window.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ('focus' in client) return client.focus();
-      }
-      if (self.clients.openWindow) return self.clients.openWindow('./');
-    })
-  );
+  const scope = self.registration.scope; // e.g. https://aviatcode.github.io/M2028/
+  event.waitUntil((async () => {
+    try {
+      const w = await self.clients.openWindow(scope);
+      if (w) { try { await w.focus(); } catch (e) {} return; }
+    } catch (e) {}
+    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of list) {
+      if (c.url.startsWith(scope) && 'focus' in c) return c.focus();
+    }
+  })());
 });
 
 // The page can ask the worker to update or clear the live notification via

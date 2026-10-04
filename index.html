@@ -10,7 +10,7 @@
 var c=JSON.parse(localStorage.getItem("m_customColors")||"null");var b=null;if(c&&c.bg&&c.tx&&(!c.t||c.t===t))b=c.bg;else if(c&&c[t]&&c[t].bg)b=c[t].bg;
 var L=function(h){h=String(h).replace("#","");if(h.length===3)h=h.replace(/./g,"$&$&");var n=parseInt(h,16),f=function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(n>>16&255)+.7152*f(n>>8&255)+.0722*f(n&255)>=.25};
 window.__bootCls=(t==="pink"?"pink":(b?(L(b)?"light":""):(t==="light"?"light":"")));
-var st=document.createElement("style");st.id="bootTheme";st.textContent=(t==="pink"?"html,body{background:#ffb7ce}":t==="light"?"html,body{background:#faf4f2}":"html,body{background:#0a0000}");document.head.appendChild(st);
+var st=document.createElement("style");st.id="bootTheme";st.textContent=(t==="pink"?"html,body{background:#ffb7ce}":t==="light"?"html,body{background:#f9d6d0}":"html,body{background:#0a0000}");document.head.appendChild(st);
 document.addEventListener("DOMContentLoaded",function(){});
 }catch(e){}})();</script>
 <meta name="theme-color" content="#0a0000" id="themeColorMeta">
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded",function(){});
 <title>M2028</title>
 <script>document.addEventListener("visibilitychange",function(){document.documentElement.classList.toggle("pz",document.hidden)});</script>
 <script>console.log("M2028 build: instant-sync-v5+v6");try{history.scrollRestoration="manual"}catch(o){}</script>
-<script>!function(){try{window.ccDefaultFor=function(t){return"dark"===t?{t:"dark",bg:"#0a0000",tx:"#fff1ee",ac:"#e61f19",v:"red"}:"light"===t?{t:"light",bg:"#faf4f2",tx:"#2a1210",ac:"#c8201a",v:"red"}:null},window.ccIsLightHex=function(o){const t=parseInt(String(o).replace("#",""),16),e=o=>(o/=255)<=.03928?o/12.92:Math.pow((o+.055)/1.055,2.4);return.2126*e(t>>16&255)+.7152*e(t>>8&255)+.0722*e(255&t)>=.25},window.ccEffective=function(o,t){if(!o||"object"!=typeof o)return window.ccDefaultFor(t);let p;if(o.bg&&o.tx){const h=o.t||(window.ccIsLightHex(o.bg)?"light":"dark");p=h===t?{bg:o.bg,tx:o.tx}:null}else p=o[t];return p&&(p.bg||p.tx||p.ac)?Object.assign({t:t},p):window.ccDefaultFor(t)},window.applyCustomColors=function(o,t){const e=document.getElementById("ccStyle");e&&e.remove();const h=document.documentElement;if(!o||!(o.bg||o.tx||o.ac))return void h.classList.remove("ucolors","ucac","redx");const D={dark:["#0b1020","#f6f7fb","#fdb813"],light:["#f4f7fe","#1a1a2e","#0b9a63"],pink:["#ffb7ce","#4a1230","#ff6eb4"],glass:["#0c1230","#ffffff","#ffffff"]}[t]||["#0b1020","#f6f7fb","#fdb813"],P=x=>{x=(x||"").replace("#",""),3===x.length&&(x=x.split("").map(c=>c+c).join(""));const n=parseInt(x,16);return isNaN(n)?[0,0,0]:[n>>16&255,n>>8&255,255&n]},M=(a,b,k)=>a.map((v,i)=>Math.round(v+(b[i]-v)*k)),R=a=>"rgb("+a.join(",")+")",A=(a,k)=>"rgba("+a.join(",")+","+k+")",L=a=>{const f=v=>(v/=255)<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);return.2126*f(a[0])+.7152*f(a[1])+.0722*f(a[2])},g="glass"===t,S0="html.ucolors body:not(.x):not(.xx)";let c="",x="";if(o.bg||o.tx){const s=P(o.bg||D[0]),d=P(o.tx||D[1]),dk=L(s)<.25,s1=dk?M(s,d,.06):M(s,[255,255,255],.7),W=[255,255,255],cb=g?"linear-gradient(145deg,"+A(W,dk?.21:.62)+","+A(W,dk?.07:.3)+")":R(s1);c+="--bg:"+R(s)+";--s1:"+(g?A(dk?W:s,.1):R(s1))+";--s2:"+(g?A(dk?W:s,.1):R(M(s,d,dk?.09:.04)))+";--s3:"+(g?A(dk?W:s,.2):R(M(s,d,dk?.15:.11)))+";--tx:"+R(d)+";--m2:"+R(M(d,s,.28))+";--mt:"+R(M(d,s,.5))+";--b:"+A(d,.12)+";--b2:"+A(d,.24)+";--card-bd:"+A(d,g?.3:.14)+";--row-bg:"+A(d,.07)+";--hero-tx:"+R(d)+";--hero-img:linear-gradient(135deg,"+A(W,dk?.12:.78)+","+A(W,dk?.03:.46)+");--nav-bg:"+A(s,g?.5:.82)+";--card-bg:"+cb+";--cd-bg:var(--card-bg);--lk-bg:var(--card-bg);",x+="html.ucolors,html.ucolors.pre-light,html.ucolors.pre-pink,html.ucolors.pre-glass{background:"+R(s)+"!important}html.ucolors body:not(.x){background:transparent!important;color:"+R(d)+"!important}html.ucolors body:not(.x):not(.xx):not(.xxx) .mo{background:"+A(s1,g?.6:.95)+"!important}";if(o.bg){const a=P(o.ac||D[2]);x+=S0+"{--scene:"+(g?"radial-gradient(55% 45% at 12% 8%,"+A(M(s,[130,140,255],.5),.55)+",transparent 70%),radial-gradient(50% 45% at 92% 12%,"+A(M(s,[90,200,255],.45),.45)+",transparent 70%),radial-gradient(55% 50% at 85% 95%,"+A(M(s,[255,120,190],.4),.32)+",transparent 70%)":"radial-gradient(circle at 20% 12%,"+A(a,dk?.2:.12)+",transparent 55%),radial-gradient(circle at 85% 90%,"+A(a,dk?.12:.08)+",transparent 50%)")+"}"}const m=document.getElementById("themeColorMeta");m&&o.bg&&(m.content=R(s))}if(o.ac){const a=P(o.ac);c+="--ai:"+R(a)+";--a2:"+A(a,.16)+";--dn:"+R(a)+";--pill-bg:"+R(a)+";--pill-tx:"+(L(a)>.4?"#0b0f1a":"#fff")+";"}const w=document.createElement("style");w.id="ccStyle",w.textContent=S0+"{"+c+"}"+x,document.head.appendChild(w),h.classList.add("ucolors"),h.classList.toggle("ucac",!!o.ac),h.classList.toggle("redx","red"===o.v)},window.applyWallpaper=function(){const o=document.documentElement,t=document.getElementById("wpImg");t&&t.remove();try{const t=localStorage.getItem("m_wallpaper"),e=parseFloat(localStorage.getItem("m_wpDim"));if(t&&/^data:image\//.test(t)){const n=document.createElement("style");return n.id="wpImg",n.textContent='html.haswp body:not(.x)::before{background-image:url("'+t+'")!important}',document.head.appendChild(n),o.style.setProperty("--wpdim",isNaN(e)?.3:e),void o.classList.add("haswp")}}catch(o){}o.style.removeProperty("--wpdim"),o.classList.remove("haswp")},window.__applyWpNow=window.applyWallpaper;window.__wpBoot=1;
+<script>!function(){try{window.ccDefaultFor=function(t){return"dark"===t?{t:"dark",bg:"#0a0000",tx:"#fff1ee",ac:"#c42018",v:"red"}:"light"===t?{t:"light",bg:"#faf4f2",tx:"#2a1210",ac:"#fd2a1f",v:"red"}:null},window.ccIsLightHex=function(o){const t=parseInt(String(o).replace("#",""),16),e=o=>(o/=255)<=.03928?o/12.92:Math.pow((o+.055)/1.055,2.4);return.2126*e(t>>16&255)+.7152*e(t>>8&255)+.0722*e(255&t)>=.25},window.ccEffective=function(o,t){if(!o||"object"!=typeof o)return window.ccDefaultFor(t);let p;if(o.bg&&o.tx){const h=o.t||(window.ccIsLightHex(o.bg)?"light":"dark");p=h===t?{bg:o.bg,tx:o.tx}:null}else p=o[t];return p&&(p.bg||p.tx||p.ac)?Object.assign({t:t},p):window.ccDefaultFor(t)},window.applyCustomColors=function(o,t){const e=document.getElementById("ccStyle");e&&e.remove();const h=document.documentElement;if(!o||!(o.bg||o.tx||o.ac))return void h.classList.remove("ucolors","ucac","redx");const D={dark:["#0b1020","#f6f7fb","#fdb813"],light:["#f4f7fe","#1a1a2e","#0b9a63"],pink:["#ffb7ce","#4a1230","#ff6eb4"],glass:["#0c1230","#ffffff","#ffffff"]}[t]||["#0b1020","#f6f7fb","#fdb813"],P=x=>{x=(x||"").replace("#",""),3===x.length&&(x=x.split("").map(c=>c+c).join(""));const n=parseInt(x,16);return isNaN(n)?[0,0,0]:[n>>16&255,n>>8&255,255&n]},M=(a,b,k)=>a.map((v,i)=>Math.round(v+(b[i]-v)*k)),R=a=>"rgb("+a.join(",")+")",A=(a,k)=>"rgba("+a.join(",")+","+k+")",L=a=>{const f=v=>(v/=255)<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);return.2126*f(a[0])+.7152*f(a[1])+.0722*f(a[2])},g="glass"===t,S0="html.ucolors body:not(.x):not(.xx)";let c="",x="";if(o.bg||o.tx){const s=P(o.bg||D[0]),d=P(o.tx||D[1]),dk=L(s)<.25,s1=dk?M(s,d,.06):M(s,[255,255,255],.7),W=[255,255,255],cb=g?"linear-gradient(145deg,"+A(W,dk?.21:.62)+","+A(W,dk?.07:.3)+")":R(s1);c+="--bg:"+R(s)+";--s1:"+(g?A(dk?W:s,.1):R(s1))+";--s2:"+(g?A(dk?W:s,.1):R(M(s,d,dk?.09:.04)))+";--s3:"+(g?A(dk?W:s,.2):R(M(s,d,dk?.15:.11)))+";--tx:"+R(d)+";--m2:"+R(M(d,s,.28))+";--mt:"+R(M(d,s,.5))+";--b:"+A(d,.12)+";--b2:"+A(d,.24)+";--card-bd:"+A(d,g?.3:.14)+";--row-bg:"+A(d,.07)+";--hero-tx:"+R(d)+";--hero-img:linear-gradient(135deg,"+A(W,dk?.12:.78)+","+A(W,dk?.03:.46)+");--nav-bg:"+A(s,g?.5:.82)+";--card-bg:"+cb+";--cd-bg:var(--card-bg);--lk-bg:var(--card-bg);",x+="html.ucolors,html.ucolors.pre-light,html.ucolors.pre-pink,html.ucolors.pre-glass{background:"+R(s)+"!important}html.ucolors body:not(.x){background:transparent!important;color:"+R(d)+"!important}html.ucolors body:not(.x):not(.xx):not(.xxx) .mo{background:"+A(s1,g?.6:.95)+"!important}";if(o.bg){const a=P(o.ac||D[2]);x+=S0+"{--scene:"+(g?"radial-gradient(55% 45% at 12% 8%,"+A(M(s,[130,140,255],.5),.55)+",transparent 70%),radial-gradient(50% 45% at 92% 12%,"+A(M(s,[90,200,255],.45),.45)+",transparent 70%),radial-gradient(55% 50% at 85% 95%,"+A(M(s,[255,120,190],.4),.32)+",transparent 70%)":"radial-gradient(circle at 20% 12%,"+A(a,dk?.2:.12)+",transparent 55%),radial-gradient(circle at 85% 90%,"+A(a,dk?.12:.08)+",transparent 50%)")+"}"}const m=document.getElementById("themeColorMeta");m&&o.bg&&(m.content=R(s))}if(o.ac){const a=P(o.ac);c+="--ai:"+R(a)+";--a2:"+A(a,.16)+";--dn:"+R(a)+";--pill-bg:"+R(a)+";--pill-tx:"+(L(a)>.4?"#0b0f1a":"#fff")+";"}const w=document.createElement("style");w.id="ccStyle",w.textContent=S0+"{"+c+"}"+x,document.head.appendChild(w),h.classList.add("ucolors"),h.classList.toggle("ucac",!!o.ac),h.classList.toggle("redx","red"===o.v)},window.applyWallpaper=function(){const o=document.documentElement,t=document.getElementById("wpImg");t&&t.remove();try{const t=localStorage.getItem("m_wallpaper"),e=parseFloat(localStorage.getItem("m_wpDim"));if(t&&/^data:image\//.test(t)){const n=document.createElement("style");return n.id="wpImg",n.textContent='html.haswp body:not(.x)::before{background-image:url("'+t+'")!important}',document.head.appendChild(n),o.style.setProperty("--wpdim",isNaN(e)?.3:e),void o.classList.add("haswp")}}catch(o){}o.style.removeProperty("--wpdim"),o.classList.remove("haswp")},window.__applyWpNow=window.applyWallpaper;window.__wpBoot=1;
 window.applyWallpaper=function(){if(window.__wpBoot)return;return window.__applyWpNow.apply(this,arguments)};
 (function(){var go=function(){var d=null;try{d=localStorage.getItem("m_wallpaper");localStorage.removeItem("m_wps");localStorage.removeItem("m_wpk")}catch(e){}
 var fin=function(){window.__wpBoot=0;var h=document.documentElement;if(d)h.classList.add("wpfade");window.__applyWpNow();if(d)setTimeout(function(){h.classList.remove("wpfade")},900)};
@@ -1322,12 +1322,12 @@ pink:[["#ffb7ce","#4a1230","Baby Pink"],["#fff0f5","#5c2b39","Blush"],["#ffe4ee"
 let pend=null,tm=null;{const pt=window.paintTheme;"function"==typeof pt&&(window.paintTheme=function(){const r=pt.apply(this,arguments);try{renderNavAll()}catch(e){}return r})}try{if("glass"===S.go("theme","dark")){S.s("theme","dark");"function"==typeof applyTheme&&applyTheme()}}catch(e){}
 const th=()=>S.go("theme","dark");
 function getMap(){const o=S.go("customColors",null);if(!o||"object"!=typeof o)return{};if(o.bg&&o.tx){const h=o.t||(window.ccIsLightHex(o.bg)?"light":"dark");return{[h]:{bg:o.bg,tx:o.tx}}}return Object.assign({},o)}
-function fill(){const t=th(),c=pend||getMap()[t]||{},D=DEF[t]||DEF.dark;$("ccBg").value=c.bg||D.bg;$("ccTx").value=c.tx||D.tx;$("ccAc").value=c.ac||D.ac;const l=$("ccPresetLbl");l&&(l.textContent="Quick combos · "+(NAME[t]||"Dark")+" mode");$("ccPresets").innerHTML=(PRE[t]||PRE.dark).map((p,i)=>p[3]==="red"?`<button onclick="ccPreset(${i})" title="${p[2]}" style="grid-column:1/-1;order:-1;background:${t==="light"?"linear-gradient(120deg,#ffffff 0%,#f1d9d5 55%,#c8201a 100%)":"linear-gradient(120deg,#0a0000 0%,#5a0000 45%,#e6261c 100%)"};color:${t==="light"?"#4a0410":"#fff"};border:1px solid rgba(255,70,100,.65);border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 0 20px rgba(255,30,60,.38)">${t==="light"?"White & red":"Red & black"}</button>`:`<button onclick="ccPreset(${i})" title="${p[2]}" style="background:${p[0]};color:${p[1]};border:1px solid rgba(128,128,128,.4);border-radius:10px;padding:10px 0;font-size:15px;font-weight:700;cursor:pointer">Aa</button>`).join("")}
+function fill(){const t=th(),c=pend||getMap()[t]||{},D=DEF[t]||DEF.dark;$("ccBg").value=c.bg||D.bg;$("ccTx").value=c.tx||D.tx;$("ccAc").value=c.ac||D.ac;const l=$("ccPresetLbl");l&&(l.textContent="Quick combos · "+(NAME[t]||"Dark")+" mode");$("ccPresets").innerHTML=(PRE[t]||PRE.dark).map((p,i)=>p[3]==="red"?`<button onclick="ccPreset(${i})" title="${p[2]}" style="grid-column:1/-1;order:-1;background:${t==="light"?"linear-gradient(120deg,#ffffff 0%,#f1d9d5 55%,#fd2a1f 100%)":"linear-gradient(120deg,#0a0000 0%,#5a0000 45%,#c42018 100%)"};color:${t==="light"?"#4a0410":"#fff"};border:1px solid rgba(255,70,100,.65);border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 0 20px rgba(255,30,60,.38)">${t==="light"?"White & red":"Red & black"}</button>`:`<button onclick="ccPreset(${i})" title="${p[2]}" style="background:${p[0]};color:${p[1]};border:1px solid rgba(128,128,128,.4);border-radius:10px;padding:10px 0;font-size:15px;font-weight:700;cursor:pointer">Aa</button>`).join("")}
 window.openColorMo=function(){fill();openMo("colorMo")};
 function preview(p){const t=th();pend=p;window.applyCustomColors(Object.assign({t},p),t);const o=ccBodyClasses(t,p.bg||null),b=document.body.classList;b.remove("light","pink","glass");o.light&&b.add("light");o.pink&&b.add("pink");o.glass&&b.add("glass");clearTimeout(tm);tm=setTimeout(window.ccCommit,700)}
 window.ccCommit=function(){clearTimeout(tm);if(!pend)return;const m=getMap();m[th()]=pend;pend=null;S.s("customColors",m);ccApplyAll()};
 window.ccPick=function(k){const t=th(),c=Object.assign({},pend||getMap()[t]||{});c[k]={bg:"ccBg",tx:"ccTx",ac:"ccAc"}[k]&&$({bg:"ccBg",tx:"ccTx",ac:"ccAc"}[k]).value;c[k]=$({bg:"ccBg",tx:"ccTx",ac:"ccAc"}[k]).value;preview(c)};
-window.ccPreset=function(i){const t=th(),p=(PRE[t]||PRE.dark)[i],c=Object.assign({},pend||getMap()[t]||{},{bg:p[0],tx:p[1]});if(p[3]==="red"){c.v="red";c.ac=t==="light"?"#c8201a":"#e61f19"}else{if(c.v==="red")delete c.ac;delete c.v}$("ccBg").value=p[0];$("ccTx").value=p[1];$("ccAc").value=c.ac||(DEF[t]||DEF.dark).ac;preview(c);window.ccCommit()};
+window.ccPreset=function(i){const t=th(),p=(PRE[t]||PRE.dark)[i],c=Object.assign({},pend||getMap()[t]||{},{bg:p[0],tx:p[1]});if(p[3]==="red"){c.v="red";c.ac=t==="light"?"#fd2a1f":"#c42018"}else{if(c.v==="red")delete c.ac;delete c.v}$("ccBg").value=p[0];$("ccTx").value=p[1];$("ccAc").value=c.ac||(DEF[t]||DEF.dark).ac;preview(c);window.ccCommit()};
 window.ccReset=function(){clearTimeout(tm);pend=null;const m=getMap();delete m[th()];S.s("customColors",m);ccApplyAll();fill()};
 window.ccClose=function(){window.ccCommit();closeMo("colorMo")};
 })();
@@ -2161,6 +2161,111 @@ html.redx.ucolors body.light:not(.x):not(.xx){
 html.redx body.light:not(.x) .tnb{border-bottom-color:rgba(190,30,22,.25)!important;box-shadow:0 4px 18px rgba(190,25,18,.12)!important}
 html.redx body.light:not(.x) .bnb{border-top-color:rgba(190,30,22,.25)!important;box-shadow:0 -4px 18px rgba(190,25,18,.12)!important}
 html.redx body.light .pt,html.redx body.light .clbar{background:#f0d2cd}
+</style>
+<style id="m2028-redfix">
+/* RED THEME -- black + white themes only (pink/girl untouched).
+   BLACK: base red #e6261c -15% (#c42018) and 5% blacker.  WHITE: neutral white surfaces, accent +10% (#fd2a1f), same red-to-black hero/scene as BLACK. */
+html.redx.ucolors body:not(.light):not(.pink):not(.x):not(.xx){--ai:#c42018;--a2:rgba(196,32,24,.16);--dn:#c42018;--up:#c4512f;--u2:rgba(196,81,47,.14);--s1:#0f0202;--s2:#170303;--s3:#250606;--b:rgba(196,38,29,.16);--b2:rgba(196,38,29,.32);--card-bg:linear-gradient(135deg,rgba(162,0,0,.26) 0%,rgba(15,2,2,.95) 38%,rgba(8,1,1,.97) 68%,rgba(119,0,1,.36) 100%);--cd-bg:linear-gradient(150deg,rgba(162,0,0,.38),rgba(162,0,0,.04)),#100202;--lk-bg:linear-gradient(150deg,rgba(186,77,44,.28),rgba(109,0,0,.16)),#120202;--card-bd:rgba(196,46,34,.42);--card-sh:0 14px 44px rgba(0,0,0,.65),0 0 0 1px rgba(162,0,0,.12),0 0 32px rgba(162,0,0,.2),inset 0 1px 0 rgba(186,87,76,.28);--nav-bg:rgba(8,1,1,.84);--pill-bg:linear-gradient(135deg,#b8140c,#760000);--row-bg:rgba(186,36,27,.07);--hero-img:linear-gradient(90deg,rgba(6,0,0,.55),transparent 72%),linear-gradient(180deg,#a30000 0%,#970000 38%,#770001 44%,#5e0102 62%,#220201 100%);--scene:linear-gradient(180deg,#900000 0%,#800000 30%,#6c0101 52%,#3c0100 74%,#170100 90%,#080000 100%)}
+html.redx.ucolors body.light:not(.pink):not(.x):not(.xx){--ai:#fd2a1f;--a2:rgba(253,42,31,0.1);--dn:#fd2a1f;--up:#e8552e;--u2:rgba(232,85,46,.10);--s1:#ffffff;--s2:#f3f3f5;--s3:#e5e5e8;--b:rgba(12,10,12,.10);--b2:rgba(12,10,12,.20);--mt:#8b8b93;--m2:#4a4a52;--tx:#16090a;--card-bg:linear-gradient(160deg,#ffffff 0%,#f6f6f8 100%);--cd-bg:linear-gradient(150deg,#ffffff,#f1f1f3);--lk-bg:linear-gradient(150deg,#ffffff,#f1f1f3);--card-bd:rgba(12,10,12,.09);--card-sh:0 1px 2px rgba(12,10,12,.06),0 10px 28px rgba(12,10,12,.08);--nav-bg:rgba(255,255,255,.93);--row-bg:#f4f4f6;--pill-bg:linear-gradient(135deg,#fd2a1f,#2a0000);--hero-img:linear-gradient(90deg,rgba(6,0,0,.55),transparent 72%),linear-gradient(180deg,#a30000 0%,#970000 38%,#770001 44%,#5e0102 62%,#220201 100%);--scene:radial-gradient(60% 36% at 0% 0%,rgba(253,42,31,0.1),transparent 70%),radial-gradient(50% 30% at 100% 100%,rgba(20,0,0,.07),transparent 70%),linear-gradient(180deg,#f2f2f4 0%,#f9f9fa 40%,#ffffff 100%)}
+html.redx body:not(.light):not(.pink):not(.x) .tnb{border-bottom:1px solid rgba(196,32,24,0.5)!important;box-shadow:0 8px 32px rgba(196,32,24,0.2)!important}
+html.redx body:not(.light):not(.pink):not(.x) .bnb{border-top:1px solid rgba(196,32,24,0.5)!important;box-shadow:0 -8px 32px rgba(196,32,24,0.2)!important}
+html.redx body:not(.light):not(.pink):not(.x) .tnb .nb.on{box-shadow:0 0 0 1px rgba(196,32,24,0.7),0 6px 24px rgba(196,32,24,0.45)!important}
+html.redx body.light:not(.pink):not(.x) .tnb{border-bottom:1px solid rgba(12,10,12,.08)!important;box-shadow:0 4px 18px rgba(12,10,12,.06)!important}
+html.redx body.light:not(.pink):not(.x) .bnb{border-top:1px solid rgba(12,10,12,.08)!important;box-shadow:0 -4px 18px rgba(12,10,12,.06)!important}
+html.redx body.light:not(.pink):not(.x) .tnb .nb.on{color:#fff!important;box-shadow:0 5px 16px rgba(253,42,31,0.35)!important}
+html.redx body.light:not(.pink) .pt,html.redx body.light:not(.pink) .clbar{background:#e5e5e8}
+html.redx body:not(.pink) .ssr{--sk0:#220201;--sk1:#5e0102;--sk2:#a20000;--sk3:#ba362a;--sea0:#770001;--sea1:#430100;--sea2:#150000;--sunA:#cec2bb;--sunB:#ce7c6f;--sunC:#ba1f17;--cl1:#590000;--cl2:#770001;--cl3:#490000;--cl4:#6f0000;--wv1:#ba2a21;--wv2:#9a0000;--wv3:#700000;--wv4:#490000;border-color:rgba(196,32,24,0.55);box-shadow:var(--card-sh),0 0 56px rgba(196,32,24,0.2)}
+/* streak buttons: dark glass pill + white text so they read on the red hero (was red-on-red) */
+html.redx body:not(.pink):not(.x) button.hero-streak,html.redx body:not(.pink):not(.x) .hero-streak{background:rgba(10,0,0,.72)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:0 4px 16px rgba(0,0,0,.35)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+html.redx body:not(.pink):not(.x) .hero-streak *{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.redx body:not(.pink):not(.x) .hero-streak .hs-go{opacity:.75}
+html.redx body:not(.pink):not(.x) .sp{background:rgba(10,0,0,.72)!important;color:#fff!important;border:1px solid rgba(255,255,255,.25)!important}
+html.redx body.light:not(.pink):not(.x) .sp{background:#16090a!important}
+</style>
+<style id="m2028-lightred">
+/* ===== LIGHT THEME: red throughout (dark theme + girl theme untouched) =====
+   Red strength is NOT reduced: accent stays #fd2a1f. Red is added to scene, cards, borders, nav, inputs, modals, UPSC page. */
+html.redx.ucolors body.light:not(.pink):not(.x):not(.xx){
+ --ai:#fd2a1f;--a2:rgba(253,42,31,.14);--dn:#e8231a;--up:#c4141c;--u2:rgba(196,20,28,.12);
+ --tx:#2b0b09;--m2:#6b2622;--mt:#9a4f49;
+ --s1:#fff6f4;--s2:#fbe1dc;--s3:#f4c7c0;
+ --b:rgba(200,30,22,.20);--b2:rgba(200,30,22,.38);--card-bd:rgba(210,32,24,.34);
+ --card-bg:linear-gradient(160deg,#ffffff 0%,#fde3de 100%);
+ --cd-bg:linear-gradient(150deg,#ffffff,#fbd5cf);
+ --lk-bg:linear-gradient(150deg,#ffffff,#f9cbc4);
+ --row-bg:#fbe1dc;
+ --card-sh:0 1px 2px rgba(150,15,10,.12),0 12px 30px rgba(220,30,22,.20);
+ --nav-bg:rgba(255,226,221,.95);
+ --pill-bg:linear-gradient(135deg,#fd2a1f,#b01510);--pill-tx:#fff;
+ --scene:radial-gradient(70% 45% at 0% 0%,rgba(253,42,31,.30),transparent 70%),radial-gradient(60% 40% at 100% 100%,rgba(176,21,16,.26),transparent 70%),radial-gradient(40% 30% at 100% 0%,rgba(253,42,31,.12),transparent 70%),linear-gradient(180deg,#f9d0ca 0%,#fce2de 45%,#fff0ed 100%);
+}
+/* nav bars */
+html.redx body.light:not(.pink):not(.x) .tnb{background:var(--nav-bg)!important;border-bottom:2px solid rgba(214,30,22,.38)!important;box-shadow:0 6px 22px rgba(220,30,22,.20)!important}
+html.redx body.light:not(.pink):not(.x) .bnb{background:var(--nav-bg)!important;border-top:2px solid rgba(214,30,22,.38)!important;box-shadow:0 -6px 22px rgba(220,30,22,.20)!important}
+html.redx body.light:not(.pink):not(.x) .tnb .nb{color:#6b2622!important}
+html.redx body.light:not(.pink):not(.x) .tnb .nb:hover:not(.on){background:rgba(253,42,31,.13)!important;color:#b3120b!important}
+/* THE FIX: active tab was white text on a pale fill (invisible). Solid red pill + white text, in every state. */
+html.redx body.light:not(.pink):not(.x) .tnb .nb.on,
+html.redx body.light:not(.pink):not(.x) .tnb .nb.on:hover,
+html.redx body.light:not(.pink):not(.x) .tnb .nb.on:active,
+html.redx body.light:not(.pink):not(.x) .tnb .nb.on:focus{background:linear-gradient(135deg,#fd2a1f,#b01510)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:transparent!important;box-shadow:0 6px 18px rgba(253,42,31,.45)!important}
+html.redx body.light:not(.pink):not(.x) .tnb .nb.on *{color:#fff!important;-webkit-text-fill-color:#fff!important}
+html.redx body.light:not(.pink):not(.x) .bnbt{color:#8a3a35}
+html.redx body.light:not(.pink):not(.x) .bnbt.on{color:#e8231a!important}
+/* surfaces */
+html.redx body.light:not(.pink):not(.x) :is(.card,.wc,.st){background:var(--card-bg)!important;border:1px solid var(--card-bd)!important;box-shadow:var(--card-sh)!important}
+html.redx body.light:not(.pink):not(.x) :is(.bi,.ci,.hr){background:var(--row-bg)!important;border-color:var(--b)!important}
+html.redx body.light:not(.pink):not(.x) .mo{background:linear-gradient(160deg,#ffffff 0%,#fde8e4 100%)!important;border:1px solid rgba(214,30,22,.40)!important;box-shadow:0 20px 60px rgba(176,21,16,.30)!important}
+html.redx body.light:not(.pink):not(.x) :is(.inp,textarea.ta,.ta){background:#fde8e4!important;color:#2b0b09!important;border:1px solid rgba(214,30,22,.30)!important}
+html.redx body.light:not(.pink):not(.x) :is(.inp,.ta):focus{border-color:#fd2a1f!important;box-shadow:0 0 0 3px rgba(253,42,31,.20)!important;outline:0}
+html.redx body.light:not(.pink):not(.x) :is(.inp,.ta)::placeholder{color:#b07a74}
+html.redx body.light:not(.pink):not(.x) :is(.pt,.clbar){background:#f2bfb8}
+html.redx body.light:not(.pink):not(.x) .sp{background:linear-gradient(135deg,#7a0d08,#2a0705)!important;color:#fff!important}
+/* buttons: tinted red, and they stay red on hover / press / focus (never fall back to white) */
+html.redx body.light:not(.pink):not(.x) .btn.b-gh{background:rgba(253,42,31,.08)!important;color:#7a2a25!important;border:1px solid rgba(214,30,22,.32)!important}
+html.redx body.light:not(.pink):not(.x) .btn.b-gh:is(:hover,:active,:focus,:focus-visible){background:rgba(253,42,31,.18)!important;color:#b3120b!important;border-color:rgba(214,30,22,.55)!important}
+html.redx body.light:not(.pink):not(.x) :is(.b-ai,.b-up,.b-bd,.b-dn){background:rgba(253,42,31,.16)!important;color:#c4140c!important;border:1px solid rgba(214,30,22,.50)!important;box-shadow:none!important}
+html.redx body.light:not(.pink):not(.x) :is(.b-ai,.b-up,.b-bd,.b-dn):is(:hover,:active,:focus,:focus-visible){background:rgba(253,42,31,.30)!important;color:#a30f08!important;border-color:#e8231a!important}
+html.redx body.light:not(.pink):not(.x) .tfilters .seg .btn.b-ai{background:linear-gradient(135deg,#fd2a1f,#c4140c)!important;color:#fff!important;border-color:transparent!important}
+html.redx body.light:not(.pink):not(.x) .hero-streak,html.redx body.light:not(.pink):not(.x) button.hero-streak{background:rgba(10,0,0,.72)!important;color:#fff!important}
+/* chapter tick circles */
+html.redx body.light:not(.pink):not(.x) .cc{border-color:rgba(214,30,22,.50)!important}
+html.redx body.light:not(.pink):not(.x) .cc.ck{background:#fd2a1f!important;border-color:#fd2a1f!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+/* UPSC page: was green/purple/gold in light theme, now red family (tier labels stay distinguishable) */
+html.redx.ucolors body.light:not(.pink):not(.x) #v-upsc{--ai:#d3190f;--dn:#d3190f;--up:#b0102a;--gd:#8f4300;--bd:#e0360f;--rd:#a30f08;--m2:#6b2622;--mt:#9a4f49;--tx:#2b0b09}
+html.redx body.light:not(.pink):not(.x) #v-upsc #upscTierInfo{background:linear-gradient(160deg,#ffffff 0%,#fddad4 100%)!important;border:1px solid rgba(214,30,22,.45)!important;box-shadow:0 10px 28px rgba(220,30,22,.20)!important}
+html.redx body.light:not(.pink):not(.x) #v-upsc .tag{background:rgba(253,42,31,.16)!important;color:#b3120b!important;border:1px solid rgba(214,30,22,.35)!important}
+html.redx body.light:not(.pink):not(.x) #v-upsc #upscSubs > div > div:first-child{border-bottom:1px solid rgba(214,30,22,.40)!important}
+html.redx body.light:not(.pink):not(.x) #v-upsc :is(.ph-t,#upscPageTitle){color:#8a0d07!important}
+html.redx body.light:not(.pink):not(.x) #v-upsc .pf{background:linear-gradient(90deg,#fd2a1f,#b01510)!important}
+</style>
+<style id="m2028-upsc-2col">
+/* UPSC tab: subjects laid out two per row (half width each). Layout only, no colour changes. */
+#v-upsc #upscSubs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px;row-gap:0;align-items:start}
+#v-upsc #upscSubs > div{min-width:0;margin-bottom:12px}
+#v-upsc #upscSubs > div:last-child:nth-child(odd){grid-column:auto}
+/* restore-removed-books button (if present) spans both columns */
+#v-upsc #upscSubs > div[style*="text-align:center"]{grid-column:1/-1}
+@media (max-width:760px){#v-upsc #upscSubs{grid-template-columns:minmax(0,1fr)}}
+</style>
+<style id="m2028-upsc-space">
+/* UPSC tab: ~30% more room per subject section (layout only, no colour changes). */
+html body #v-upsc #upscSubs{column-gap:29px}
+html body #v-upsc #upscSubs > div{margin-bottom:18px!important}
+html body #v-upsc #upscSubs > div > div:first-child{padding:8px 2px!important;margin-bottom:11px!important;gap:8px!important}
+html body #v-upsc #upscSubs .tag{font-size:13.5px;padding:3px 11px}
+html body #v-upsc #upscSubs > div > div:first-child > span:not(.tag){font-size:13.5px!important}
+html body #v-upsc #upscSubs [id^="sub_"]{gap:11px!important}
+html body #v-upsc #upscSubs .bi{border-radius:16px}
+html body #v-upsc #upscSubs .bh{padding:17px 17px!important;gap:14px!important}
+html body #v-upsc #upscSubs .bn2{font-size:13px!important}
+html body #v-upsc #upscSubs .bt{font-size:15.5px!important;margin-bottom:4px!important}
+html body #v-upsc #upscSubs .ba{font-size:13px!important;margin-bottom:6px!important}
+html body #v-upsc #upscSubs .bh .btn{font-size:13px!important;padding:5px 14px!important;border-radius:9px}
+html body #v-upsc #upscSubs .bb{padding-bottom:6px}
+html body #v-upsc #upscSubs .cr{padding-top:9px!important;padding-bottom:9px!important}
+html body #v-upsc #upscSubs .chn{font-size:13px!important}
+html body #v-upsc #upscSubs .cc{width:26px;height:26px}
 </style>
 <script src="push.js" defer></script>
 </body>

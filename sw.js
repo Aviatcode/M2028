@@ -1,3 +1,5 @@
+importScripts('reminders-sw.js'); // background task + medicine reminders (message / periodicsync / push)
+
 // M2028 service worker.
 //
 // 1) SPEED: the app shell (index.html, icons, manifest) is saved on the device
@@ -9,6 +11,20 @@
 // 3) NOTIFICATIONS: the ongoing Pomodoro/tasks notification (tag 'm2028-live')
 //    and tap-to-open behaviour from before are unchanged.
 //
+// 4) BACKGROUND SYNC: when the page can't (or may not be able to) finish
+//    uploading your changes - offline, tab closed, app swiped away - it parks
+//    them in an IndexedDB "outbox" and registers a Background Sync. The browser
+//    wakes this worker as soon as there is a connection and it uploads them to
+//    Supabase. Before overwriting anything it checks the cloud copy: if another
+//    device saved a newer version in the meantime, that key is skipped and the
+//    page merges it normally on next open, so nothing is ever clobbered.
+//    (Background Sync is supported in Chrome/Edge/Android. Elsewhere the page
+//    falls back to syncing on next open, exactly as before.)
+//
+// 5) REMINDERS: reminders-sw.js (imported on line 1) stores the upcoming task and
+//    medicine reminders the page sends and shows them when the browser wakes
+//    the worker (Periodic Background Sync or Web Push), even with the app closed.
+//
 // Never cached: Supabase / any API calls (always live data), audio and other
 // range requests, non-GET requests.
 //
@@ -17,7 +33,7 @@
 // it only shows what the page last told it to. If the browser suspends the
 // page for a long time the notification stops updating until the app reopens.
 
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
 const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'apple-touch-icon.png'];
@@ -139,7 +155,76 @@ self.addEventListener('message', (event) => {
     self.registration.getNotifications({ tag: 'm2028-live' }).then((list) => {
       list.forEach((n) => n.close());
     });
+  } else if (data.type === 'FLUSH_OUTBOX') {
+    event.waitUntil(flushOutbox().catch(() => {}));
   } else if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+// ---------------------------------------------------------------------------
+// Background Sync: deliver the page's outbox to Supabase.
+// ---------------------------------------------------------------------------
+function obDB() {
+  return new Promise((ok, no) => {
+    const r = indexedDB.open('m2028-outbox', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => no(r.error);
+  });
+}
+async function obGet() {
+  const db = await obDB();
+  return new Promise((ok, no) => {
+    const q = db.transaction('kv').objectStore('kv').get('outbox');
+    q.onsuccess = () => { db.close(); ok(q.result || null); };
+    q.onerror = () => no(q.error);
+  });
+}
+async function obClear() {
+  const db = await obDB();
+  return new Promise((ok, no) => {
+    const t = db.transaction('kv', 'readwrite');
+    t.objectStore('kv').delete('outbox');
+    t.oncomplete = () => { db.close(); ok(); };
+    t.onerror = () => no(t.error);
+  });
+}
+
+async function flushOutbox() {
+  const rec = await obGet();
+  if (!rec || !rec.rows || !rec.rows.length) return;
+  const H = { apikey: rec.key, Authorization: 'Bearer ' + rec.token, 'Content-Type': 'application/json' };
+  const keys = rec.rows.map((x) => x.r.data_key);
+
+  // 1) what does the cloud currently hold for these keys?
+  const inList = keys.map((k) => '"' + k.replace(/"/g, '') + '"').join(',');
+  const chk = await fetch(
+    rec.url + '/rest/v1/user_data?select=data_key,updated_at&user_id=eq.' + encodeURIComponent(rec.uid) +
+    '&data_key=in.(' + encodeURIComponent(inList) + ')',
+    { headers: H }
+  );
+  // expired / invalid login: give up quietly - the page still has every change
+  // marked unsent and will upload them after you open the app and sign in
+  if (chk.status === 401 || chk.status === 403) { await obClear(); return; }
+  if (!chk.ok) throw new Error('outbox check failed ' + chk.status); // browser retries later
+  const cloud = {};
+  (await chk.json()).forEach((c) => { cloud[c.data_key] = new Date(c.updated_at).getTime(); });
+
+  // 2) only upload keys nobody else has changed since the page last saw them
+  const send = rec.rows.filter((x) => !cloud[x.r.data_key] || cloud[x.r.data_key] <= x.base).map((x) => x.r);
+  if (send.length) {
+    const up = await fetch(rec.url + '/rest/v1/user_data?on_conflict=user_id,data_key', {
+      method: 'POST',
+      headers: { ...H, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(send),
+    });
+    if (up.status === 401 || up.status === 403) { await obClear(); return; }
+    if (!up.ok) throw new Error('outbox upload failed ' + up.status);
+  }
+  await obClear();
+}
+
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'm2028-sync') event.waitUntil(flushOutbox());
 });

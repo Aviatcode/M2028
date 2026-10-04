@@ -17,6 +17,5 @@ function fireDue(){return Promise.all([get('list'),get('fired')]).then(function(
 self.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='m2028-reminders'&&Array.isArray(d.list))e.waitUntil(put('list',d.list))});
 self.addEventListener('periodicsync',function(e){if(e.tag==='m2028-reminders')e.waitUntil(fireDue())});
 self.addEventListener('push',function(e){var d={};try{d=e.data?e.data.json():{}}catch(x){}e.waitUntil(d&&d.title?show(d):fireDue())});
-self.addEventListener('notificationclick',function(e){e.notification.close();
-  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(w){for(var i=0;i<w.length;i++)if('focus' in w[i])return w[i].focus();return self.clients.openWindow((e.notification.data&&e.notification.data.url)||'./')}))});
+/* notification taps are handled by sw.js (one handler, so the app is never opened twice) */
 })();

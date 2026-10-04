@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded",function(){});
 <meta name="apple-mobile-web-app-title" content="M2028">
 <title>M2028</title>
 <script>document.addEventListener("visibilitychange",function(){document.documentElement.classList.toggle("pz",document.hidden)});</script>
-<script>console.log("M2028 build: instant-sync-v5");try{history.scrollRestoration="manual"}catch(o){}</script>
+<script>console.log("M2028 build: instant-sync-v5+v6");try{history.scrollRestoration="manual"}catch(o){}</script>
 <script>!function(){try{window.ccDefaultFor=function(t){return"dark"===t?{t:"dark",bg:"#0a0000",tx:"#fff1ee",ac:"#e61f19",v:"red"}:"light"===t?{t:"light",bg:"#faf4f2",tx:"#2a1210",ac:"#c8201a",v:"red"}:null},window.ccIsLightHex=function(o){const t=parseInt(String(o).replace("#",""),16),e=o=>(o/=255)<=.03928?o/12.92:Math.pow((o+.055)/1.055,2.4);return.2126*e(t>>16&255)+.7152*e(t>>8&255)+.0722*e(255&t)>=.25},window.ccEffective=function(o,t){if(!o||"object"!=typeof o)return window.ccDefaultFor(t);let p;if(o.bg&&o.tx){const h=o.t||(window.ccIsLightHex(o.bg)?"light":"dark");p=h===t?{bg:o.bg,tx:o.tx}:null}else p=o[t];return p&&(p.bg||p.tx||p.ac)?Object.assign({t:t},p):window.ccDefaultFor(t)},window.applyCustomColors=function(o,t){const e=document.getElementById("ccStyle");e&&e.remove();const h=document.documentElement;if(!o||!(o.bg||o.tx||o.ac))return void h.classList.remove("ucolors","ucac","redx");const D={dark:["#0b1020","#f6f7fb","#fdb813"],light:["#f4f7fe","#1a1a2e","#0b9a63"],pink:["#ffb7ce","#4a1230","#ff6eb4"],glass:["#0c1230","#ffffff","#ffffff"]}[t]||["#0b1020","#f6f7fb","#fdb813"],P=x=>{x=(x||"").replace("#",""),3===x.length&&(x=x.split("").map(c=>c+c).join(""));const n=parseInt(x,16);return isNaN(n)?[0,0,0]:[n>>16&255,n>>8&255,255&n]},M=(a,b,k)=>a.map((v,i)=>Math.round(v+(b[i]-v)*k)),R=a=>"rgb("+a.join(",")+")",A=(a,k)=>"rgba("+a.join(",")+","+k+")",L=a=>{const f=v=>(v/=255)<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);return.2126*f(a[0])+.7152*f(a[1])+.0722*f(a[2])},g="glass"===t,S0="html.ucolors body:not(.x):not(.xx)";let c="",x="";if(o.bg||o.tx){const s=P(o.bg||D[0]),d=P(o.tx||D[1]),dk=L(s)<.25,s1=dk?M(s,d,.06):M(s,[255,255,255],.7),W=[255,255,255],cb=g?"linear-gradient(145deg,"+A(W,dk?.21:.62)+","+A(W,dk?.07:.3)+")":R(s1);c+="--bg:"+R(s)+";--s1:"+(g?A(dk?W:s,.1):R(s1))+";--s2:"+(g?A(dk?W:s,.1):R(M(s,d,dk?.09:.04)))+";--s3:"+(g?A(dk?W:s,.2):R(M(s,d,dk?.15:.11)))+";--tx:"+R(d)+";--m2:"+R(M(d,s,.28))+";--mt:"+R(M(d,s,.5))+";--b:"+A(d,.12)+";--b2:"+A(d,.24)+";--card-bd:"+A(d,g?.3:.14)+";--row-bg:"+A(d,.07)+";--hero-tx:"+R(d)+";--hero-img:linear-gradient(135deg,"+A(W,dk?.12:.78)+","+A(W,dk?.03:.46)+");--nav-bg:"+A(s,g?.5:.82)+";--card-bg:"+cb+";--cd-bg:var(--card-bg);--lk-bg:var(--card-bg);",x+="html.ucolors,html.ucolors.pre-light,html.ucolors.pre-pink,html.ucolors.pre-glass{background:"+R(s)+"!important}html.ucolors body:not(.x){background:transparent!important;color:"+R(d)+"!important}html.ucolors body:not(.x):not(.xx):not(.xxx) .mo{background:"+A(s1,g?.6:.95)+"!important}";if(o.bg){const a=P(o.ac||D[2]);x+=S0+"{--scene:"+(g?"radial-gradient(55% 45% at 12% 8%,"+A(M(s,[130,140,255],.5),.55)+",transparent 70%),radial-gradient(50% 45% at 92% 12%,"+A(M(s,[90,200,255],.45),.45)+",transparent 70%),radial-gradient(55% 50% at 85% 95%,"+A(M(s,[255,120,190],.4),.32)+",transparent 70%)":"radial-gradient(circle at 20% 12%,"+A(a,dk?.2:.12)+",transparent 55%),radial-gradient(circle at 85% 90%,"+A(a,dk?.12:.08)+",transparent 50%)")+"}"}const m=document.getElementById("themeColorMeta");m&&o.bg&&(m.content=R(s))}if(o.ac){const a=P(o.ac);c+="--ai:"+R(a)+";--a2:"+A(a,.16)+";--dn:"+R(a)+";--pill-bg:"+R(a)+";--pill-tx:"+(L(a)>.4?"#0b0f1a":"#fff")+";"}const w=document.createElement("style");w.id="ccStyle",w.textContent=S0+"{"+c+"}"+x,document.head.appendChild(w),h.classList.add("ucolors"),h.classList.toggle("ucac",!!o.ac),h.classList.toggle("redx","red"===o.v)},window.applyWallpaper=function(){const o=document.documentElement,t=document.getElementById("wpImg");t&&t.remove();try{const t=localStorage.getItem("m_wallpaper"),e=parseFloat(localStorage.getItem("m_wpDim"));if(t&&/^data:image\//.test(t)){const n=document.createElement("style");return n.id="wpImg",n.textContent='html.haswp body:not(.x)::before{background-image:url("'+t+'")!important}',document.head.appendChild(n),o.style.setProperty("--wpdim",isNaN(e)?.3:e),void o.classList.add("haswp")}}catch(o){}o.style.removeProperty("--wpdim"),o.classList.remove("haswp")},window.__applyWpNow=window.applyWallpaper;window.__wpBoot=1;
 window.applyWallpaper=function(){if(window.__wpBoot)return;return window.__applyWpNow.apply(this,arguments)};
 (function(){var go=function(){var d=null;try{d=localStorage.getItem("m_wallpaper");localStorage.removeItem("m_wps");localStorage.removeItem("m_wpk")}catch(e){}
@@ -1035,7 +1035,283 @@ e.addEventListener("play",()=>nsdrUI(!0));e.addEventListener("pause",()=>nsdrUI(
 e.addEventListener("ended",()=>{nsdrUI(!1);nsdrPaint(0);const c=document.getElementById("ssrCur");c&&(c.textContent="0:00")});
 e.addEventListener("loadedmetadata",()=>{const t=document.getElementById("ssrDur");t&&(t.textContent=nsdrFmt(e.duration))});
 "mediaSession"in navigator&&(navigator.mediaSession.metadata=new MediaMetadata({title:"Susurrus — NSDR",artist:"Dr. Andrew Huberman",album:"10-Minute Non-Sleep Deep Rest",artwork:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%231a1040'/><ellipse cx='256' cy='310' rx='120' ry='70' fill='%234fd8a0' opacity='.6'/><circle cx='256' cy='290' r='40' fill='%23fff5c0'/><rect y='310' width='512' height='202' fill='%230d3d5a'/></svg>",sizes:"512x512",type:"image/svg+xml"}]}),navigator.mediaSession.setActionHandler("play",()=>{e.play()}),navigator.mediaSession.setActionHandler("pause",()=>{e.pause()}),navigator.mediaSession.setActionHandler("seekbackward",()=>{e.currentTime=Math.max(0,e.currentTime-10)}),navigator.mediaSession.setActionHandler("seekforward",()=>{e.currentTime=Math.min(e.duration,e.currentTime+10)}))}function testSound(e){const t=document.getElementById("testNotifStatus");try{pomSound(e),t&&(t.innerHTML=`<span style="color:var(--ai)">✓ Played (${getPomSoundStyle()} · ${e})</span>`)}catch(e){t&&(t.innerHTML=`<span style="color:var(--rd)">✗ Sound failed: ${e.message}. Try tapping anywhere first (iOS requires a tap before audio).</span>`)}}function testNotif(){const e=document.getElementById("testNotifStatus");"Notification"in window?"denied"!==Notification.permission?"granted"===Notification.permission?(e&&(e.innerHTML='<span style="color:var(--m2)">⏳ Notification fires in 3 seconds... keep screen on.</span>'),pomSound("session"),setTimeout(()=>{sendNotif("✅ Test notification!","Notifications are working. Session sounds and reminders will fire like this."),e&&(e.innerHTML='<span style="color:var(--ai)">✓ Notification fired! If you saw it, everything is working.</span>')},3e3)):e&&(e.innerHTML='<span style="color:var(--bd)">⚠ Not enabled yet — turn on Notifications in your account menu first, then try again.</span>'):e&&(e.innerHTML='<span style="color:var(--rd)">✗ Notifications are BLOCKED. Go to: Settings → Apps → Chrome → Notifications → Allow. Then reload the app.</span>'):e&&(e.innerHTML='<span style="color:var(--rd)">✗ Notifications not supported in this browser.</span>')}function sendNotif(e,t,n){try{if(!("Notification"in window)||"granted"!==Notification.permission)return;const o={body:t,icon:"icon-192.png",badge:"icon-192.png",vibrate:[200,100,200]};n&&(o.tag=n,o.renotify=!0);const a=()=>{try{new Notification(e,o)}catch(e){}};"serviceWorker"in navigator?navigator.serviceWorker.getRegistration().then(t=>t?t.showNotification(e,o):a()).catch(a):a()}catch(e){}}function getTodayTaskLines(e){return getPendingTasks().slice(0,e||3).map(e=>e.text)}function updateLiveNotification(){if(!("Notification"in window)||"granted"!==Notification.permission)return;if(!("serviceWorker"in navigator))return;if(!pomRun)return void closeLiveNotification();const e=JSON.parse(localStorage.getItem(POM_KEY)||"{}");let t=pomRem,n=pomMode;if(e.run&&e.endTs&&(t=Math.max(0,Math.round((e.endTs-Date.now())/1e3)),n=e.mode||pomMode,t<=0))return void completeIfExpired();const o=Math.floor(t/60),a=Math.floor(t%60),i=`⏱ ${String(o).padStart(2,"0")+":"+String(a).padStart(2,"0")} — ${"focus"===n?"Focus":"Break"}`,s=getTodayTaskLines(3),r="To do: "+(s.length?s.join(" • "):"nothing pending"),d='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%234fd8a0"/></svg>';navigator.serviceWorker.ready.then(e=>{e.showNotification(i,{body:r,tag:"m2028-live",renotify:!1,silent:!0,icon:d,badge:d}).catch(()=>{})}).catch(()=>{})}document.addEventListener("visibilitychange",()=>{if(!document.hidden&&pomRun){const e=JSON.parse(localStorage.getItem(POM_KEY)||"{}");e.endTs&&(pomRem=Math.max(0,Math.round((e.endTs-Date.now())/1e3)),pomRem<=0&&completeIfExpired()),updatePomUI(),updateLiveNotification()}}),window.addEventListener("pageshow",()=>{loadPomState(),updatePomUI(),updateLiveNotification()});let _liveNotifTimer=null;function startLiveNotifLoop(){if(!("Notification"in window)||"granted"!==Notification.permission)return;if(!pomRun)return;clearTimeout(_liveNotifTimer);const e=()=>{updateLiveNotification(),pomRun&&(_liveNotifTimer=setTimeout(e,15e3))};e()}function stopLiveNotifLoop(){clearTimeout(_liveNotifTimer),_liveNotifTimer=null,closeLiveNotification()}function closeLiveNotification(){"serviceWorker"in navigator&&navigator.serviceWorker.ready.then(e=>{e.getNotifications({tag:"m2028-live"}).then(e=>e.forEach(e=>e.close()))}).catch(()=>{})}function reqNotif(){if("Notification"in window)return"granted"===Notification.permission?(banner("Notifications already on!"),void schedNotifs()):void("denied"!==Notification.permission?Notification.requestPermission().then(e=>{const t=document.getElementById("nBtn");"granted"===e?(banner("Notifications enabled!"),t&&(t.textContent="Notifications On"),schedNotifs(),startLiveNotifLoop()):(banner("Notifications blocked."),t&&(t.textContent="Notifications Blocked"))}):banner("Blocked. Enable in phone Settings → Apps → Browser → Notifications."));banner("Notifications not supported.")}function schedNotifs(){if("granted"!==Notification.permission)return;const e=new Date;[{h:6,m:30,t:"📰 Hindu time",b:"30 min — read The Hindu now"},{h:16,m:30,t:"📚 Study time",b:"4:30 PM — AI/Python Pomodoro"},{h:18,m:0,t:"💪 Workout time",b:"6 PM — Mon/Wed/Fri workout"},{h:19,m:30,t:"📖 NCERT time",b:"7:30 PM — NCERT Pomodoro"},{h:20,m:30,t:"🔄 Revision time",b:"10 min revision before bed"}].forEach(t=>{const n=new Date;n.setHours(t.h,t.m,0,0);const o=n-e;o>0&&setTimeout(()=>sendNotif(t.t,t.b),o)});const t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,0,0,10,0);setTimeout(()=>{onNewDay(),schedNotifs()},n-t)}function onNewDay(){try{renderDash()}catch(e){}try{renderHabits()}catch(e){}try{renderTasks()}catch(e){}try{renderCal()}catch(e){}sendNotif("🌅 Good morning!","New day — habits reset. Let's go!")}function warmAudio(){const e=getAudioCtx();if(e){"suspended"===e.state&&e.resume().catch(()=>{});try{const t=e.createOscillator(),n=e.createGain();t.connect(n),n.connect(e.destination),n.gain.setValueAtTime(0,e.currentTime),t.start(),t.stop(e.currentTime+.001)}catch(e){}}}document.addEventListener("click",warmAudio),document.addEventListener("touchend",warmAudio),document.addEventListener("visibilitychange",()=>{if(!document.hidden){const e=getAudioCtx();e&&"suspended"===e.state&&e.resume().catch(()=>{})}});const _idle=(e,t)=>"requestIdleCallback"in window?requestIdleCallback(e,{timeout:t||1e3}):setTimeout(e,50);function init(){document.getElementById("bfDate").value=TK(),"Notification"in window&&"granted"===Notification.permission&&(document.getElementById("nBtn").textContent="Notifications On",schedNotifs()),function e(){const t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,0,0,15,0);setTimeout(()=>{try{renderDash()}catch(e){}try{renderHabits()}catch(e){}try{renderTasks()}catch(e){}try{renderCal()}catch(e){}e()},n-t)}(),applyTheme(),migrateChecklistWidgets(),applyDashCfg(),applyUpscTitle(),initNSDR(),renderNavAll(),loadPomState(),renderDash(),renderTasks();const e=[migrateAiTrack,checkAutoScorecard,checkDailyQuotePopup],t=()=>{const n=e.shift();if(n){try{n()}catch(e){}e.length&&_idle(t,400)}};setTimeout(()=>_idle(t,1500),300),_taskTick(),updatePomUI(),pomRun&&startLiveNotifLoop()}function _taskTick(){checkTaskReminders(),window.checkMedReminders&&window.checkMedReminders(),document.hidden||(showTaskAlerts(),window.showMedAlerts&&window.showMedAlerts())}setInterval(syncQuoteText,6e4),setInterval(_taskTick,15e3),document.addEventListener("visibilitychange",()=>{"visible"===document.visibilityState&&_taskTick()}),window.addEventListener("focus",_taskTick),window.addEventListener("pageshow",_taskTick),document.addEventListener("click",e=>{const t=document.getElementById("mobileNavCollapse"),n=document.getElementById("mnbToggler");t&&t.classList.contains("open")&&(t.contains(e.target)||n&&n.contains(e.target)||closeMobileNav())});const SUPA_URL="https://lvzcctsqcpikisdzztot.supabase.co",SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2emNjdHNxY3Bpa2lzZHp6dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4OTQsImV4cCI6MjA5NzI4NTg5NH0.Z1GejKEAkFuJmum-amd5zin8TFEIaeptroRtjFmojdw";let supa=null,_user=null,_cloudOK=!1,_realtimeChannel=null;const _dirty=new Set;let _legacy=!1;try{const e=localStorage.getItem("m_sync_dirty");null===e?_legacy=!0:JSON.parse(e).forEach(e=>_dirty.add(e))}catch(e){_legacy=!0}function _saveDirty(){try{localStorage.setItem("m_sync_dirty",JSON.stringify([..._dirty]))}catch(e){}}const _ver={},_inflight={},_again={},_sent={},_seen={},_retry={};let _rtLive=!1,_rtRetry=null;const _ts=e=>e?new Date(e).getTime():0;function _canon(e){return void 0===e?"u":e&&"object"==typeof e?Array.isArray(e)?"["+e.map(_canon).join(",")+"]":"{"+Object.keys(e).sort().map(t=>JSON.stringify(t)+":"+_canon(e[t])).join(",")+"}":JSON.stringify(e)}const _isObj=e=>!!e&&"object"==typeof e&&!Array.isArray(e),_idArr=e=>Array.isArray(e)&&e.every(e=>e&&"object"==typeof e&&void 0!==e.id);function _m3(e,t,n){const o=_canon(t),a=_canon(n),i=_canon(e);if(o===a)return t;if(o===i)return n;if(a===i)return t;if(_isObj(t)&&_isObj(n)){const o=_isObj(e)?e:{},a={};return new Set([...Object.keys(n),...Object.keys(t)]).forEach(e=>{const i=_m3(o[e],t[e],n[e]);void 0!==i&&(a[e]=i)}),a}if(_idArr(t)&&_idArr(n)){const o=new Map((_idArr(e)?e:[]).map(e=>[e.id,e])),a=new Map(t.map(e=>[e.id,e])),i=new Map(n.map(e=>[e.id,e])),s=new Set,r=[];return[...n,...t].forEach(e=>{if(s.has(e.id))return;s.add(e.id);const t=_m3(o.get(e.id),a.get(e.id),i.get(e.id));void 0!==t&&r.push(t)}),r}return t}function _isDirty(e,t){return _dirty.has(e)||_legacy&&_getLocalTs(e)>t}let _syncReady=!1,_pendingPushKeys=new Set,_lastCloudValues={};const GUARD_KEYS=["habs","tasks"];function _isEmptyValue(e){return null==e||(Array.isArray(e)?0===e.length:"object"==typeof e&&0===Object.keys(e).length)}let _supaP=null;function loadSupa(){return _supaP||(_supaP=new Promise(e=>{const t=()=>{try{"undefined"!=typeof supabase&&(supa=supabase.createClient(SUPA_URL,SUPA_KEY),_cloudOK=!0)}catch(e){console.warn("Supabase init failed, continuing in local-only mode:",e)}e(_cloudOK)};if("undefined"!=typeof supabase)return t();const n=document.createElement("script");n.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js",n.async=!0,n.onload=t,n.onerror=()=>e(!1),document.head.appendChild(n)}),_supaP)}function getAllKeys(){const e=["habs","hd","us","as","bfLog","ml","plans","hl","cd","scheds","tasks","pd","plog","bestSt","customWidgets","dashCfg","miles","aic","myProj","phases","upscTitle","customBooks","theme","customColors","guestMode","navHidden","navOrder","navLabels","pomSessions","upscHidden","roadHead","period"];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_ch_")&&e.push(n.replace("m_",""))}return e}function push(e,t){if(!_user||!_cloudOK)return Promise.resolve();if(!_syncReady&&!t)return _pendingPushKeys.add(e),Promise.resolve();if(_inflight[e])return _again[e]=!0,_inflight[e];const n=_doPush(e,t).finally(()=>{if(delete _inflight[e],_again[e])return _again[e]=!1,push(e,t)});return _inflight[e]=n,n}async function _doPush(e,t){const n=S.g(e);if(null===n)return;if(GUARD_KEYS.includes(e)&&_isEmptyValue(n)&&!_isEmptyValue(_lastCloudValues[e]))try{await supa.from("user_data").upsert({user_id:_user.id,data_key:e+"__backup",data_value:_lastCloudValues[e],updated_at:(new Date).toISOString()},{onConflict:"user_id,data_key"}),console.warn(`Backed up previous '${e}' before overwriting with an empty value. Restore with restoreFromBackup("${e}") if this wasn't intentional.`)}catch(e){console.warn("Backup-before-overwrite failed:",e)}const o=_ver[e]||0,a=Date.now();(_sent[e]=_sent[e]||[]).push(a),_sent[e].length>8&&_sent[e].shift();try{const{error:t}=await supa.from("user_data").upsert({user_id:_user.id,data_key:e,data_value:n,updated_at:new Date(a).toISOString()},{onConflict:"user_id,data_key"});if(t)throw t;_seen[e]=a,_retry[e]=0,(_ver[e]||0)===o&&_dirty.delete(e)&&_saveDirty()}catch(n){console.warn("Push failed, will retry:",n);const o=_retry[e]=(_retry[e]||0)+1;setTimeout(()=>push(e,t),Math.min(3e4,1e3*Math.pow(2,o)))}}async function restoreFromBackup(e){if(_user&&_cloudOK)try{const{data:t,error:n}=await supa.from("user_data").select("data_value").eq("user_id",_user.id).eq("data_key",e+"__backup").maybeSingle();if(n)throw n;if(!t)return void console.warn(`No backup found for '${e}'.`);_origS(e,t.data_value),_setLocalTs(e,Date.now()),await supa.from("user_data").upsert({user_id:_user.id,data_key:e,data_value:t.data_value,updated_at:(new Date).toISOString()},{onConflict:"user_id,data_key"});try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner(`✓ Restored '${e}' from backup`)}catch(e){console.warn("Restore failed:",e)}else console.warn("Not signed in / cloud unavailable.")}async function pull(e){if(_user&&_cloudOK)try{const{data:t,error:n}=await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",_user.id);if(n)throw n;_syncReady=!0;const o=(t||[]).filter(e=>!e.data_key.endsWith("__backup")),a=_applyRows(o),i=new Set(o.map(e=>e.data_key));if(_dirty.forEach(e=>{i.has(e)||push(e)}),_legacy&&(_legacy=!1,_saveDirty()),_pendingPushKeys.size){const e=Array.from(_pendingPushKeys);_pendingPushKeys.clear(),e.forEach(e=>push(e))}a.length&&e&&e.banner&&banner("✓ Synced from cloud")}catch(e){console.warn("Pull failed:",e)}}let _polling=!1;async function pollChanges(){if(_user&&_cloudOK&&_syncReady&&!_polling){_polling=!0;try{const{data:e,error:t}=await supa.from("user_data").select("data_key,updated_at").eq("user_id",_user.id);if(t||!e)return;const n=e.filter(e=>!e.data_key.endsWith("__backup")&&_seen[e.data_key]!==_ts(e.updated_at)).map(e=>e.data_key);if(!n.length)return;const o=await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",_user.id).in("data_key",n);!o.error&&o.data&&_applyRows(o.data)}catch(e){console.warn("Poll failed:",e)}finally{_polling=!1}}}function _applyRows(e){const t=[];return e.forEach(e=>{const n=e.data_key;if(!n||n.endsWith("__backup"))return;const o=_ts(e.updated_at);if(_seen[n]=o,(_sent[n]||[]).includes(o))_lastCloudValues[n]=e.data_value;else try{mergeCloudValue(n,e.data_value,e.updated_at)&&t.push(n)}catch(e){console.warn("Merge failed for",n,e)}}),t.length&&_queueRefresh(t),t}function sessionSig(e){return(e&&e.d||"")+"|"+(e&&e.t||"")+"|"+(e&&e.sub||"")+"|"+(e&&e.dur||"")}function mergeCloudValue(e,t,n){const o=_lastCloudValues[e];_lastCloudValues[e]=t;if("theme"===e&&null!==localStorage.getItem("m_theme"))return!1;const a=S.g(e),i=_ts(n);let s;if("pd"===e)s={...a||{}},Object.keys(t||{}).forEach(e=>{s[e]=Math.max(s[e]||0,t[e]||0)});else if("pomSessions"===e){const e=new Set((a||[]).map(sessionSig));s=(a||[]).slice(),(t||[]).forEach(t=>{const n=sessionSig(t);e.has(n)||(s.push(t),e.add(n))}),s.sort((e,t)=>((e.d||"")+(e.t||"")).localeCompare((t.d||"")+(t.t||"")))}else s=null!==a&&_isDirty(e,i)?_m3(o,a,t):t;const r=_canon(s)===_canon(a),d=_canon(s)!==_canon(t);return r?(d?push(e):_dirty.delete(e)&&_saveDirty(),!1):(d?S.s(e,s):(_origS(e,s),_setLocalTs(e,i||Date.now()),_dirty.delete(e)&&_saveDirty()),!0)}async function pushAll(e){if(_user&&_cloudOK){banner("Syncing to cloud...");try{for(const t of getAllKeys())await push(t,e);banner("✓ All data backed up to cloud")}catch(e){banner("Sync failed — data still saved locally."),console.warn("pushAll error:",e)}}else banner("Cloud sync unavailable right now — data still saved locally.")}async function doManualSync(){const e=document.getElementById("syncBtn");e&&(e.disabled=!0,e.textContent="🔄 Syncing...");try{await pull(),await pushAll(!0);try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner("✓ Synced")}finally{e&&(e.disabled=!1,e.textContent="🔄 Sync")}}function _getLocalTs(e){try{return JSON.parse(localStorage.getItem("m_sync_ts")||"{}")[e]||0}catch(e){return 0}}function _setLocalTs(e,t){try{const n=JSON.parse(localStorage.getItem("m_sync_ts")||"{}");n[e]=t||Date.now(),localStorage.setItem("m_sync_ts",JSON.stringify(n))}catch(e){}}const _pendRefresh=new Set;let _refT=null;function _queueRefresh(e){e.forEach(e=>_pendRefresh.add(e)),clearTimeout(_refT),_refT=setTimeout(_flushRefresh,30)}function _typing(e){const t=document.activeElement;return!(!(t&&e&&e.contains(t))||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}function _syncCW(){const e=document.getElementById("dashWidgets");if(!e)return!0;const t=S.go("customWidgets",[]).filter(e=>!1!==e.enabled),n=Array.from(e.querySelectorAll('.dash-w[data-wid^="cw:"]')).map(e=>e.dataset.wid.slice(3));if(n.length!==t.length||!t.every(e=>n.includes(e.id)))return!_typing(e)&&(applyDashCfg(),!0);let o=!0;return t.forEach(t=>{_typing(e.querySelector(`.dash-w[data-wid="cw:${t.id}"]`))?o=!1:rerenderSingleCWWidget(t.id)}),o}function _flushRefresh(){const e=new Set(_pendRefresh);if(_pendRefresh.clear(),!e.size)return;const t=e=>{try{e()}catch(e){}},n=(...t)=>t.some(t=>e.has(t)),o=document.getElementById("dashWidgets");let a=!1;n("habs","hd")&&(t(()=>renderHabits()),t(()=>renderCal()),a=!0);const i=_typing(document.getElementById("tskList"));n("tasks")&&(i?_pendRefresh.add("tasks"):t(()=>renderTasks())),n("customWidgets")&&!_syncCW()&&_pendRefresh.add("customWidgets"),n("dashCfg")&&(_typing(o)?_pendRefresh.add("dashCfg"):t(()=>applyDashCfg())),n("theme","customColors")&&t(()=>ccApplyAll());const s=["habs","hd","tasks","customWidgets","dashCfg","theme","customColors"];[...e].some(e=>!s.includes(e))&&(t(()=>renderHabits()),i||t(()=>renderTasks()),a=!0),a&&t(()=>renderDash())}function setupRealtimeSync(){if(_user&&_cloudOK&&supa){teardownRealtimeSync();try{const e=supa.channel("user_data_"+_user.id);_realtimeChannel=e,e.on("postgres_changes",{event:"*",schema:"public",table:"user_data",filter:`user_id=eq.${_user.id}`},e=>{const t=e.new;t&&t.data_key&&(void 0!==t.data_value?_applyRows([t]):pollChanges())}).subscribe(t=>{if(_realtimeChannel===e)if("SUBSCRIBED"===t){const e=_rtLive;_rtLive=!0,clearTimeout(_rtRetry),e||(_syncReady?pollChanges():pull())}else"CHANNEL_ERROR"!==t&&"TIMED_OUT"!==t&&"CLOSED"!==t||(_rtLive=!1,clearTimeout(_rtRetry),_rtRetry=setTimeout(()=>{_user&&!_rtLive&&setupRealtimeSync()},4e3))})}catch(e){console.warn("Realtime sync setup failed, falling back to polling:",e)}}}function teardownRealtimeSync(){clearTimeout(_rtRetry),_rtLive=!1;const e=_realtimeChannel;if(_realtimeChannel=null,e&&supa)try{supa.removeChannel(e)}catch(e){}}const _origS=S.s.bind(S);function _markLocal(e){_ver[e]=(_ver[e]||0)+1,_dirty.add(e),_saveDirty(),_setLocalTs(e,Date.now())}function clearLocalAppData(){const e=[];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_")&&"m_theme"!==n&&"m_customColors"!==n&&"m_wallpaper"!==n&&"m_wpDim"!==n&&e.push(n)}e.forEach(e=>localStorage.removeItem(e)),_dirty.clear();try{localStorage.removeItem(POM_KEY)}catch(e){}}function getLastLocalUid(){try{return localStorage.getItem("m2028_uid")||null}catch(e){return null}}function setLastLocalUid(e){try{e?localStorage.setItem("m2028_uid",e):localStorage.removeItem("m2028_uid")}catch(e){}}function guardAccountSwitch(e){if(!e)return!1;_syncReady=!1,_lastCloudValues={};const t=getLastLocalUid();return t&&t!==e.id?(clearLocalAppData(),setLastLocalUid(e.id),!0):(setLastLocalUid(e.id),!1)}function togglePw(){const e=document.getElementById("liPw"),t=document.getElementById("pwEye");e.type="password"===e.type?"text":"password",t.textContent="password"===e.type?"👁":"🙈"}async function doSignIn(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("liBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e&&t){o.textContent="Signing in...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signInWithPassword({email:e,password:t});if(o.textContent="Sign In",o.disabled=!1,i)return void(n.textContent=i.message.includes("Invalid")?"Wrong email or password.":i.message);_user=a.user;const s=guardAccountSwitch(_user);S.d("guestMode"),S.s("hadSession",!0),showApp(),await pull(),setupRealtimeSync(),init(),s&&banner("Switched account — loaded your data fresh.")}catch(e){o.textContent="Sign In",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter email and password.";else n.textContent='Cloud sync is unavailable right now. Use "Continue without account" to keep working — your data stays on this device.'}async function doSignUp(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("suBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e)if(!t||t.length<6)n.textContent="Password must be at least 6 characters.";else{o.textContent="Creating...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signUp({email:e,password:t,options:{emailRedirectTo:"https://aviatcode.github.io/M2028/"}});if(o.textContent="Create Account",o.disabled=!1,i)return void(n.textContent=i.message);if(a.user&&a.user.confirmed_at)return _user=a.user,guardAccountSwitch(_user),showApp(),await pull(),setupRealtimeSync(),void init();n.style.color="var(--ai)",n.textContent="✓ Account created! Check your email, confirm it, then Sign In."}catch(e){o.textContent="Create Account",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter your email.";else n.textContent='Cloud sync is unavailable right now. Use "Continue without account" to keep working — your data stays on this device.'}function wipeGuestCache(){try{const k=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&(n.startsWith("m_")||n==="pom_state"||n==="m2028_uid"||n.startsWith("sb-"))&&k.push(n)}k.forEach(n=>localStorage.removeItem(n))}catch(e){}try{sessionStorage.clear()}catch(e){}try{"caches"in window&&caches.keys().then(a=>a.forEach(n=>caches.delete(n))).catch(()=>{})}catch(e){}_dirty.clear();for(const o of[_ver,_inflight,_again,_sent,_seen,_retry])Object.keys(o).forEach(n=>delete o[n]);_pendingPushKeys.clear();try{clearInterval(pomInt);pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;pomTot=4;_sub=null}catch(e){}try{document.getElementById("ccStyle")&&document.getElementById("ccStyle").remove();document.documentElement.classList.remove("ucolors","ucac","redx","pre-light","pre-pink","pre-glass");window.applyWallpaper&&window.applyWallpaper()}catch(e){}}
-function guestMode(){teardownRealtimeSync(),wipeGuestCache(),_user=null,_syncReady=!1,_lastCloudValues={},S.s("guestMode",!0),S.d("hadSession"),showApp(),init(),banner("Guest mode — data saved locally only. Sign in to sync across devices.")}async function doSignOut(){if(_user&&_cloudOK){banner("Saving your data before signing out...");try{await pushAll(!0)}catch(e){console.warn("Pre-signout flush failed:",e)}}if(teardownRealtimeSync(),_cloudOK)try{await supa.auth.signOut()}catch(e){}_user=null,_syncReady=!1,_lastCloudValues={},clearLocalAppData(),setLastLocalUid(null),S.d("guestMode"),S.d("hadSession"),document.getElementById("appShell").style.display="none",document.getElementById("loginScr").style.display="flex",document.getElementById("liEmail").value="",document.getElementById("liPw").value="",closeMo("acctMo")}function showApp(){document.getElementById("loginScr").style.display="none",document.getElementById("appShell").style.display="block",setTimeout(()=>applyDashCfg(),50)}async function startup(){const e=S.go("guestMode",!1),t=S.go("hadSession",!1);if(e||t)return _user=null,init(),void(t&&setTimeout(()=>loadSupa().then(e=>{e&&supa.auth.getSession().then(({data:{session:e}})=>{e?(_user=e.user,guardAccountSwitch(_user),setupRealtimeSync(),pull().then(()=>{try{renderDash(),renderHabits(),renderTasks()}catch(e){}})):(S.d("hadSession"),teardownRealtimeSync(),_user=null)}).catch(e=>console.warn("Session check failed:",e))}),700));const n=document.getElementById("loginScr");n&&(n.style.display="flex");const o=document.getElementById("appShell");o&&(o.style.display="none"),loadSupa().then(e=>{if(e)return;const t=document.getElementById("liErr");t&&(t.style.color="var(--bd)",t.textContent='⚠️ Cloud sync unavailable (network/blocker). You can still use "Continue without account".')})}S.s=(e,t)=>{_origS(e,t),_markLocal(e),_user&&_cloudOK&&push(e)},S.sLocalOnly=(e,t)=>{_origS(e,t),_markLocal(e)},S.sPushOnly=e=>{_user&&_cloudOK&&push(e)},startup(),function(){let e=!1;["wheel","touchstart","keydown","mousedown"].forEach(t=>window.addEventListener(t,()=>e=!0,{passive:!0,once:!0})),[0,150,600,1500,3e3].forEach(t=>setTimeout(()=>{e||window.scrollTo(0,0)},t))}();let _tick=0;setInterval(()=>{_user&&!document.hidden&&(_tick++,_rtLive&&_tick%7!=0||pollChanges())},3e3),setInterval(()=>{_user&&!document.hidden&&pull()},3e5);let _lastResumePull=0;function _resumePull(){if(!_user||!_cloudOK)return;const e=Date.now();e-_lastResumePull<1500||(_lastResumePull=e,_realtimeChannel||setupRealtimeSync(),_syncReady?pollChanges():pull())}document.addEventListener("visibilitychange",()=>{document.hidden||_resumePull()}),window.addEventListener("pagehide",()=>{try{teardownRealtimeSync()}catch(e){}}),window.addEventListener("focus",_resumePull),window.addEventListener("pageshow",_resumePull),window.addEventListener("online",_resumePull),document.addEventListener("focusout",()=>{_pendRefresh.size&&setTimeout(_flushRefresh,150)});let _tabRerenderTimer=null;window.addEventListener("storage",e=>{e.key&&e.key.startsWith("m_")&&(clearTimeout(_tabRerenderTimer),_tabRerenderTimer=setTimeout(()=>{try{renderDash(),renderHabits(),renderTasks(),applyDashCfg()}catch(e){}},150))});</script>
+function guestMode(){teardownRealtimeSync(),wipeGuestCache(),_user=null,_syncReady=!1,_lastCloudValues={},S.s("guestMode",!0),S.d("hadSession"),showApp(),init(),banner("Guest mode — data saved locally only. Sign in to sync across devices.")}async function doSignOut(){if(_user&&_cloudOK){banner("Saving your data before signing out...");try{await pushAll(!0)}catch(e){console.warn("Pre-signout flush failed:",e)}}if(teardownRealtimeSync(),_cloudOK)try{await supa.auth.signOut()}catch(e){}_user=null,_syncReady=!1,_lastCloudValues={},clearLocalAppData(),setLastLocalUid(null),S.d("guestMode"),S.d("hadSession"),document.getElementById("appShell").style.display="none",document.getElementById("loginScr").style.display="flex",document.getElementById("liEmail").value="",document.getElementById("liPw").value="",closeMo("acctMo")}function showApp(){document.getElementById("loginScr").style.display="none",document.getElementById("appShell").style.display="block",setTimeout(()=>applyDashCfg(),50)}async function startup(){const e=S.go("guestMode",!1),t=S.go("hadSession",!1);if(e||t)return _user=null,init(),void(t&&setTimeout(()=>loadSupa().then(e=>{e&&supa.auth.getSession().then(({data:{session:e}})=>{e?(_user=e.user,guardAccountSwitch(_user),setupRealtimeSync(),pull().then(()=>{try{renderDash(),renderHabits(),renderTasks()}catch(e){}})):(S.d("hadSession"),teardownRealtimeSync(),_user=null)}).catch(e=>console.warn("Session check failed:",e))}),700));const n=document.getElementById("loginScr");n&&(n.style.display="flex");const o=document.getElementById("appShell");o&&(o.style.display="none"),loadSupa().then(e=>{if(e)return;const t=document.getElementById("liErr");t&&(t.style.color="var(--bd)",t.textContent='⚠️ Cloud sync unavailable (network/blocker). You can still use "Continue without account".')})}S.s=(e,t)=>{_origS(e,t),_markLocal(e),_user&&_cloudOK&&push(e)},S.sLocalOnly=(e,t)=>{_origS(e,t),_markLocal(e)},S.sPushOnly=e=>{_user&&_cloudOK&&push(e)},startup(),function(){let e=!1;["wheel","touchstart","keydown","mousedown"].forEach(t=>window.addEventListener(t,()=>e=!0,{passive:!0,once:!0})),[0,150,600,1500,3e3].forEach(t=>setTimeout(()=>{e||window.scrollTo(0,0)},t))}();let _tick=0;setInterval(()=>{_user&&!document.hidden&&(_tick++,_rtLive&&_tick%7!=0||pollChanges())},3e3),setInterval(()=>{_user&&!document.hidden&&pull()},3e5);let _lastResumePull=0;function _resumePull(){if(!_user||!_cloudOK)return;const e=Date.now();e-_lastResumePull<1500||(_lastResumePull=e,_realtimeChannel||setupRealtimeSync(),_syncReady?pollChanges():pull())}document.addEventListener("visibilitychange",()=>{document.hidden||_resumePull()}),window.addEventListener("pagehide",()=>{try{teardownRealtimeSync()}catch(e){}}),window.addEventListener("focus",_resumePull),window.addEventListener("pageshow",_resumePull),window.addEventListener("online",_resumePull),document.addEventListener("focusout",()=>{_pendRefresh.size&&setTimeout(_flushRefresh,150)});let _tabRerenderTimer=null;window.addEventListener("storage",e=>{e.key&&e.key.startsWith("m_")&&(clearTimeout(_tabRerenderTimer),_tabRerenderTimer=setTimeout(()=>{try{renderDash(),renderHabits(),renderTasks(),applyDashCfg()}catch(e){}},150))});;
+
+/* ===== M2028 v6 patch ===== */
+(function(){
+"use strict";
+const $=id=>document.getElementById(id),pad=n=>String(n).padStart(2,"0");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const J=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch{return d}};
+const dk=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const hm=ms=>new Date(ms).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"});
+const fd=s=>{s=Math.round(s/60);const h=Math.floor(s/60),m=s%60;return h?h+"h "+m+"m":m+"m"};
+const fs=s=>{if(!s)return"–";s=Math.round(s/60);const h=Math.floor(s/60),m=s%60;return h?h+"h"+(m?pad(m):""):m+"m"};
+const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+console.log("M2028 build: v6-bgsync-recap");
+
+/* ---------- 1. SYNC: batched upsert + background flush ---------- */
+const Q=new Map();let qt=0;const oDo=_doPush;
+_doPush=function(k,f){
+  return new Promise(r=>{(Q.get(k)||Q.set(k,[]).get(k)).push(r);clearTimeout(qt);qt=setTimeout(flushQ,40)});
+};
+async function flushQ(){
+  const ks=[...Q.keys()],rs=ks.map(k=>Q.get(k));Q.clear();
+  const done=()=>rs.forEach(a=>a.forEach(r=>r()));
+  if(!_user||!_cloudOK||!supa)return done();
+  if(!navigator.onLine){stash();return done()}
+  const now=Date.now(),ver={},rows=[];
+  ks.forEach(k=>{const v=S.g(k);if(v===null)return;
+    if(GUARD_KEYS.includes(k)&&_isEmptyValue(v)&&!_isEmptyValue(_lastCloudValues[k]))rows.push({user_id:_user.id,data_key:k+"__backup",data_value:_lastCloudValues[k],updated_at:new Date(now).toISOString()});
+    ver[k]=_ver[k]||0;(_sent[k]=_sent[k]||[]).push(now);_sent[k].length>8&&_sent[k].shift();
+    rows.push({user_id:_user.id,data_key:k,data_value:v,updated_at:new Date(now).toISOString()})});
+  try{
+    if(rows.length){const{error}=await supa.from("user_data").upsert(rows,{onConflict:"user_id,data_key"});if(error)throw error}
+    rows.forEach(r=>{const k=r.data_key;if(k.endsWith("__backup"))return;_seen[k]=now;_retry[k]=0;(_ver[k]||0)===ver[k]&&_dirty.delete(k)&&_saveDirty()});
+    _dirty.size||obPut(null).catch(()=>{});
+  }catch(e){
+    console.warn("Batch push failed, will retry:",e);stash();
+    rows.forEach(r=>{const k=r.data_key;if(k.endsWith("__backup"))return;const n=_retry[k]=(_retry[k]||0)+1;setTimeout(()=>push(k),Math.min(3e4,1e3*Math.pow(2,n)))});
+  }
+  done();
+}
+pushAll=async function(f){
+  if(_user&&_cloudOK){banner("Syncing to cloud...");
+    try{await Promise.all(getAllKeys().map(k=>push(k,f)));banner("✓ All data backed up to cloud")}
+    catch(e){banner("Sync failed — data still saved locally.")}
+  }else banner("Cloud sync unavailable right now — data still saved locally.");
+};
+let tok=null;
+loadSupa().then(ok=>{if(!ok||!supa)return;
+  supa.auth.getSession().then(r=>{tok=r&&r.data&&r.data.session?r.data.session.access_token:null}).catch(()=>{});
+  supa.auth.onAuthStateChange((_e,s)=>{tok=s?s.access_token:null});
+});
+function dirtyRows(cap){
+  const now=Date.now(),out=[];let sz=0;
+  [..._dirty].forEach(k=>{const v=S.g(k);if(v===null)return;
+    if(GUARD_KEYS.includes(k)&&_isEmptyValue(v))return;
+    const r={user_id:_user.id,data_key:k,data_value:v,updated_at:new Date(now).toISOString()},n=JSON.stringify(r).length;
+    if(sz+n<cap){sz+=n;out.push({r,base:_seen[k]||0})}});
+  return out;
+}
+/* fast path: keepalive request leaves with the page */
+function bgFlush(){
+  if(!_user||!_cloudOK||!_syncReady||!tok||!_dirty.size||!navigator.onLine)return;
+  const rows=dirtyRows(6e4);if(!rows.length)return;
+  rows.forEach(x=>{(_sent[x.r.data_key]=_sent[x.r.data_key]||[]).push(Date.parse(x.r.updated_at))});
+  try{fetch(SUPA_URL+"/rest/v1/user_data?on_conflict=user_id,data_key",{method:"POST",keepalive:true,
+    headers:{apikey:SUPA_KEY,Authorization:"Bearer "+tok,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+    body:JSON.stringify(rows.map(x=>x.r))}).catch(()=>{})}catch(e){}
+}
+/* safety net: outbox in IndexedDB, delivered by the service worker's Background Sync */
+const idb=()=>new Promise((ok,no)=>{const r=indexedDB.open("m2028-outbox",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+async function obPut(rec){const db=await idb();return new Promise((ok,no)=>{const t=db.transaction("kv","readwrite");rec?t.objectStore("kv").put(rec,"outbox"):t.objectStore("kv").delete("outbox");t.oncomplete=()=>{db.close();ok()};t.onerror=()=>no(t.error)})}
+async function stash(){
+  try{
+    if(!window.indexedDB||!_user||!_cloudOK||!tok||!_dirty.size)return;
+    const rows=dirtyRows(4e6);if(!rows.length)return;
+    await obPut({url:SUPA_URL,key:SUPA_KEY,token:tok,uid:_user.id,rows,at:Date.now()});
+    const reg=await navigator.serviceWorker.ready;reg.sync&&await reg.sync.register("m2028-sync");
+  }catch(e){}
+}
+window.m2028Stash=stash;
+document.addEventListener("visibilitychange",()=>{if(document.hidden){bgFlush();stash()}});
+addEventListener("pagehide",()=>{bgFlush();stash()});
+addEventListener("offline",stash);
+addEventListener("online",()=>{_user&&_cloudOK&&_syncReady&&[..._dirty].forEach(k=>push(k))});
+
+/* ---------- 2. Extra synced keys + merge rules ---------- */
+const oKeys=getAllKeys;
+getAllKeys=function(){const a=oKeys();for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&n.startsWith("m_pomh_")&&a.push(n.slice(2))}a.push("habArchive");return a};
+let ver=0;
+const oMerge=mergeCloudValue;
+mergeCloudValue=function(k,t,ts){
+  if(k==="pomSessions"){const r=oMerge(k,t,ts);setTimeout(migrate,0);return r}
+  if(k!=="habArchive"&&!k.startsWith("pomh_"))return oMerge(k,t,ts);
+  _lastCloudValues[k]=t;
+  const a=S.g(k),id=k==="habArchive"?x=>x.id:x=>x.id||sessionSig(x),m=new Map();
+  (a||[]).concat(t||[]).forEach(x=>{const i=id(x);m.has(i)||m.set(i,x)});
+  const s=[...m.values()];
+  if(k!=="habArchive")s.sort((x,y)=>sk(x).localeCompare(sk(y)));
+  const same=_canon(s)===_canon(a),diff=_canon(s)!==_canon(t);
+  if(same){diff?push(k):(_dirty.delete(k)&&_saveDirty());return false}
+  diff?S.s(k,s):(_origS(k,s),_setLocalTs(k,_ts(ts)||Date.now()),_dirty.delete(k)&&_saveDirty());
+  ver++;setTimeout(()=>{try{renderPomLog()}catch{}},60);return true;
+};
+
+/* ---------- 3. Permanent, monthly-sharded session history ---------- */
+const sk=x=>(x.d||"")+"|"+String(x.ms||0).padStart(14,"0")+"|"+(x.t||"");
+const shard=d=>"pomh_"+d.slice(0,7);
+function logSess(e){const k=shard(e.d),a=S.g(k)||[];if(a.some(x=>x.id===e.id))return false;a.push(e);S.s(k,a);ver++;return true}
+function allSess(){if(allSess.v===ver&&allSess.c)return allSess.c;const o=[];
+  for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&n.startsWith("m_pomh_")&&J(n,[]).forEach(x=>o.push(x))}
+  allSess.v=ver;return allSess.c=o}
+function migrate(){const old=S.go("pomSessions",[]);if(!old.length)return;const by={};
+  old.forEach(x=>{if(!x.d)return;const id=x.id||"L"+sessionSig(x);(by[shard(x.d)]=by[shard(x.d)]||[]).push({...x,id})});
+  Object.keys(by).forEach(k=>{const a=S.g(k)||[],ids=new Set(a.map(x=>x.id));let ch=0;
+    by[k].forEach(x=>{ids.has(x.id)||(a.push(x),ch=1)});if(ch){S.s(k,a);ver++}})}
+maybeResetPomLogCycle=function(){}; /* old weekly wipe removed: history is permanent now */
+
+handlePomComplete=function(){
+  if(pomMode==="focus"){
+    pomCur++;
+    const st=J(POM_KEY,{}),endTs=Math.min(st.endTs||Date.now(),Date.now()),d=dk(new Date(endTs)),sub=_sub||"General";
+    if(logSess({id:"p"+(st.endTs||endTs)+"|"+sub,d,sub,dur:PF,t:hm(endTs),ms:endTs})){const p=S.go("pd",{});p[d]=(p[d]||0)+1;S.s("pd",p)}
+    renderPomLog();pomSound("session");pomFlash("#4fd8a0");
+    const n=pomCur%pomTot===0,o=n?PLB:PB;
+    sendNotif("✅ Session done!",n?`All ${pomTot} sessions complete — take a ${o/60}-min break.`:`Take a ${o/60}-min break.`);
+    pomMode="break";pomPhaseLen=o;pomRem=o;pomRun=!0;startPomInterval();
+  }else{
+    pomSound("session");pomFlash("#e8965a");
+    if(pomCur>=pomTot){sendNotif("🎉 All sessions complete!","Great work today.");pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;clearInterval(pomInt);stopLiveNotifLoop()}
+    else{sendNotif("☕ Break over!","Starting your next focus session.");pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomRun=!0;startPomInterval()}
+  }
+  savePomState();updatePomUI();updateLiveNotification();
+};
+
+/* ---------- 4. Unfinished pomodoro: save time + stop moment ---------- */
+function savePartial(stopMs,rem){
+  const el=Math.round(pomPhaseLen-rem);if(pomMode!=="focus"||el<60)return null;
+  const sub=_sub||"General";
+  logSess({id:"x"+stopMs+"|"+sub,d:dk(new Date(stopMs)),sub,dur:el,part:1,t:hm(stopMs),ms:stopMs});
+  return{el,t:hm(stopMs)};
+}
+const oTg=pomToggle;
+pomToggle=function(){const was=pomRun;oTg();
+  if(was&&!pomRun)localStorage.setItem("pom_meta",JSON.stringify({pausedAt:Date.now()}));
+  else if(!was&&pomRun)localStorage.removeItem("pom_meta")};
+const oEnd=pomEndSession;
+pomEndSession=function(){
+  let r=null;
+  if(pomMode==="focus"){
+    const m=J("pom_meta",{}),stop=pomRun?Date.now():(m.pausedAt||Date.now()),
+      rem=pomRun?Math.max(0,Math.round(((J(POM_KEY,{}).endTs||0)-Date.now())/1e3)):pomRem;
+    r=savePartial(stop,rem);
+  }
+  localStorage.removeItem("pom_meta");oEnd();
+  if(r){banner(`Saved ${fd(r.el)} of ${_sub||"General"} — stopped at ${r.t}`);renderPomLog()}
+};
+function stale(){const m=J("pom_meta",{});
+  if(!pomRun&&pomMode==="focus"&&m.pausedAt&&Date.now()-m.pausedAt>4*36e5&&pomRem<pomPhaseLen){savePartial(m.pausedAt,pomRem);localStorage.removeItem("pom_meta");oEnd()}}
+document.addEventListener("visibilitychange",()=>{document.hidden||stale()});
+
+/* ---------- 5. Session log + subject time per day / week ---------- */
+let wk=0,lastSig="";
+const wkStart=o=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7)-7*o);return d};
+const sum=a=>a.reduce((x,y)=>x+y,0);
+window.pomWk=n=>{wk=Math.max(0,wk+n);lastSig="";renderPomLog()};
+function card(){if($("pomSubCard"))return;const lg=$("pomLog"),c=lg&&lg.closest(".card");if(!c)return;
+  const n=document.createElement("div");n.className="card";n.id="pomSubCard";n.innerHTML='<div class="ct">Study time by subject</div><div id="pomSubBody"></div>';c.parentNode.insertBefore(n,c)}
+function subTable(){
+  const ws=wkStart(wk),days=[...Array(7)].map((_,i)=>{const d=new Date(ws);d.setDate(d.getDate()+i);return d}),keys=days.map(dk),T={};
+  allSess().forEach(x=>{const i=keys.indexOf(x.d);if(i<0)return;const s=x.sub||"General";(T[s]=T[s]||Array(7).fill(0))[i]+=x.dur||0});
+  const subs=Object.keys(T).sort((a,b)=>sum(T[b])-sum(T[a])),col=Array(7).fill(0);
+  const we=days[6],lbl=`${days[0].getDate()} ${MN[days[0].getMonth()]} – ${we.getDate()} ${MN[we.getMonth()]}`;
+  const mp=we.getFullYear()+"-"+pad(we.getMonth()+1),mt=sum(allSess().filter(x=>x.d.startsWith(mp)).map(x=>x.dur||0));
+  const td="padding:4px 3px;text-align:center;font-size:10px;border-bottom:1px solid var(--b)";
+  const nb='background:var(--s2);border:1px solid var(--b);border-radius:50%;width:26px;height:26px;color:var(--m2);cursor:pointer';
+  let h=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><button style="${nb}" onclick="pomWk(1)">‹</button><div style="font-size:11px;color:var(--m2)">${wk?lbl:"This week · "+lbl}</div><button style="${nb};opacity:${wk?1:.35}" onclick="pomWk(-1)">›</button></div>`;
+  if(!subs.length)return h+'<div style="font-size:11px;color:var(--m2)">No study time this week.</div>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><tr><th style="'+td+';text-align:left">Subject</th>'+["M","T","W","T","F","S","S"].map(x=>`<th style="${td};color:var(--m2)">${x}</th>`).join("")+`<th style="${td};color:var(--ai)">Week</th></tr>`;
+  subs.forEach(s=>{T[s].forEach((v,i)=>col[i]+=v);h+=`<tr><td style="${td};text-align:left;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s)}</td>`+T[s].map(v=>`<td style="${td};color:${v?"var(--tx)":"var(--mt)"}">${fs(v)}</td>`).join("")+`<td style="${td};font-weight:700;color:var(--ai)">${fs(sum(T[s]))}</td></tr>`});
+  h+=`<tr><td style="${td};text-align:left;font-weight:700">Total</td>`+col.map(v=>`<td style="${td};font-weight:700">${fs(v)}</td>`).join("")+`<td style="${td};font-weight:700;color:var(--ai)">${fs(sum(col))}</td></tr></table></div>`;
+  return h+`<div style="font-size:11px;color:var(--m2);margin-top:8px">${MN[we.getMonth()]} total so far: <b style="color:var(--tx)">${fd(mt)}</b></div>`;
+}
+renderPomLog=function(){
+  const e=$("pomLog");if(!e)return;
+  const sig=ver+"|"+wk+"|"+TK()+"|"+(allSess().length);if(sig===lastSig)return;lastSig=sig;
+  card();const b=$("pomSubBody");b&&(b.innerHTML=subTable());
+  const lim=new Date();lim.setDate(lim.getDate()-6);const from=dk(lim),n=allSess().filter(x=>x.d>=from);
+  if(!n.length)return void(e.innerHTML="No sessions yet.");
+  const g={};n.forEach(x=>(g[x.d]=g[x.d]||[]).push(x));
+  e.innerHTML=Object.keys(g).sort().reverse().map(d=>{const t=g[d];
+    const rows=t.slice().sort((a,b)=>sk(b).localeCompare(sk(a))).map(x=>`<div style="padding:3px 0 3px 10px;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--m2)">${esc(x.t||"")}</span> · ${esc(x.sub)}${x.part?` <span style="color:var(--bd)">⏸ stopped at ${esc(x.t||"")} · ${fd(x.dur)}</span>`:""}</div>`).join("");
+    return`<div style="margin-bottom:6px"><div style="padding:4px 0;font-size:11px;font-weight:700;color:var(--ai)">${d} — ${fd(sum(t.map(x=>x.dur||0)))} studied</div>${rows}</div>`}).join("");
+};
+
+/* ---------- 6. Monthly scorecard: study time + deleted habits ---------- */
+function studyBlock(y,m){
+  const p=y+"-"+pad(m+1),L=allSess().filter(x=>x.d.startsWith(p));if(!L.length)return"";
+  const T={},D={};L.forEach(x=>{const s=x.sub||"General";T[s]=(T[s]||0)+(x.dur||0);D[x.d]=(D[x.d]||0)+(x.dur||0)});
+  const tot=sum(Object.values(T)),mx=Math.max(...Object.values(T)),best=Object.keys(D).sort((a,b)=>D[b]-D[a])[0];
+  return`<div style="margin-top:14px;background:var(--s2);border-radius:12px;padding:14px"><div style="font-size:10px;color:var(--m2);text-transform:uppercase;letter-spacing:.5px">⏱ Study time this month</div><div style="font-size:20px;font-weight:700;color:var(--ai);margin:4px 0">${fd(tot)}</div><div style="font-size:11px;color:var(--m2);margin-bottom:8px">${L.filter(x=>!x.part).length} pomodoros · ${Object.keys(D).length} active days · best day ${best.slice(8)} (${fd(D[best])})</div>`+
+    Object.keys(T).sort((a,b)=>T[b]-T[a]).map(s=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:11px"><span>${esc(s)}</span><span style="color:var(--m2)">${fd(T[s])}</span></div><div class="pt" style="margin-top:3px"><div class="pf" style="width:${Math.round(T[s]/mx*100)}%;background:var(--ai)"></div></div></div>`).join("")+"</div>";
+}
+const oRS=renderScorecard;
+renderScorecard=function(){oRS();const b=$("scMoBody");b&&b.insertAdjacentHTML("beforeend",studyBlock(_scYear,_scMonth))};
+
+const pS=S.s;
+S.s=function(k,v){ /* remember habits when they disappear from the list */
+  if(k==="habs"){try{const ids=new Set((v||[]).map(h=>h.id)),A=S.go("habArchive",[]);let ch=0;
+    getHabs().forEach(h=>{if(!ids.has(h.id)&&!A.some(a=>a.id===h.id)){A.push({id:h.id,label:h.label,days:h.days,deletedOn:TK()});ch=1}});
+    ch&&pS("habArchive",A)}catch(e){}}
+  return pS(k,v)};
+function firstDone(hd){const f={};Object.keys(hd).sort().forEach(d=>{const o=hd[d]||{};for(const id in o)o[id]&&!f[id]&&(f[id]=d)});return f}
+const oCS=computeScorecard;
+computeScorecard=function(y,m){
+  const r=oCS(y,m),A=S.go("habArchive",[]);if(!A.length)return r;
+  const hd=S.go("hd",{}),cur=new Set(getHabs().map(h=>h.id)),f=firstDone(hd);
+  A.forEach(h=>{if(cur.has(h.id))return;let due=0,count=0;
+    for(let d=1;d<=r.lastDay;d++){const ds=`${y}-${pad(m+1)}-${pad(d)}`;if(ds>h.deletedOn||ds<(f[h.id]||"9"))continue;
+      if(habitDows(h).includes(new Date(y,m,d).getDay())){due++;(hd[ds]||{})[h.id]&&count++}}
+    if(due||count){r.stats.push({id:h.id,label:h.label+" (deleted)",freq:habitFreqLabel(h),due,count,pct:due?Math.round(count/due*100):0});r.totalCompletions+=count;r.totalDue+=due}});
+  r.stats.sort((a,b)=>b.count-a.count||b.pct-a.pct);r.overallPct=r.totalDue?Math.round(r.totalCompletions/r.totalDue*100):0;return r;
+};
+
+/* ---------- 7. Year recap ---------- */
+let yr=new Date().getFullYear();
+function recapData(y){
+  const hd=S.go("hd",{}),A=S.go("habArchive",[]),cur=getHabs(),ci=new Set(cur.map(h=>h.id)),f=firstDone(hd);
+  const all=cur.map(h=>({h,del:0})).concat(A.filter(a=>!ci.has(a.id)).map(h=>({h,del:1})));
+  const R=all.map(x=>({label:x.h.label,del:x.del,due:0,count:0,best:0,run:0})),M=Array.from({length:12},()=>({due:0,done:0}));
+  const end=new Date(Math.min(new Date(y,11,31),new Date()));let perfect=0,tot=0;
+  const lo=Object.keys(hd).sort()[0],st0=new Date(Math.min(START,lo?new Date(lo+"T00:00:00"):START));
+  for(let d=new Date(Math.max(new Date(y,0,1),st0));d<=end;d.setDate(d.getDate()+1)){
+    const ds=dk(d),row=hd[ds]||{};let due=0,done=0;
+    all.forEach((x,i)=>{const h=x.h;if(x.del&&(ds>h.deletedOn||ds<(f[h.id]||"9")))return;
+      if(!habitDows(h).includes(d.getDay()))return;due++;const r=R[i];r.due++;
+      if(row[h.id]){done++;r.count++;r.best=Math.max(r.best,++r.run)}else r.run=0});
+    const mo=M[d.getMonth()];mo.due+=due;mo.done+=done;tot+=done;due&&done===due&&perfect++;
+  }
+  return{R:R.filter(r=>r.due||r.count).sort((a,b)=>b.count-a.count),M,perfect,tot};
+}
+const bar=(p,c)=>`<div class="pt" style="margin-top:3px"><div class="pf" style="width:${p}%;background:${c||"var(--ai)"}"></div></div>`;
+const sec=t=>`<div style="font-size:11px;font-weight:600;color:var(--ai);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--b)">${t}</div>`;
+const box=(v,l)=>`<div style="background:var(--s2);border-radius:9px;padding:10px 6px;text-align:center"><div style="font-size:17px;font-weight:700">${v}</div><div style="font-size:9px;color:var(--m2);margin-top:2px">${l}</div></div>`;
+function recapHTML(y){
+  const H=recapData(y),L=allSess().filter(x=>x.d.startsWith(y+"-")),T={},D={},MS=Array(12).fill(0);
+  L.forEach(x=>{const s=x.sub||"General";T[s]=(T[s]||0)+(x.dur||0);D[x.d]=(D[x.d]||0)+(x.dur||0);MS[+x.d.slice(5,7)-1]+=x.dur||0});
+  const studyT=sum(MS),subs=Object.keys(T).sort((a,b)=>T[b]-T[a]),bd=Object.keys(D).sort((a,b)=>D[b]-D[a])[0],bm=MS.indexOf(Math.max(...MS));
+  const ls=H.R.slice().sort((a,b)=>b.best-a.best)[0],cons=H.R.filter(r=>r.due>=10).sort((a,b)=>b.count/b.due-a.count/a.due)[0];
+  const ach=[ls&&ls.best>1&&`🔥 Longest streak: <b>${ls.best} days</b> — ${esc(ls.label)}`,cons&&`🏅 Most consistent: <b>${esc(cons.label)}</b> (${Math.round(cons.count/cons.due*100)}%)`,
+    H.perfect&&`🎯 Perfect days (every habit done): <b>${H.perfect}</b>`,bd&&`⏱ Best study day: <b>${bd}</b> — ${fd(D[bd])}`,studyT&&`📅 Best study month: <b>${MN[bm]}</b> — ${fd(MS[bm])}`,
+    H.tot&&`✅ Habit check-ins: <b>${H.tot}</b>`].filter(Boolean);
+  let h=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">${box(fd(studyT),"Study time")}${box(L.filter(x=>!x.part).length,"Pomodoros")}${box(H.tot,"Habit check-ins")}${box(H.perfect,"Perfect days")}</div>`;
+  h+=sec("🏆 Achievements")+(ach.length?ach.map(a=>`<div style="font-size:12px;padding:5px 0;border-bottom:1px solid var(--b)">${a}</div>`).join(""):'<div style="font-size:12px;color:var(--m2)">Nothing logged for this year yet.</div>');
+  h+=sec("✅ Habits")+H.R.map(r=>{const p=r.due?Math.round(r.count/r.due*100):0;return`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${esc(r.label)}${r.del?' <span style="font-size:9px;color:var(--bd)">· deleted</span>':""}</span><span style="color:var(--m2)">${r.count}/${r.due} · ${p}%</span></div>${bar(p,r.del?"var(--m2)":"")}</div>`}).join("");
+  h+=sec("📅 Month by month")+H.M.map((m,i)=>{if(i>new Date().getMonth()&&y===new Date().getFullYear())return"";const p=m.due?Math.round(m.done/m.due*100):0;
+    return`<div style="display:flex;align-items:center;gap:8px;font-size:11px;padding:4px 0"><span style="width:28px;color:var(--m2)">${MN[i]}</span><div style="flex:1">${bar(p)}</div><span style="width:34px;text-align:right">${p}%</span><span style="width:54px;text-align:right;color:var(--m2)">${fd(MS[i])}</span></div>`}).join("");
+  if(subs.length)h+=sec("📚 Study by subject")+subs.map(s=>`<div style="margin:7px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${esc(s)}</span><span style="color:var(--m2)">${fd(T[s])}</span></div>${bar(Math.round(T[s]/T[subs[0]]*100))}</div>`).join("");
+  return h;
+}
+function mkRecap(){if($("recapMo"))return;const o=document.createElement("div");o.className="ov";o.id="recapMo";
+  o.setAttribute("onclick","if(event.target===this)closeMo('recapMo')");
+  const nb='background:var(--s2);border:1px solid var(--b);border-radius:50%;width:28px;height:28px;color:var(--m2);cursor:pointer';
+  o.innerHTML=`<div class="mo" style="max-width:460px;max-height:86vh;overflow-y:auto"><div style="display:flex;align-items:center;justify-content:space-between"><button style="${nb}" onclick="openYearRecap(yrNav(-1))">‹</button><div class="mot" id="recapTitle" style="margin:0"></div><button style="${nb}" onclick="openYearRecap(yrNav(1))">›</button></div><div id="recapBody"></div><button class="btn b-gh" style="margin-top:16px;width:100%" onclick="closeMo('recapMo')">Close</button></div>`;
+  document.body.appendChild(o)}
+window.yrNav=n=>Math.min(new Date().getFullYear(),yr+n);
+window.openYearRecap=function(y){mkRecap();yr=y||new Date().getFullYear();
+  $("recapTitle").textContent="🎆 "+yr+" Recap";$("recapBody").innerHTML=recapHTML(yr);openMo("recapMo")};
+function addBtn(){const b=document.querySelector('#streakMo button[onclick*="openScorecard"]');
+  if(!b||$("recapBtn"))return;const n=document.createElement("button");n.id="recapBtn";n.className="btn b-gh";n.style.flex="0 0 auto";
+  n.textContent="🎆 Year Recap";n.setAttribute("onclick","closeMo('streakMo');openYearRecap()");b.after(n)}
+
+/* ---------- boot ---------- */
+addBtn();migrate();stale();lastSig="";try{renderPomLog()}catch(e){}
+setTimeout(()=>{migrate();stale();lastSig="";try{renderPomLog()}catch(e){}},3500);
+})();
+
+</script>
 <script>"serviceWorker"in navigator&&navigator.serviceWorker.register("sw.js").catch(e=>console.log("SW failed:",e));</script><script id="m2028-cc2">
 (function(){
 const $=id=>document.getElementById(id),DEF={dark:{bg:"#0a0000",tx:"#fff1ee",ac:"#e61f19"},light:{bg:"#faf4f2",tx:"#2a1210",ac:"#c8201a"},pink:{bg:"#ffb7ce",tx:"#4a1230",ac:"#ff6eb4"}},

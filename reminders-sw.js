@@ -12,12 +12,15 @@ function fireDue(){return Promise.all([get('list'),get('fired')]).then(function(
   L.forEach(function(x){if(F[x.k])keep[x.k]=1;if(x.ts<=now&&now-x.ts<216e5&&!F[x.k]){keep[x.k]=1;F[x.k]=1;jobs.push(show(x))}});
   Object.keys(F).forEach(function(k){if(!keep[k])delete F[k]});
   return Promise.all(jobs).then(function(){return put('fired',F)})})}
-self.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='m2028-reminders'&&Array.isArray(d.list))e.waitUntil(put('list',d.list))});
+self.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='m2028-reminders'&&Array.isArray(d.list))e.waitUntil(put('list',d.list));
+  /* real text for the opaque jobs the push server holds; it never leaves this device */
+  if(d&&d.type==='m2028-push-map'&&d.map)e.waitUntil(put('pmap',d.map))});
 self.addEventListener('periodicsync',function(e){if(e.tag==='m2028-reminders')e.waitUntil(fireDue())});
 self.addEventListener('push',function(e){var d={};try{d=e.data?e.data.json():{}}catch(x){}
   e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
     /* if the app is on screen it already shows its own alert, so don't double up */
     if(cs.some(function(c){return c.visibilityState==='visible'}))return;
+    if(d&&d.k)return get('pmap').then(function(m){return show((m&&m[d.k])||d)});
     return d&&d.title?show(d):fireDue()}))});
 /* notification taps are handled by sw.js */
 })();

@@ -1972,7 +1972,7 @@ var st=window.saveTasks;if(typeof st==="function")window.saveTasks=function(){va
 ["togH","markAll","resetToday"].forEach(function(n){var f=window[n];if(typeof f==="function")window[n]=function(){var r=f.apply(this,arguments);setTimeout(function(){sync();if(window.m2028PushRegister)window.m2028PushRegister()},400);return r}});
 /* hide the Tasks + Medicine widgets from the dashboard; their reminders keep running in the background.
    Set to false to bring the widgets back. */
-var HIDE_REMINDER_WIDGETS=true;
+var HIDE_REMINDER_WIDGETS=false;
 if(HIDE_REMINDER_WIDGETS){var hs=document.createElement("style");hs.id="m2028-hide-rem";hs.textContent="#dw-tasks,#dw-meds{display:none!important}";document.head.appendChild(hs)}
 document.addEventListener("visibilitychange",function(){if(document.hidden)sync()});
 addEventListener("pagehide",sync);setInterval(function(){if(!document.hidden)sync()},3e5);

@@ -1104,7 +1104,9 @@ async function _preSignOutFlush(){
     return!0
   }finally{btn&&(btn.disabled=!1,btn.textContent=label)}
 }
-async function restoreFromBackup(e){if(_user&&_cloudOK)try{const{data:t,error:n}=await supa.from("user_data").select("data_value").eq("user_id",_user.id).eq("data_key",e+"__backup").maybeSingle();if(n)throw n;if(!t)return void console.warn(`No backup found for '${e}'.`);_origS(e,t.data_value),_setLocalTs(e,Date.now()),await supa.from("user_data").upsert({user_id:_user.id,data_key:e,data_value:t.data_value,updated_at:(new Date).toISOString()},{onConflict:"user_id,data_key"});try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner(`✓ Restored '${e}' from backup`)}catch(e){console.warn("Restore failed:",e)}else console.warn("Not signed in / cloud unavailable.")}async function pull(e){if(_user&&_cloudOK)try{const{data:t,error:n}=await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",_user.id);if(n)throw n;_syncReady=!0;const o=(t||[]).filter(e=>!e.data_key.endsWith("__backup")&&!LOCAL_ONLY.has(e.data_key)),a=_applyRows(o),i=new Set(o.map(e=>e.data_key));if(_dirty.forEach(e=>{i.has(e)||push(e)}),_legacy&&(_legacy=!1,_saveDirty()),_pendingPushKeys.size){const e=Array.from(_pendingPushKeys);_pendingPushKeys.clear(),e.forEach(e=>push(e))}a.length&&e&&e.banner&&banner("✓ Synced from cloud")}catch(e){console.warn("Pull failed:",e)}}let _polling=!1;async function pollChanges(full){if(_user&&_cloudOK&&_syncReady&&!_polling){_polling=!0;try{const{data:e,error:t}=await supa.from("user_data").select(full?"data_key,data_value,updated_at":"data_key,updated_at").eq("user_id",_user.id);if(t||!e)return;const n=e.filter(e=>!e.data_key.endsWith("__backup")&&!LOCAL_ONLY.has(e.data_key)&&_seen[e.data_key]!==_ts(e.updated_at));if(!n.length)return;if(full)return void _applyRows(n);const o=await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",_user.id).in("data_key",n.map(e=>e.data_key));!o.error&&o.data&&_applyRows(o.data)}catch(e){console.warn("Poll failed:",e)}finally{_polling=!1}}}function _applyRows(e){const t=[];return e.forEach(e=>{const n=e.data_key;if(!n||n.endsWith("__backup")||LOCAL_ONLY.has(n))return;const o=_ts(e.updated_at);if(_seen[n]=o,(_sent[n]||[]).includes(o))_lastCloudValues[n]=e.data_value;else try{mergeCloudValue(n,e.data_value,e.updated_at)&&t.push(n)}catch(e){console.warn("Merge failed for",n,e)}}),t.length&&_queueRefresh(t),t}function sessionSig(e){return(e&&e.d||"")+"|"+(e&&e.t||"")+"|"+(e&&e.sub||"")+"|"+(e&&e.dur||"")}function mergeCloudValue(e,t,n){const o=_lastCloudValues[e];_lastCloudValues[e]=t;if("theme"===e&&null!==localStorage.getItem("m_theme"))return!1;const a=S.g(e),i=_ts(n);let s;if("pd"===e)s={...a||{}},Object.keys(t||{}).forEach(e=>{s[e]=Math.max(s[e]||0,t[e]||0)});else if("pomSessions"===e){const e=new Set((a||[]).map(sessionSig));s=(a||[]).slice(),(t||[]).forEach(t=>{const n=sessionSig(t);e.has(n)||(s.push(t),e.add(n))}),s.sort((e,t)=>((e.d||"")+(e.t||"")).localeCompare((t.d||"")+(t.t||"")))}else s=null!==a&&_isDirty(e,i)?_m3(o,a,t):t;const r=_canon(s)===_canon(a),d=_canon(s)!==_canon(t);return r?(d?push(e):_dirty.delete(e)&&_saveDirty(),!1):(d?S.s(e,s):(_origS(e,s),_setLocalTs(e,i||Date.now()),_dirty.delete(e)&&_saveDirty()),!0)}async function pushAll(e){if(_user&&_cloudOK){banner("Syncing to cloud...");try{for(const t of getAllKeys())await push(t,e);banner("✓ All data backed up to cloud")}catch(e){banner("Sync failed — data still saved locally."),console.warn("pushAll error:",e)}}else banner("Cloud sync unavailable right now — data still saved locally.")}async function doManualSync(){const e=document.getElementById("syncBtn");e&&(e.disabled=!0,e.textContent="🔄 Syncing...");try{await pull(),await pushAll(!0);try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner("✓ Synced")}finally{e&&(e.disabled=!1,e.textContent="🔄 Sync")}}function _getLocalTs(e){try{return JSON.parse(localStorage.getItem("m_sync_ts")||"{}")[e]||0}catch(e){return 0}}function _setLocalTs(e,t){try{const n=JSON.parse(localStorage.getItem("m_sync_ts")||"{}");n[e]=t||Date.now(),localStorage.setItem("m_sync_ts",JSON.stringify(n))}catch(e){}}const _pendRefresh=new Set;let _refT=null;function _queueRefresh(e){e.forEach(e=>_pendRefresh.add(e)),clearTimeout(_refT),_refT=setTimeout(_flushRefresh,30)}function _typing(e){const t=document.activeElement;return!(!(t&&e&&e.contains(t))||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}function _syncCW(){const e=document.getElementById("dashWidgets");if(!e)return!0;const t=S.go("customWidgets",[]).filter(e=>!1!==e.enabled),n=Array.from(e.querySelectorAll('.dash-w[data-wid^="cw:"]')).map(e=>e.dataset.wid.slice(3));if(n.length!==t.length||!t.every(e=>n.includes(e.id)))return!_typing(e)&&(applyDashCfg(),!0);let o=!0;return t.forEach(t=>{_typing(e.querySelector(`.dash-w[data-wid="cw:${t.id}"]`))?o=!1:rerenderSingleCWWidget(t.id)}),o}function _flushRefresh(){const e=new Set(_pendRefresh);if(_pendRefresh.clear(),!e.size)return;const t=e=>{try{e()}catch(e){}},n=(...t)=>t.some(t=>e.has(t)),o=document.getElementById("dashWidgets");let a=!1;n("habs","hd")&&(t(()=>renderHabits()),t(()=>renderCal()),a=!0);const i=_typing(document.getElementById("tskList"));n("tasks")&&(i?_pendRefresh.add("tasks"):t(()=>renderTasks())),n("customWidgets")&&!_syncCW()&&_pendRefresh.add("customWidgets"),n("dashCfg")&&(_typing(o)?_pendRefresh.add("dashCfg"):t(()=>applyDashCfg())),n("theme","customColors")&&t(()=>ccApplyAll());const s=["habs","hd","tasks","customWidgets","dashCfg","theme","customColors"];[...e].some(e=>!s.includes(e))&&(t(()=>renderHabits()),i||t(()=>renderTasks()),a=!0),a&&t(()=>renderDash())}function setupRealtimeSync(){if(_user&&_cloudOK&&supa){teardownRealtimeSync();try{const e=supa.channel("user_data_"+_user.id);_realtimeChannel=e,e.on("postgres_changes",{event:"*",schema:"public",table:"user_data",filter:`user_id=eq.${_user.id}`},e=>{const t=e.new;t&&t.data_key&&(void 0!==t.data_value?_applyRows([t]):pollChanges())}).subscribe(t=>{if(_realtimeChannel===e)if("SUBSCRIBED"===t){const e=_rtLive;_rtLive=!0,clearTimeout(_rtRetry),e||(_syncReady?pollChanges():pull())}else"CHANNEL_ERROR"!==t&&"TIMED_OUT"!==t&&"CLOSED"!==t||(_rtLive=!1,clearTimeout(_rtRetry),_rtRetry=setTimeout(()=>{_user&&!_rtLive&&setupRealtimeSync()},4e3))})}catch(e){console.warn("Realtime sync setup failed, falling back to polling:",e)}}}function teardownRealtimeSync(){clearTimeout(_rtRetry),_rtLive=!1;const e=_realtimeChannel;if(_realtimeChannel=null,e&&supa)try{supa.removeChannel(e)}catch(e){}}const _origS=S.s.bind(S);function _markLocal(e){_ver[e]=(_ver[e]||0)+1,LOCAL_ONLY.has(e)||_dirty.add(e),_saveDirty(),_setLocalTs(e,Date.now())}function clearLocalAppData(){try{const u=getLastLocalUid();u&&localStorage.setItem("m2028_lo_owner",u)}catch(x){}const e=[];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_")&&!LOCAL_ONLY.has(n.slice(2))&&"m_theme"!==n&&"m_customColors"!==n&&"m_wallpaper"!==n&&"m_wpDim"!==n&&e.push(n)}e.forEach(e=>localStorage.removeItem(e)),_dirty.clear();try{localStorage.removeItem(POM_KEY)}catch(e){}}function getLastLocalUid(){try{return localStorage.getItem("m2028_uid")||null}catch(e){return null}}function setLastLocalUid(e){try{e?localStorage.setItem("m2028_uid",e):localStorage.removeItem("m2028_uid")}catch(e){}}function guardAccountSwitch(e){if(!e)return!1;_syncReady=!1,_lastCloudValues={};const t=getLastLocalUid();try{const ow=localStorage.getItem("m2028_lo_owner");ow&&ow!==e.id&&LOCAL_ONLY.forEach(k=>localStorage.removeItem("m_"+k));localStorage.removeItem("m2028_lo_owner")}catch(x){}return t&&t!==e.id?(clearLocalAppData(),LOCAL_ONLY.forEach(k=>localStorage.removeItem("m_"+k)),localStorage.removeItem("m2028_lo_owner"),setLastLocalUid(e.id),!0):(setLastLocalUid(e.id),!1)}function togglePw(){const e=document.getElementById("liPw"),t=document.getElementById("pwEye");e.type="password"===e.type?"text":"password",t.textContent="password"===e.type?"👁":"🙈"}async function doSignIn(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("liBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e&&t){o.textContent="Signing in...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signInWithPassword({email:e,password:t});if(o.textContent="Sign In",o.disabled=!1,i)return void(n.textContent=i.message.includes("Invalid")?"Wrong email or password.":i.message);_user=a.user;const s=guardAccountSwitch(_user);S.d("guestMode"),S.s("hadSession",!0),showApp(),await pull(),setupRealtimeSync(),init(),s&&banner("Switched account — loaded your data fresh.")}catch(e){o.textContent="Sign In",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter email and password.";else n.textContent='Cloud sync is unavailable right now. Use "Continue without account" to keep working — your data stays on this device.'}async function doSignUp(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("suBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e)if(!t||t.length<6)n.textContent="Password must be at least 6 characters.";else{o.textContent="Creating...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signUp({email:e,password:t,options:{emailRedirectTo:"https://aviatcode.github.io/M2028/"}});if(o.textContent="Create Account",o.disabled=!1,i)return void(n.textContent=i.message);if(a.user&&a.user.confirmed_at)return _user=a.user,guardAccountSwitch(_user),showApp(),await pull(),setupRealtimeSync(),void init();n.style.color="var(--ai)",n.textContent="✓ Account created! Check your email, confirm it, then Sign In."}catch(e){o.textContent="Create Account",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter your email.";else n.textContent='Cloud sync is unavailable right now. Use "Continue without account" to keep working — your data stays on this device.'}function wipeGuestCache(){try{const k=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&(n.startsWith("m_")||n==="pom_state"||n==="m2028_uid"||n.startsWith("sb-"))&&k.push(n)}k.forEach(n=>localStorage.removeItem(n))}catch(e){}try{sessionStorage.clear()}catch(e){}try{"caches"in window&&caches.keys().then(a=>a.forEach(n=>caches.delete(n))).catch(()=>{})}catch(e){}_dirty.clear();for(const o of[_ver,_inflight,_again,_sent,_seen,_retry])Object.keys(o).forEach(n=>delete o[n]);_pendingPushKeys.clear();try{clearInterval(pomInt);pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;pomTot=4;_sub=null}catch(e){}try{document.getElementById("ccStyle")&&document.getElementById("ccStyle").remove();document.documentElement.classList.remove("ucolors","ucac","redx","pre-light","pre-pink","pre-glass");window.applyWallpaper&&window.applyWallpaper()}catch(e){}}
+async function restoreFromBackup(e){if(_user&&_cloudOK)try{const{data:t,error:n}=await supa.from("user_data").select("data_value").eq("user_id",_user.id).eq("data_key",e+"__backup").maybeSingle();if(n)throw n;if(!t)return void console.warn(`No backup found for '${e}'.`);_origS(e,t.data_value),_setLocalTs(e,Date.now()),await supa.from("user_data").upsert({user_id:_user.id,data_key:e,data_value:t.data_value,updated_at:(new Date).toISOString()},{onConflict:"user_id,data_key"});try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner(`✓ Restored '${e}' from backup`)}catch(e){console.warn("Restore failed:",e)}else console.warn("Not signed in / cloud unavailable.")}async function pull(e){if(_user&&_cloudOK)try{const{data:t,error:n}=await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",_user.id);if(n)throw n;_syncReady=!0;const o=(t||[]).filter(e=>!e.data_key.endsWith("__backup")&&!e.data_key.startsWith("enc_")&&!LOCAL_ONLY.has(e.data_key)),a=_applyRows(o),i=new Set(o.map(e=>e.data_key));if(_dirty.forEach(e=>{i.has(e)||push(e)}),_legacy&&(_legacy=!1,_saveDirty()),_pendingPushKeys.size){const e=Array.from(_pendingPushKeys);_pendingPushKeys.clear(),e.forEach(e=>push(e))}a.length&&e&&e.banner&&banner("✓ Synced from cloud")}catch(e){console.warn("Pull failed:",e)}}let _polling=!1;async function pollChanges(full){if(_user&&_cloudOK&&_syncReady&&!_polling){_polling=!0;try{const{data:e,error:t}=await supa.from("user_data").select(full?"data_key,data_value,updated_at":"data_key,updated_at").eq("user_id",_user.id);if(t||!e)return;const n=e.filter(e=>!e.data_key.endsWith("__backup")&&!e.data_key.startsWith("enc_")&&!LOCAL_ONLY.has(e.data_key)&&_seen[e.data_key]!==_ts(e.updated_at));if(!n.length)return;if(full)return void _applyRows(n);const o=await supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",_user.id).in("data_key",n.map(e=>e.data_key));!o.error&&o.data&&_applyRows(o.data)}catch(e){console.warn("Poll failed:",e)}finally{_polling=!1}}}function _applyRows(e){const t=[];return e.forEach(e=>{const n=e.data_key;if(!n||n.endsWith("__backup")||n.startsWith("enc_")||LOCAL_ONLY.has(n))return;const o=_ts(e.updated_at);if(_seen[n]=o,(_sent[n]||[]).includes(o))_lastCloudValues[n]=e.data_value;else try{mergeCloudValue(n,e.data_value,e.updated_at)&&t.push(n)}catch(e){console.warn("Merge failed for",n,e)}}),t.length&&_queueRefresh(t),t}function sessionSig(e){return(e&&e.d||"")+"|"+(e&&e.t||"")+"|"+(e&&e.sub||"")+"|"+(e&&e.dur||"")}function mergeCloudValue(e,t,n){const o=_lastCloudValues[e];_lastCloudValues[e]=t;if("theme"===e&&null!==localStorage.getItem("m_theme"))return!1;const a=S.g(e),i=_ts(n);let s;if("pd"===e)s={...a||{}},Object.keys(t||{}).forEach(e=>{s[e]=Math.max(s[e]||0,t[e]||0)});else if("pomSessions"===e){const e=new Set((a||[]).map(sessionSig));s=(a||[]).slice(),(t||[]).forEach(t=>{const n=sessionSig(t);e.has(n)||(s.push(t),e.add(n))}),s.sort((e,t)=>((e.d||"")+(e.t||"")).localeCompare((t.d||"")+(t.t||"")))}else s=null!==a&&_isDirty(e,i)?_m3(o,a,t):t;const r=_canon(s)===_canon(a),d=_canon(s)!==_canon(t);return r?(d?push(e):_dirty.delete(e)&&_saveDirty(),!1):(d?S.s(e,s):(_origS(e,s),_setLocalTs(e,i||Date.now()),_dirty.delete(e)&&_saveDirty()),!0)}async function pushAll(e){if(_user&&_cloudOK){banner("Syncing to cloud...");try{for(const t of getAllKeys())await push(t,e);banner("✓ All data backed up to cloud")}catch(e){banner("Sync failed — data still saved locally."),console.warn("pushAll error:",e)}}else banner("Cloud sync unavailable right now — data still saved locally.")}async function doManualSync(){const e=document.getElementById("syncBtn");e&&(e.disabled=!0,e.textContent="🔄 Syncing...");try{await pull(),await pushAll(!0);try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner("✓ Synced")}finally{e&&(e.disabled=!1,e.textContent="🔄 Sync")}}function _getLocalTs(e){try{return JSON.parse(localStorage.getItem("m_sync_ts")||"{}")[e]||0}catch(e){return 0}}function _setLocalTs(e,t){try{const n=JSON.parse(localStorage.getItem("m_sync_ts")||"{}");n[e]=t||Date.now(),localStorage.setItem("m_sync_ts",JSON.stringify(n))}catch(e){}}const _pendRefresh=new Set;let _refT=null;function _queueRefresh(e){e.forEach(e=>_pendRefresh.add(e)),clearTimeout(_refT),_refT=setTimeout(_flushRefresh,30)}function _typing(e){const t=document.activeElement;return!(!(t&&e&&e.contains(t))||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}function _syncCW(){const e=document.getElementById("dashWidgets");if(!e)return!0;const t=S.go("customWidgets",[]).filter(e=>!1!==e.enabled),n=Array.from(e.querySelectorAll('.dash-w[data-wid^="cw:"]')).map(e=>e.dataset.wid.slice(3));if(n.length!==t.length||!t.every(e=>n.includes(e.id)))return!_typing(e)&&(applyDashCfg(),!0);let o=!0;return t.forEach(t=>{_typing(e.querySelector(`.dash-w[data-wid="cw:${t.id}"]`))?o=!1:rerenderSingleCWWidget(t.id)}),o}function _flushRefresh(){const e=new Set(_pendRefresh);if(_pendRefresh.clear(),!e.size)return;const t=e=>{try{e()}catch(e){}},n=(...t)=>t.some(t=>e.has(t)),o=document.getElementById("dashWidgets");let a=!1;n("habs","hd")&&(t(()=>renderHabits()),t(()=>renderCal()),a=!0);const i=_typing(document.getElementById("tskList"));n("tasks")&&(i?_pendRefresh.add("tasks"):t(()=>renderTasks())),n("customWidgets")&&!_syncCW()&&_pendRefresh.add("customWidgets"),n("dashCfg")&&(_typing(o)?_pendRefresh.add("dashCfg"):t(()=>applyDashCfg())),n("theme","customColors")&&t(()=>ccApplyAll());const s=["habs","hd","tasks","customWidgets","dashCfg","theme","customColors"];[...e].some(e=>!s.includes(e))&&(t(()=>renderHabits()),i||t(()=>renderTasks()),a=!0),a&&t(()=>renderDash())}function setupRealtimeSync(){if(_user&&_cloudOK&&supa){teardownRealtimeSync();try{const e=supa.channel("user_data_"+_user.id);_realtimeChannel=e,e.on("postgres_changes",{event:"*",schema:"public",table:"user_data",filter:`user_id=eq.${_user.id}`},e=>{const t=e.new;t&&t.data_key&&(void 0!==t.data_value?_applyRows([t]):pollChanges())}).subscribe(t=>{if(_realtimeChannel===e)if("SUBSCRIBED"===t){const e=_rtLive;_rtLive=!0,clearTimeout(_rtRetry),e||(_syncReady?pollChanges():pull())}else"CHANNEL_ERROR"!==t&&"TIMED_OUT"!==t&&"CLOSED"!==t||(_rtLive=!1,clearTimeout(_rtRetry),_rtRetry=setTimeout(()=>{_user&&!_rtLive&&setupRealtimeSync()},4e3))})}catch(e){console.warn("Realtime sync setup failed, falling back to polling:",e)}}}function teardownRealtimeSync(){clearTimeout(_rtRetry),_rtLive=!1;const e=_realtimeChannel;if(_realtimeChannel=null,e&&supa)try{supa.removeChannel(e)}catch(e){}}const _origS=S.s.bind(S);function _markLocal(e){_ver[e]=(_ver[e]||0)+1,LOCAL_ONLY.has(e)||_dirty.add(e),_saveDirty(),_setLocalTs(e,Date.now())}function stashLocalOnly(){try{const u=getLastLocalUid();if(!u)return!0;const st={};LOCAL_ONLY.forEach(k=>{const v=localStorage.getItem("m_"+k);null!==v&&(st[k]=v)});if(Object.keys(st).length){const sk="m2028_lo_"+u;let old={};try{old=JSON.parse(localStorage.getItem(sk))||{}}catch(x){}localStorage.setItem(sk,JSON.stringify({...old,...st}))}LOCAL_ONLY.forEach(k=>localStorage.removeItem("m_"+k));return!0}catch(x){return!1}}
+function restoreLocalOnly(uid){try{const sk="m2028_lo_"+uid,raw=localStorage.getItem(sk);if(!raw)return;const st=JSON.parse(raw),left={},blank=v=>null===v||""===v||"[]"===v||"{}"===v||"null"===v;Object.keys(st).forEach(k=>{LOCAL_ONLY.has(k)&&(blank(localStorage.getItem("m_"+k))?localStorage.setItem("m_"+k,st[k]):left[k]=st[k])});Object.keys(left).length?localStorage.setItem(sk,JSON.stringify(left)):localStorage.removeItem(sk);try{renderTasks()}catch(x){}}catch(x){}}
+function clearLocalAppData(){stashLocalOnly();const e=[];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_")&&!LOCAL_ONLY.has(n.slice(2))&&"m_theme"!==n&&"m_customColors"!==n&&"m_wallpaper"!==n&&"m_wpDim"!==n&&e.push(n)}e.forEach(e=>localStorage.removeItem(e)),_dirty.clear();try{localStorage.removeItem(POM_KEY)}catch(e){}}function getLastLocalUid(){try{return localStorage.getItem("m2028_uid")||null}catch(e){return null}}function setLastLocalUid(e){try{e?localStorage.setItem("m2028_uid",e):localStorage.removeItem("m2028_uid")}catch(e){}}function guardAccountSwitch(e){if(!e)return!1;_syncReady=!1,_lastCloudValues={};const t=getLastLocalUid(),sw=t&&t!==e.id;return sw&&clearLocalAppData(),restoreLocalOnly(e.id),setLastLocalUid(e.id),!!sw}function togglePw(){const e=document.getElementById("liPw"),t=document.getElementById("pwEye");e.type="password"===e.type?"text":"password",t.textContent="password"===e.type?"👁":"🙈"}async function doSignIn(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("liBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e&&t){o.textContent="Signing in...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signInWithPassword({email:e,password:t});if(o.textContent="Sign In",o.disabled=!1,i)return void(n.textContent=i.message.includes("Invalid")?"Wrong email or password.":i.message);_user=a.user;const s=guardAccountSwitch(_user);S.d("guestMode"),S.s("hadSession",!0),showApp(),await pull(),setupRealtimeSync(),init(),s&&banner("Switched account — loaded your data fresh.")}catch(e){o.textContent="Sign In",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter email and password.";else n.textContent='Cloud sync is unavailable right now. Use "Continue without account" to keep working — your data stays on this device.'}async function doSignUp(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("suBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e)if(!t||t.length<6)n.textContent="Password must be at least 6 characters.";else{o.textContent="Creating...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signUp({email:e,password:t,options:{emailRedirectTo:"https://aviatcode.github.io/M2028/"}});if(o.textContent="Create Account",o.disabled=!1,i)return void(n.textContent=i.message);if(a.user&&a.user.confirmed_at)return _user=a.user,guardAccountSwitch(_user),showApp(),await pull(),setupRealtimeSync(),void init();n.style.color="var(--ai)",n.textContent="✓ Account created! Check your email, confirm it, then Sign In."}catch(e){o.textContent="Create Account",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter your email.";else n.textContent='Cloud sync is unavailable right now. Use "Continue without account" to keep working — your data stays on this device.'}function wipeGuestCache(){try{const ok=stashLocalOnly(),k=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&((n.startsWith("m_")&&(ok||!LOCAL_ONLY.has(n.slice(2))))||n==="pom_state"||n==="m2028_uid"||n.startsWith("sb-"))&&k.push(n)}k.forEach(n=>localStorage.removeItem(n))}catch(e){}try{sessionStorage.clear()}catch(e){}try{"caches"in window&&caches.keys().then(a=>a.forEach(n=>caches.delete(n))).catch(()=>{})}catch(e){}_dirty.clear();for(const o of[_ver,_inflight,_again,_sent,_seen,_retry])Object.keys(o).forEach(n=>delete o[n]);_pendingPushKeys.clear();try{clearInterval(pomInt);pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;pomTot=4;_sub=null}catch(e){}try{document.getElementById("ccStyle")&&document.getElementById("ccStyle").remove();document.documentElement.classList.remove("ucolors","ucac","redx","pre-light","pre-pink","pre-glass");window.applyWallpaper&&window.applyWallpaper()}catch(e){}}
 function guestMode(){teardownRealtimeSync(),wipeGuestCache(),_user=null,_syncReady=!1,_lastCloudValues={},S.s("guestMode",!0),S.d("hadSession"),showApp(),init(),banner("Guest mode — data saved locally only. Sign in to sync across devices.")}async function doSignOut(){if(!(await _preSignOutFlush()))return;if(teardownRealtimeSync(),_cloudOK)try{await supa.auth.signOut()}catch(e){}_user=null,_syncReady=!1,_lastCloudValues={},clearLocalAppData(),setLastLocalUid(null),S.d("guestMode"),S.d("hadSession"),document.getElementById("appShell").style.display="none",document.getElementById("loginScr").style.display="flex",document.getElementById("liEmail").value="",document.getElementById("liPw").value="",closeMo("acctMo")}function showApp(){document.getElementById("loginScr").style.display="none",document.getElementById("appShell").style.display="block",setTimeout(()=>applyDashCfg(),50)}async function startup(){const e=S.go("guestMode",!1),t=S.go("hadSession",!1);if(e||t)return _user=null,init(),void(t&&setTimeout(()=>loadSupa().then(e=>{e&&supa.auth.getSession().then(({data:{session:e}})=>{e?(_user=e.user,guardAccountSwitch(_user),setupRealtimeSync(),pull().then(()=>{try{renderDash(),renderHabits(),renderTasks()}catch(e){}})):(S.d("hadSession"),teardownRealtimeSync(),_user=null)}).catch(e=>console.warn("Session check failed:",e))}),120));const n=document.getElementById("loginScr");n&&(n.style.display="flex");const o=document.getElementById("appShell");o&&(o.style.display="none"),loadSupa().then(e=>{if(e)return;const t=document.getElementById("liErr");t&&(t.style.color="var(--bd)",t.textContent='⚠️ Cloud sync unavailable (network/blocker). You can still use "Continue without account".')})}S.s=(e,t)=>{_origS(e,t),_markLocal(e),_user&&_cloudOK&&push(e)},S.sLocalOnly=(e,t)=>{_origS(e,t),_markLocal(e)},S.sPushOnly=e=>{_user&&_cloudOK&&push(e)},startup(),function(){let e=!1;["wheel","touchstart","keydown","mousedown"].forEach(t=>window.addEventListener(t,()=>e=!0,{passive:!0,once:!0})),[0,150,600,1500,3e3].forEach(t=>setTimeout(()=>{e||window.scrollTo(0,0)},t))}();let _tick=0;setInterval(()=>{_user&&!document.hidden&&(_tick++,_rtLive&&_tick%7!=0||pollChanges())},3e3),setInterval(()=>{_user&&!document.hidden&&pull()},3e5);let _lastResumePull=0;function _resumePull(){if(!_user||!_cloudOK)return;const e=Date.now();e-_lastResumePull<1500||(_lastResumePull=e,_realtimeChannel||setupRealtimeSync(),_syncReady?pollChanges(!0):pull(),_dirty.size&&_dirty.forEach(e=>push(e)))}document.addEventListener("visibilitychange",()=>{document.hidden||_resumePull()}),window.addEventListener("pagehide",()=>{try{teardownRealtimeSync()}catch(e){}}),window.addEventListener("focus",_resumePull),window.addEventListener("pageshow",_resumePull),window.addEventListener("online",_resumePull),document.addEventListener("focusout",()=>{_pendRefresh.size&&setTimeout(_flushRefresh,150)});let _tabRerenderTimer=null;window.addEventListener("storage",e=>{e.key&&e.key.startsWith("m_")&&(clearTimeout(_tabRerenderTimer),_tabRerenderTimer=setTimeout(()=>{try{renderDash(),renderHabits(),renderTasks(),applyDashCfg()}catch(e){}},150))});;
 
 /* ===== M2028 v6 patch ===== */
@@ -2402,5 +2404,238 @@ button,.btn,.chip,.nb,.bnbt,.hc,.lnkbtn,.ract,.cal-d,.sp{transition-duration:.09
 }
 </style>
 <script src="push.js" defer></script>
+<script id="m2028-encsync">
+/* M2028 encrypted sync for tasks, medicines and the medicine log.
+   - The data is locked in this browser with AES-GCM before it is uploaded. The key comes from a passphrase
+     (PBKDF2) that never leaves the device, so the database only ever holds unreadable text.
+   - Local copies are never touched destructively: cloud data is merged in, never blindly overwritten. */
+(function(){
+"use strict";
+if(!window.crypto||!crypto.subtle||!window.indexedDB)return;
+var ENC=["tasks","meds","medLog"],PRE="enc_",META="enc_meta",ITER=310000,OK="m2028-enc-ok";
+var te=new TextEncoder(),td=new TextDecoder();
+var st={uid:null,key:null,keySalt:null,meta:null,state:"idle",busy:false,sAgain:false,flushing:false,fAgain:false,modal:false,ver:{},applying:false};
+var timer=null;
+
+function log(){try{console.warn.apply(console,["[enc]"].concat([].slice.call(arguments)))}catch(e){}}
+function uid(){try{return(_user&&_user.id)||null}catch(e){return null}}
+function online(){try{return!!(_user&&_cloudOK&&supa&&_syncReady)}catch(e){return false}}
+function J(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function W(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+function kd(u){return"m2028_enc_dirty_"+u}
+function kt(u){return"m2028_enc_ts_"+u}
+function ks(u){return"m2028_enc_seen_"+u}
+function kz(u){return"m2028_enc_snooze_"+u}
+function UE(m){var e=new Error(m);e.userMsg=m;return e}
+
+/* ---------- base64 / IndexedDB key store / crypto ---------- */
+function b64e(buf){var a=new Uint8Array(buf),s="";for(var i=0;i<a.length;i+=8192)s+=String.fromCharCode.apply(null,a.subarray(i,i+8192));return btoa(s)}
+function b64d(s){var r=atob(s),a=new Uint8Array(r.length);for(var i=0;i<r.length;i++)a[i]=r.charCodeAt(i);return a}
+function idb(){return new Promise(function(ok,no){var r=indexedDB.open("m2028-enc",1);r.onupgradeneeded=function(){r.result.createObjectStore("kv")};r.onsuccess=function(){ok(r.result)};r.onerror=function(){no(r.error)}})}
+function idbGet(k){return idb().then(function(d){return new Promise(function(ok){var q=d.transaction("kv").objectStore("kv").get(k);q.onsuccess=function(){d.close();ok(q.result||null)};q.onerror=function(){d.close();ok(null)}})}).catch(function(){return null})}
+function idbPut(k,v){return idb().then(function(d){return new Promise(function(ok,no){var t=d.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=function(){d.close();ok()};t.onerror=function(){d.close();no(t.error)}})})}
+function idbDel(k){return idb().then(function(d){return new Promise(function(ok){var t=d.transaction("kv","readwrite");t.objectStore("kv").delete(k);t.oncomplete=function(){d.close();ok()};t.onerror=function(){d.close();ok()}})}).catch(function(){})}
+function derive(pass,salt,iter){return crypto.subtle.importKey("raw",te.encode(String(pass).normalize("NFKC")),"PBKDF2",false,["deriveKey"]).then(function(b){return crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:iter,hash:"SHA-256"},b,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])})}
+function seal(key,plain,aad){var iv=crypto.getRandomValues(new Uint8Array(12));return crypto.subtle.encrypt({name:"AES-GCM",iv:iv,additionalData:te.encode(aad)},key,te.encode(plain)).then(function(ct){return{v:1,iv:b64e(iv),ct:b64e(ct)}})}
+function unseal(key,env,aad){return crypto.subtle.decrypt({name:"AES-GCM",iv:b64d(env.iv),additionalData:te.encode(aad)},key,b64d(env.ct)).then(function(p){return td.decode(p)})}
+
+/* ---------- cloud ---------- */
+function allKeys(){return[META].concat(ENC.map(function(k){return PRE+k}))}
+function fetchRows(){return supa.from("user_data").select("data_key,data_value,updated_at").eq("user_id",uid()).in("data_key",allKeys()).then(function(r){if(r.error)throw r.error;return r.data||[]})}
+function upsertRow(k,v,ts,ignoreDup){return supa.from("user_data").upsert({user_id:uid(),data_key:k,data_value:v,updated_at:new Date(ts).toISOString()},{onConflict:"user_id,data_key",ignoreDuplicates:!!ignoreDup}).then(function(r){if(r.error)throw r.error})}
+function findRow(rows,k){for(var i=0;i<rows.length;i++)if(rows[i].data_key===k)return rows[i];return null}
+
+/* ---------- local bookkeeping (per account) ---------- */
+function ensureDirty(u,k){var d=J(kd(u),[]);if(d.indexOf(k)<0){d.push(k);W(kd(u),d)}}
+function clearDirty(u,k){W(kd(u),J(kd(u),[]).filter(function(x){return x!==k}))}
+function markSeen(u,k){var s=J(ks(u),{});s[k]=1;W(ks(u),s)}
+function markDirty(k){var u=uid();if(!u)return;st.ver[k]=(st.ver[k]||0)+1;ensureDirty(u,k);var t=J(kt(u),{});t[k]=Date.now();W(kt(u),t);schedule(1500)}
+function schedule(ms){clearTimeout(timer);timer=setTimeout(function(){flush()},ms)}
+
+/* ---------- merging ---------- */
+function same(a,b){try{return JSON.stringify(a)===JSON.stringify(b)}catch(e){return false}}
+function idOf(x){return x&&typeof x==="object"&&(x.id||x.key)?String(x.id||x.key):JSON.stringify(x)}
+function isObj(x){return x&&typeof x==="object"&&!Array.isArray(x)}
+function merge(l,c){
+  if(l===null||l===undefined)return c;if(c===null||c===undefined)return l;
+  if(Array.isArray(l)&&Array.isArray(c)){var out=c.slice(),idx={};out.forEach(function(x,i){idx[idOf(x)]=i});l.forEach(function(x){var f=idOf(x);if(f in idx)out[idx[f]]=x;else{idx[f]=out.length;out.push(x)}});return out}
+  if(isObj(l)&&isObj(c)){var o=Object.assign({},c);Object.keys(l).forEach(function(d){var a=l[d],b=c[d];o[d]=(isObj(a)&&isObj(b))?Object.assign({},b,a):a});return o}
+  return l}
+function applyLocal(k,val){st.applying=true;try{localStorage.setItem("m_"+k,JSON.stringify(val))}catch(e){}finally{st.applying=false}}
+function refreshUI(){
+  try{var a=document.activeElement;if(a&&(a.tagName==="INPUT"||a.tagName==="TEXTAREA")&&a.closest&&a.closest("#tskList,#medBody")){setTimeout(refreshUI,4000);return}}catch(e){}
+  try{renderTasks()}catch(e){}
+  try{window.renderMeds&&window.renderMeds(true)}catch(e){}
+  try{checkTaskReminders()}catch(e){}
+  try{window.m2028SyncReminders&&window.m2028SyncReminders()}catch(e){}
+  try{window.m2028PushRegister&&window.m2028PushRegister()}catch(e){}}
+
+/* ---------- push / reconcile ---------- */
+async function pushKey(u,k){
+  var raw=localStorage.getItem("m_"+k);if(raw===null)return;
+  var v=st.ver[k]||0,ts=Date.now();
+  var env=await seal(st.key,raw,u+"|"+PRE+k);
+  await upsertRow(PRE+k,env,ts);
+  if((st.ver[k]||0)===v){clearDirty(u,k);var t=J(kt(u),{});t[k]=ts;W(kt(u),t);markSeen(u,k)}}
+async function flush(){
+  if(st.flushing){st.fAgain=true;return}
+  if(!online()||st.state!=="ready"||!st.key)return;
+  var u=uid();st.flushing=true;
+  try{var d=J(kd(u),[]).slice();for(var i=0;i<d.length;i++)await pushKey(u,d[i])}
+  catch(e){log("upload failed",e&&e.message);schedule(30000)}
+  finally{st.flushing=false;if(st.fAgain){st.fAgain=false;schedule(300)}}}
+async function reconcile(rows){
+  var u=uid(),seen=J(ks(u),{}),ts=J(kt(u),{}),dirty=J(kd(u),[]),changed=false,tsChanged=false;
+  for(var i=0;i<ENC.length;i++){
+    var k=ENC[i],row=findRow(rows,PRE+k),raw=localStorage.getItem("m_"+k),local=null;
+    if(raw!==null){try{local=JSON.parse(raw)}catch(e){local=null}}
+    var isDirty=dirty.indexOf(k)>=0;
+    if(!row){if(local!==null)ensureDirty(u,k);continue}
+    var cloud;
+    try{cloud=JSON.parse(await unseal(st.key,row.data_value,u+"|"+row.data_key))}catch(e){log("could not read",k);continue}
+    var cts=Date.parse(row.updated_at)||0,lts=ts[k]||0;
+    if(!seen[k]){
+      /* first time this device meets the cloud copy: combine both, lose nothing */
+      var m=merge(local,cloud);
+      if(!same(m,local)){applyLocal(k,m);changed=true}
+      if(!same(m,cloud))ensureDirty(u,k);else{seen[k]=1;ts[k]=cts;tsChanged=true}
+    }else if(isDirty){
+      if(cts>lts){var m2=merge(local,cloud);if(!same(m2,local)){applyLocal(k,m2);changed=true}ensureDirty(u,k)}
+    }else if(cts>lts){
+      if(!same(cloud,local)){applyLocal(k,cloud);changed=true}
+      ts[k]=cts;tsChanged=true}}
+  if(tsChanged){W(kt(u),ts);var s2=J(ks(u),{});Object.keys(seen).forEach(function(x){s2[x]=1});W(ks(u),s2)}
+  if(changed)refreshUI();
+  flush()}
+
+/* ---------- key handling ---------- */
+async function checkMeta(rows){
+  var u=uid(),mr=findRow(rows,META);
+  if(!mr){if(st.key||st.keySalt){st.key=null;st.keySalt=null;await idbDel("k_"+u)}st.meta=null;st.state="off";uiState();promptFor("setup");return}
+  var meta=mr.data_value;st.meta=meta;
+  if(st.key&&st.keySalt===meta.salt){st.state="ready";uiState();return}
+  var rec=await idbGet("k_"+u);
+  if(rec&&rec.key&&rec.salt===meta.salt){try{if(await unseal(rec.key,meta.check,u+"|enc_check")===OK){st.key=rec.key;st.keySalt=meta.salt;st.state="ready";uiState();return}}catch(e){}}
+  if(rec)await idbDel("k_"+u);
+  st.key=null;st.keySalt=null;st.state="locked";uiState();promptFor("unlock")}
+async function finishKey(key,meta){
+  var u=uid();st.key=key;st.keySalt=meta.salt;st.meta=meta;st.state="ready";
+  try{await idbPut("k_"+u,{key:key,salt:meta.salt})}catch(e){log("key not stored on device; passphrase will be needed next time")}
+  uiState();sync()}
+async function doSetup(pass){
+  var u=uid(),salt=crypto.getRandomValues(new Uint8Array(16)),key=await derive(pass,salt,ITER);
+  var check=await seal(key,OK,u+"|enc_check"),meta={v:1,salt:b64e(salt),iter:ITER,check:check};
+  await upsertRow(META,meta,Date.now(),true);
+  var row=findRow(await fetchRows(),META);
+  if(row&&row.data_value&&row.data_value.salt!==meta.salt){
+    /* another device set it up at the same moment: join theirs if the passphrase matches */
+    st.meta=row.data_value;
+    try{await doUnlock(pass);return}catch(e){throw UE("Another device just turned this on with a different passphrase. Close this and enter that one to unlock.")}}
+  await finishKey(key,meta)}
+async function doUnlock(pass){
+  var u=uid(),meta=st.meta;if(!meta)throw UE("Not ready yet. Try again in a moment.");
+  var key=await derive(pass,b64d(meta.salt),meta.iter||ITER),okv=null;
+  try{okv=await unseal(key,meta.check,u+"|enc_check")}catch(e){}
+  if(okv!==OK)throw UE("That passphrase isn't right.");
+  await finishKey(key,meta)}
+async function doReset(){
+  var u=uid(),r=await supa.from("user_data").delete().eq("user_id",u).in("data_key",allKeys());
+  if(r.error)throw r.error;
+  st.key=null;st.keySalt=null;st.meta=null;st.state="off";await idbDel("k_"+u);
+  var s=J(ks(u),{});ENC.forEach(function(k){delete s[k]});W(ks(u),s);
+  uiState()}
+
+/* ---------- sync loop ---------- */
+async function sync(){
+  if(st.busy){st.sAgain=true;return}
+  if(!uid()||!online())return;
+  st.busy=true;
+  try{var rows=await fetchRows();await checkMeta(rows);if(st.state==="ready")await reconcile(rows)}
+  catch(e){log("sync",e&&e.message)}
+  finally{st.busy=false;if(st.sAgain){st.sAgain=false;setTimeout(sync,300)}}}
+
+/* ---------- UI ---------- */
+function promptFor(mode){
+  var u=uid();if(st.modal||!u)return;
+  if((J(kz(u),0)||0)>Date.now())return;
+  var sh=document.getElementById("appShell");if(sh&&sh.style.display==="none")return;
+  showModal(mode)}
+function showModal(mode){
+  if(st.modal)return;st.modal=true;
+  var setup=mode==="setup",ov=document.createElement("div");
+  ov.className="ov op";ov.id="encOv";ov.style.zIndex="100000";
+  ov.innerHTML='<div class="mo" style="max-width:380px"><div class="mot">'+(setup?"\uD83D\uDD12 Protect tasks &amp; medicines":"\uD83D\uDD12 Unlock tasks &amp; medicines")+'</div>'+
+  '<div style="font-size:12.5px;color:var(--m2);line-height:1.55;margin-bottom:12px">'+(setup
+    ?"Your tasks and medicines will sync between your devices, locked with a passphrase only you know. Nobody else, not even the app owner, can read them in the database.<br><br><b>Write the passphrase down.</b> If you forget it, the synced copy can't be recovered. You can reset it, and each device keeps its own copy."
+    :"Enter the passphrase you chose for tasks and medicines. It is asked once on each device.")+'</div>'+
+  '<input id="encP1" class="inp" type="password" autocomplete="'+(setup?"new-password":"current-password")+'" placeholder="Passphrase" style="width:100%;box-sizing:border-box;margin-bottom:8px">'+
+  (setup?'<input id="encP2" class="inp" type="password" autocomplete="new-password" placeholder="Repeat passphrase" style="width:100%;box-sizing:border-box;margin-bottom:8px">':"")+
+  '<div id="encErr" style="font-size:12px;color:var(--rd);min-height:16px;margin:2px 0 8px"></div>'+
+  '<div style="display:flex;gap:8px"><button class="btn b-ai" id="encGo" style="flex:1">'+(setup?"Turn on":"Unlock")+'</button><button class="btn b-gh" id="encLater">Not now</button></div>'+
+  (setup?"":'<button class="btn b-gh sm" id="encForgot" style="margin-top:10px;width:100%">Forgot passphrase\u2026</button>')+'</div>';
+  document.body.appendChild(ov);
+  function $(id){return ov.querySelector("#"+id)}
+  function close(){st.modal=false;if(ov.parentNode)ov.parentNode.removeChild(ov)}
+  function fail(m){$("encErr").textContent=m||""}
+  function busy(b){$("encGo").disabled=b;$("encLater").disabled=b;$("encGo").textContent=b?"Working\u2026":(setup?"Turn on":"Unlock");var f=$("encForgot");if(f)f.disabled=b}
+  $("encLater").onclick=function(){var u=uid();if(u)W(kz(u),Date.now()+432e5);close()};
+  $("encGo").onclick=async function(){
+    var p1=$("encP1").value,p2=setup?$("encP2").value:"";fail("");
+    if(setup){if(p1.length<8)return fail("Use at least 8 characters.");if(p1!==p2)return fail("The two passphrases don't match.")}
+    else if(!p1)return fail("Enter your passphrase.");
+    busy(true);
+    try{if(setup)await doSetup(p1);else await doUnlock(p1);close()}
+    catch(e){busy(false);fail((e&&e.userMsg)||"Something went wrong. Check your connection and try again.");log(e&&e.message)}};
+  var f=$("encForgot");
+  if(f)f.onclick=async function(){
+    if(!confirm("Reset the passphrase?\n\nThe synced (encrypted) copy of your tasks and medicines is deleted from the cloud. Each of your devices keeps its own copy and you will set a new passphrase now.\n\nA device that has no copy of its own cannot get that data back."))return;
+    busy(true);try{await doReset();close();showModal("setup")}catch(e){busy(false);fail("Could not reset. Check your connection and try again.");log(e&&e.message)}};
+  [$("encP1"),setup?$("encP2"):null].forEach(function(inp){if(inp)inp.addEventListener("keydown",function(ev){if(ev.key==="Enter")$("encGo").click()})});
+  setTimeout(function(){try{$("encP1").focus()}catch(e){}},50)}
+function ensureRow(){
+  var s=document.getElementById("acctStatus");if(!s||document.getElementById("encAcctRow"))return uiState();
+  var host=s.parentNode,row=document.createElement("div");row.id="encAcctRow";
+  row.style.cssText="background:var(--s2);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px";
+  row.innerHTML='<div id="encAcctTxt" style="flex:1;font-size:12px;color:var(--m2);line-height:1.4"></div><button class="btn b-gh sm" id="encAcctBtn" style="flex-shrink:0"></button>';
+  host.parentNode.insertBefore(row,host.nextSibling);
+  row.querySelector("#encAcctBtn").onclick=function(){
+    var u=uid();if(!u||!online())return;
+    if(st.state==="off"){W(kz(u),0);showModal("setup")}
+    else if(st.state==="locked"){W(kz(u),0);showModal("unlock")}
+    else if(st.state==="ready"){if(confirm("Reset the passphrase? The synced copy is deleted from the cloud and you choose a new passphrase. Each device keeps its own copy.")){doReset().then(function(){showModal("setup")}).catch(function(){alert("Could not reset. Check your connection and try again.")})}}
+    else sync()};
+  uiState()}
+function uiState(){
+  var t=document.getElementById("encAcctTxt"),b=document.getElementById("encAcctBtn");if(!t||!b)return;
+  var on=!!(uid()&&online()),m={
+    idle:["Checking encrypted sync\u2026","Refresh"],
+    off:["Tasks &amp; medicines are only on this device. Turn on encrypted sync to back them up.","Turn on"],
+    locked:["\uD83D\uDD12 Locked on this device. Unlock to sync tasks &amp; medicines.","Unlock"],
+    ready:["\uD83D\uDD12 Tasks &amp; medicines sync, end-to-end encrypted.","Reset"]}[st.state];
+  if(!on){t.innerHTML="Sign in to sync tasks &amp; medicines securely.";b.style.display="none";return}
+  b.style.display="";t.innerHTML=m[0];b.textContent=m[1]}
+
+/* ---------- wiring ---------- */
+function hook(){
+  if(typeof S==="undefined"||S.__enc)return;S.__enc=1;
+  ["s","sLocalOnly"].forEach(function(n){var o=S[n];if(typeof o!=="function")return;S[n]=function(k){var r=o.apply(this,arguments);try{if(ENC.indexOf(k)>=0&&!st.applying)markDirty(k)}catch(e){}return r}});
+  var po=S.sPushOnly;if(typeof po==="function")S.sPushOnly=function(k){var r=po.apply(this,arguments);try{if(ENC.indexOf(k)>=0&&uid())schedule(400)}catch(e){}return r}}
+function wrapAll(){
+  var om=window.openMo;if(typeof om==="function"&&!om.__enc){var w=function(id){var r=om.apply(this,arguments);if(id==="acctMo"){try{ensureRow();sync()}catch(e){}}return r};w.__enc=1;window.openMo=w}
+  var ps=window._preSignOutFlush;if(typeof ps==="function"&&!ps.__enc){var w2=async function(){try{await Promise.race([flush(),new Promise(function(r){setTimeout(r,8000)})])}catch(e){}return ps.apply(this,arguments)};w2.__enc=1;window._preSignOutFlush=w2}}
+function tick(){
+  try{hook();wrapAll()}catch(e){}
+  var u=uid();
+  if(st.uid!==u){st.uid=u;st.key=null;st.keySalt=null;st.meta=null;st.state="idle";st.ver={};uiState()}
+  if(u&&online()&&st.state==="idle")sync()}
+setInterval(tick,2500);
+setInterval(function(){if(!document.hidden&&uid()&&online())sync()},30000);
+document.addEventListener("visibilitychange",function(){if(document.hidden)flush();else{tick();sync()}});
+addEventListener("online",function(){sync()});
+addEventListener("pagehide",function(){flush()});
+tick();
+if(window.__M2028_TEST__)window.__encTest={doSetup:doSetup,doUnlock:doUnlock,doReset:doReset,st:st,flush:flush,sync:sync,merge:merge,markDirty:markDirty};
+})();
+</script>
 </body>
 </html>

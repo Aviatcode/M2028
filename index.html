@@ -468,6 +468,7 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 </div>
 </div>
 <div class="ov" id="perDayMo" onclick="if(event.target===this)closeMo('perDayMo')"><div class="mo" id="perDayBox" style="max-width:380px"></div></div>
+<div class="ov" id="perRangeMo" onclick="if(event.target===this)closeMo('perRangeMo')"><div class="mo" id="perRangeBox" style="max-width:380px"></div></div>
 <div class="ov" id="scorecardMo" onclick="if(event.target===this)closeMo('scorecardMo')">
 <div class="mo" style="max-width:460px;max-height:85vh;overflow-y:auto">
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
@@ -1499,7 +1500,7 @@ st='<div class="wc pc-start"><div class="pc-start-t">Start tracking</div>'+
 L+=st;
 L+='<div class="wc"><div class="ct">Today</div><div style="display:flex;flex-direction:column;gap:8px">'+
 '<button class="btn '+(todayP?'b-gh':'b-ai')+'" onclick="perToday()">'+(todayP?'Period day logged - tap to undo':'Period started today')+'</button>'+
-'<button class="btn b-gh" onclick="perDay(\''+t+'\')">Log symptoms &amp; notes</button></div></div>';
+'<button class="btn b-gh" onclick="perDay(\''+t+'\')">Log symptoms &amp; notes</button><button class="btn b-gh" onclick="perRange()">Add a past period</button></div></div>';
 var lastTxt=c.last?nice(c.last):"-";
 L+='<div class="wc"><div class="ct">Your numbers</div>'+
 '<div class="pc-row"><span>Average cycle</span><b>'+c.cl+' days'+(c.auto?'':' (default)')+'</b></div>'+
@@ -1522,7 +1523,7 @@ var dl="";["Su","Mo","Tu","We","Th","Fr","Sa"].forEach(function(x){dl+='<div cla
 R+='<div class="wc"><div class="cal-h"><button class="cal-n" onclick="perNav(-1)">&lsaquo;</button><div class="cal-m">'+MN[pM]+' '+pY+'</div><button class="cal-n" onclick="perNav(1)">&rsaquo;</button></div>'+
 '<div class="cal-g">'+dl+'</div><div class="cal-g">'+cells+'</div>'+
 '<div class="pc-leg"><span><i style="background:var(--ai)"></i>Period</span><span><i style="border:1.5px dashed var(--ai)"></i>Expected</span><span><i style="background:color-mix(in srgb,var(--up) 40%,transparent)"></i>Fertile</span><span><i style="box-shadow:inset 0 0 0 2px var(--up)"></i>Ovulation</span></div>'+
-'<div class="pc-info" style="margin-top:8px">Tap any day to log it.</div></div>';
+'<div class="pc-info" style="margin-top:8px">Tap any day, including past days, to add or fix a period. Use "Add a past period" to log several days at once.</div></div>';
 var hh="";c.g.slice(-6).reverse().forEach(function(x,idx,arr){var gi=c.g.length-1-idx,nxs=c.g[gi+1],cy=nxs?" - cycle "+diff(x.start,nxs.start)+" days":"";
 hh+='<div class="pc-row"><span>'+nice(x.start)+(x.len>1?' - '+nice(x.end):'')+'</span><b>'+x.len+(x.len===1?' day':' days')+cy+'</b></div>'});
 R+='<div class="wc"><div class="ct">History</div>'+(hh||'<div class="pc-info">Nothing logged yet.</div>')+'</div>'+
@@ -1552,6 +1553,20 @@ window.perTogP=function(){ed.p=!ed.p;if(!ed.p)ed.flow="";drawDay()};
 window.perFlow=function(f){ed.flow=ed.flow===f?"":f;drawDay()};
 window.perSym=function(i){var n=SYM[i],k=ed.sym.indexOf(n);if(k>-1)ed.sym.splice(k,1);else ed.sym.push(n);drawDay()};
 window.perNoteIn=function(v){ed.note=v};
+window.perRange=function(){var t=fmt(new Date()),b=document.getElementById("perRangeBox");if(!b)return;
+b.innerHTML='<div class="mot">Add a past period</div><div class="pc-info" style="font-size:13px;color:var(--m2);margin-bottom:12px">Forgot to log it? Pick the first and last day of the period and every day in between will be marked.</div>'+
+'<label style="display:block;font-size:11px;color:var(--m2)">First day<input class="inp" type="date" id="perRs" max="'+t+'" style="margin-top:4px;width:100%"></label>'+
+'<label style="display:block;font-size:11px;color:var(--m2);margin-top:10px">Last day<input class="inp" type="date" id="perRe" max="'+t+'" style="margin-top:4px;width:100%"></label>'+
+'<div id="perRerr" style="font-size:12px;color:var(--rd);min-height:18px;margin-top:8px"></div>'+
+'<div style="display:flex;gap:8px;margin-top:6px"><button class="btn b-gh" onclick="closeMo(\'perRangeMo\')">Cancel</button><button class="btn b-ai" style="flex:1" onclick="perRangeSave()">Save period</button></div>';
+openMo("perRangeMo")};
+window.perRangeSave=function(){var s=document.getElementById("perRs").value,e=document.getElementById("perRe").value||s,er=document.getElementById("perRerr"),t=fmt(new Date());
+if(!s){er.textContent="Choose the first day of the period.";return}
+if(e<s){er.textContent="The last day must be on or after the first day.";return}
+if(e>t){er.textContent="Future dates cannot be logged yet.";return}
+var n=diff(s,e)+1;if(n>14){er.textContent="That is more than 14 days. Please check the dates.";return}
+var o=get();for(var i=0;i<n;i++){var k=add(s,i),r=o.days[k]||{};r.p=true;o.days[k]=r}
+save(o);pY=parse(s).getFullYear();pM=parse(s).getMonth();closeMo("perRangeMo");render()};
 window.perSave=function(){var o=get(),r={};if(ed.p){r.p=true;if(ed.flow)r.flow=ed.flow}
 if(ed.sym.length)r.sym=ed.sym;if(ed.note.trim())r.note=ed.note.trim();
 if(Object.keys(r).length)o.days[ed.ds]=r;else delete o.days[ed.ds];save(o);closeMo("perDayMo");render()};

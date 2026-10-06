@@ -8,7 +8,7 @@ var IOS=/iP(hone|ad|od)/.test((self.navigator&&self.navigator.userAgent)||'');
 function db(){return new Promise(function(ok,no){var r=indexedDB.open(DB,1);r.onupgradeneeded=function(){r.result.createObjectStore('kv')};r.onsuccess=function(){ok(r.result)};r.onerror=function(){no(r.error)}})}
 function put(k,v){return db().then(function(d){return new Promise(function(ok){var t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=ok;t.onerror=ok})})}
 function get(k){return db().then(function(d){return new Promise(function(ok){var q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){ok(q.result)};q.onerror=function(){ok()}})})}
-function show(x){return self.registration.showNotification(x.title,{body:x.body||'',icon:'icon-192.png',badge:'icon-192.png',vibrate:[200,100,200],tag:x.tag||('m2028-bg-'+(x.k||x.title)),renotify:true,requireInteraction:true,data:{url:self.registration.scope}})}
+function show(x){return self.registration.showNotification(x.title,{body:x.body||'',icon:'icon-192.png',badge:'icon-192.png',vibrate:[200,100,200],tag:x.tag||('m2028-bg-'+(x.k||x.title)),renotify:true,requireInteraction:!/^(m2028-)?pom/.test(x.tag||x.k||''),data:{url:self.registration.scope}})}
 function fireDue(){return Promise.all([get('list'),get('fired')]).then(function(r){
   var L=r[0]||[],F=r[1]||{},now=Date.now(),jobs=[],keep={};
   L.forEach(function(x){if(F[x.k])keep[x.k]=1;if(x.ts<=now&&now-x.ts<216e5&&!F[x.k]){keep[x.k]=1;F[x.k]=1;jobs.push(show(x))}});

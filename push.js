@@ -4,7 +4,9 @@
 var API="https://lvzcctsqcpikisdzztot.supabase.co/functions/v1/smooth-api";
 var ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2emNjdHNxY3Bpa2lzZHp6dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4OTQsImV4cCI6MjA5NzI4NTg5NH0.Z1GejKEAkFuJmum-amd5zin8TFEIaeptroRtjFmojdw";
 var VAPID="BKXNMDQ70tAt4e-JvpUPI7C4pSd9r2rMdY__2aJqgNKDyiBiPv2SybsoNlgtftqPrNQLzjNLYP6XMBCtpXqOb2k";
-var last="",busy=0;
+var last="",busy=0,lastPom=null,pomFan=0;
+function uid(){try{return(typeof _user!=="undefined"&&_user&&_user.id)||null}catch(e){return null}}
+function isPom(x){return /^pom_/.test(x.k)}
 function key(s){var p="=".repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,"+").replace(/_/g,"/")),o=new Uint8Array(r.length);for(var i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o}
 function jobs(){var out=[],now=Date.now();
  try{(window.m2028ReminderItems?window.m2028ReminderItems():[]).forEach(function(x){
@@ -29,7 +31,16 @@ async function register(){
   var reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
   if(!sub){try{sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key(VAPID)})}
    catch(e){var o=await reg.pushManager.getSubscription();if(o)await o.unsubscribe();sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key(VAPID)})}}
-  var op=await opaque(jobs()),list=op.pub,sig=sub.endpoint+JSON.stringify(list)+JSON.stringify(op.map);if(sig===last)return;
+  var all=jobs(),pom=all.filter(isPom),u=uid();
+  /* Pomodoro phase ends are readable (no private text) and go to the server as ONE per-account list, so every device you are
+     signed in on gets the notification, even with the app closed. This needs the "pomo" action on the server and the server
+     must answer {pomo:true}; until then (or if it fails) they are sent as normal per-device jobs, exactly like tasks. */
+  if(u){var ps=u+"|"+sub.endpoint+"|"+JSON.stringify(pom.map(function(x){return[x.k,x.ts]}));
+   if(ps!==lastPom){try{var pr=await fetch(API,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",apikey:ANON,Authorization:"Bearer "+ANON},
+     body:JSON.stringify({action:"pomo",uid:u,subscription:sub.toJSON(),jobs:pom.map(function(x){return{k:x.k,ts:x.ts,title:x.title,body:x.body,tag:"m2028-pom"}})})});
+     var pj={};try{pj=await pr.json()}catch(e){}
+     pomFan=(pr.ok&&pj&&pj.pomo===true)?1:0;if(pomFan)lastPom=ps}catch(e){pomFan=0}}}
+  var op=await opaque(pomFan?all.filter(function(x){return!isPom(x)}):all),list=op.pub,sig=sub.endpoint+JSON.stringify(list)+JSON.stringify(op.map);if(sig===last)return;
   var sw=reg.active||navigator.serviceWorker.controller;if(sw)sw.postMessage({type:"m2028-push-map",map:op.map});
   var r=await fetch(API,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",apikey:ANON,Authorization:"Bearer "+ANON},
    body:JSON.stringify({action:"register",subscription:sub.toJSON(),jobs:list})});

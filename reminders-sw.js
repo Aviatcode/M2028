@@ -3,6 +3,8 @@
    - Periodic Background Sync / stored list stay as a backup. */
 (function(){
 var DB='m2028-reminders';
+/* iPhone/iPad revoke a push subscription if a push arrives and no notification is shown, so on iOS we always show one */
+var IOS=/iP(hone|ad|od)/.test((self.navigator&&self.navigator.userAgent)||'');
 function db(){return new Promise(function(ok,no){var r=indexedDB.open(DB,1);r.onupgradeneeded=function(){r.result.createObjectStore('kv')};r.onsuccess=function(){ok(r.result)};r.onerror=function(){no(r.error)}})}
 function put(k,v){return db().then(function(d){return new Promise(function(ok){var t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=ok;t.onerror=ok})})}
 function get(k){return db().then(function(d){return new Promise(function(ok){var q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){ok(q.result)};q.onerror=function(){ok()}})})}
@@ -11,7 +13,7 @@ function fireDue(){return Promise.all([get('list'),get('fired')]).then(function(
   var L=r[0]||[],F=r[1]||{},now=Date.now(),jobs=[],keep={};
   L.forEach(function(x){if(F[x.k])keep[x.k]=1;if(x.ts<=now&&now-x.ts<216e5&&!F[x.k]){keep[x.k]=1;F[x.k]=1;jobs.push(show(x))}});
   Object.keys(F).forEach(function(k){if(!keep[k])delete F[k]});
-  return Promise.all(jobs).then(function(){return put('fired',F)})})}
+  return Promise.all(jobs).then(function(){return put('fired',F)}).then(function(){return jobs.length})})}
 self.addEventListener('message',function(e){var d=e.data;if(d&&d.type==='m2028-reminders'&&Array.isArray(d.list))e.waitUntil(put('list',d.list));
   /* real text for the opaque jobs the push server holds; it never leaves this device */
   if(d&&d.type==='m2028-push-map'&&d.map)e.waitUntil(put('pmap',d.map))});
@@ -19,8 +21,8 @@ self.addEventListener('periodicsync',function(e){if(e.tag==='m2028-reminders')e.
 self.addEventListener('push',function(e){var d={};try{d=e.data?e.data.json():{}}catch(x){}
   e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){
     /* if the app is on screen it already shows its own alert, so don't double up */
-    if(cs.some(function(c){return c.visibilityState==='visible'}))return;
+    if(!IOS&&cs.some(function(c){return c.visibilityState==='visible'}))return;
     if(d&&d.k)return get('pmap').then(function(m){return show((m&&m[d.k])||d)});
-    return d&&d.title?show(d):fireDue()}))});
+    return d&&d.title?show(d):fireDue().then(function(n){if(!n&&IOS)return show({title:'\u23F0 M2028',body:'You have a reminder',tag:'m2028-push'})})}))});
 /* notification taps are handled by sw.js */
 })();

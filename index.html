@@ -140,6 +140,7 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 <div style="display:flex;align-items:center;gap:8px">
 <div class="sp" onclick="gotoTab('habits')"><span id="spEl">0</span></div>
 <button class="btn b-gh" style="padding:4px 10px;font-size:14px;border-radius:20px" onclick="toggleTheme()" id="themeBtn" title="Switch theme: Dark → Light → Pink">🌙</button>
+<button class="btn b-gh" id="reorderBtn" onclick="reorderOrCustomize()" style="padding:4px 10px;font-size:12px;border-radius:20px;white-space:nowrap">⚙️ Customize</button>
 <button class="btn b-gh" id="acctBtn" style="padding:4px 10px;font-size:12px;border-radius:20px" onclick="openMo('acctMo')" title="Account">👤</button>
 </div>
 </div>
@@ -159,7 +160,6 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 <div style="font-size:11px;color:var(--m2);margin-top:3px" id="dateEl"></div>
 </div>
 <div style="display:flex;gap:7px;align-items:center">
-<button class="btn b-gh sm" id="reorderBtn" onclick="reorderOrCustomize()" style="font-size:11px">⚙️ Customize</button>
 <button class="hero-streak" id="heroStreakBtn" onclick="openStreakMo()" title="See your streaks &amp; monthly scorecard"><span><span id="streakW">0</span> day streak</span><span class="hs-go">›</span></button>
 </div>
 </div>
@@ -2695,5 +2695,35 @@ tick();
 if(window.__M2028_TEST__)window.__encTest={doSetup:doSetup,doUnlock:doUnlock,doReset:doReset,st:st,flush:flush,sync:sync,merge:merge,markDirty:markDirty};
 })();
 </script>
+<style id="m2028-layout">
+/* Customize button lives in the top bar; only relevant on the Home view */
+body:not(:has(#v-dash.on)) #reorderBtn{display:none!important}
+@media (max-width:480px){#reorderBtn{padding:4px 8px!important;font-size:11px!important}}
+
+/* Laptop: 3 widgets side by side + vertical week calendar on the right */
+@media (min-width:1024px){
+  #v-dash.on #dashWidgets{grid-template-columns:repeat(3,minmax(0,1fr)) 170px;column-gap:16px;row-gap:0}
+  #v-dash.on #dashWidgets>.dash-w{margin-bottom:16px}
+  #v-dash.on #dashWidgets>.dash-w-full{grid-column:1/4}
+  #v-dash.on #dashWidgets>#dw-cal{grid-column:4;grid-row:1/span 30;align-self:start;position:sticky;top:116px}
+  /* calendar hidden -> use the full width for the 3 columns */
+  #v-dash.on #dashWidgets:has(#dw-cal[style*="none"]){grid-template-columns:repeat(3,minmax(0,1fr))}
+  #v-dash.on #dashWidgets:has(#dw-cal[style*="none"])>.dash-w-full{grid-column:1/-1}
+
+  /* vertical week */
+  #dw-cal .wc>div:nth-child(3){display:none}
+  #dw-cal #wCalStrip{grid-template-columns:1fr!important;gap:6px!important}
+  #dw-cal #wCalStrip>div{height:42px!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;padding:0 12px!important;gap:10px;font-size:14px!important}
+  #dw-cal #wCalStrip>div::before{width:30px;font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;opacity:.65}
+  #dw-cal #wCalStrip>div>div{width:7px!important;height:7px!important;right:12px;left:auto!important;top:50%!important;bottom:auto!important;transform:translateY(-50%)}
+  #dw-cal #wCalStrip>div:nth-child(1)::before{content:"Sun"}
+  #dw-cal #wCalStrip>div:nth-child(2)::before{content:"Mon"}
+  #dw-cal #wCalStrip>div:nth-child(3)::before{content:"Tue"}
+  #dw-cal #wCalStrip>div:nth-child(4)::before{content:"Wed"}
+  #dw-cal #wCalStrip>div:nth-child(5)::before{content:"Thu"}
+  #dw-cal #wCalStrip>div:nth-child(6)::before{content:"Fri"}
+  #dw-cal #wCalStrip>div:nth-child(7)::before{content:"Sat"}
+}
+</style>
 </body>
 </html>

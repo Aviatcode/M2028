@@ -2762,22 +2762,37 @@ html body:not(.x):not(.light):not(.pink) .hero::after{
   html body #v-dash.on #dashWidgets>.dash-w-full{width:100%}
 }
 @media (max-width:680px){
-  #dashWidgets>.dash-w{width:auto!important}
+  html body #v-dash.on #dashWidgets{display:flex!important;flex-wrap:wrap;gap:16px;align-items:flex-start;align-content:flex-start}
+  html body #v-dash.on #dashWidgets>.dash-w{flex:0 0 auto;width:100%;max-width:100%;min-width:0;margin:0!important}
+  html body #v-dash.on #dashWidgets>.dash-w[style*="display: none"],html body #v-dash.on #dashWidgets>.dash-w[style*="display:none"]{display:none!important}
 }
 /* inline width set by the resizer must win over the defaults above */
 html body #v-dash.on #dashWidgets>.dash-w.has-w{width:var(--ww)!important}
-@media (max-width:680px){html body #v-dash.on #dashWidgets>.dash-w.has-w{width:auto!important}}
 
 /* ===== Home streak card: no red, plain black ===== */
 html.redx body:not(.light):not(.pink) .hero{background-image:none!important;background-color:#050203!important}
 html.redx body:not(.light):not(.pink) .hero::after{
   background:radial-gradient(circle,rgba(255,255,255,.14) 1.2px,transparent 1.7px) 0 0/18px 18px!important}
+
+/* ===== use the whole screen on Home (laptop / tablet / phone) ===== */
+html body .mn:has(#v-dash.on){max-width:none!important;width:100%}
+@media (min-width:681px){html body .mn:has(#v-dash.on){padding-left:20px!important;padding-right:20px!important}}
+@media (min-width:1500px){html body #v-dash.on #dashWidgets>.dash-w:not(.dash-w-full):not(.has-w):not(#dw-cal):not(#dw-progress):not(#dw-plan){width:calc((100% - 48px)/4)}}
+#snapGuideV,#snapGuideH{position:fixed;z-index:998;pointer-events:none;background:var(--ai);opacity:0;transition:opacity .12s;box-shadow:0 0 8px var(--ai)}
+#snapGuideV{width:2px;top:0;bottom:0}#snapGuideH{height:2px;left:0;right:0}
+#snapGuideV.on,#snapGuideH.on{opacity:.9}
+
+/* ===== background: top-right is black, no red ===== */
+html::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 75% 65% at 100% 0%,#000 0%,rgba(0,0,0,.94) 30%,rgba(0,0,0,.6) 55%,transparent 80%)}
+html body.light:not(.pink)~*{}
+html:has(body.light)::after,html:has(body.pink)::after{display:none}
 </style>
 <script>
 /* ===== free resize (width + height) and 2D drag reorder for dashboard widgets ===== */
 (function(){
   var wrap=function(){return document.getElementById('dashWidgets')};
-  var isDesk=function(){return window.innerWidth>=681};
+  var isDesk=function(){return true};
   var FULL_DEFAULT=function(id){return id==='tasks'||id==='meds'||id.indexOf('cw:')===0};
 
   function boxes(){var c=getDashCfg();return c.widgetBox||{}}
@@ -2791,7 +2806,7 @@ html.redx body:not(.light):not(.pink) .hero::after{
       el.classList.remove('dash-w-sized','has-w');el.style.removeProperty('--ww');el.style.height='';
       el.classList.toggle('dash-w-full',!bx&&FULL_DEFAULT(id)&&el.classList.contains('dash-w-full')||(!bx&&FULL_DEFAULT(id)));
       if(!bx)return;
-      if(bx.w&&isDesk()){el.style.setProperty('--ww',Math.round(bx.w*cw)+'px');el.classList.add('has-w');if(bx.w>=.995)el.classList.add('dash-w-full')}
+      if(bx.w&&isDesk()){el.style.setProperty('--ww','calc('+bx.w+' * (100% + 16px) - 16px)');el.classList.add('has-w');if(bx.w>=.995)el.classList.add('dash-w-full')}
       if(bx.h){el.style.height=bx.h+'px';el.classList.add('dash-w-sized')}
     });
   }
@@ -2816,32 +2831,46 @@ html.redx body:not(.light):not(.pink) .hero::after{
     document.addEventListener('pointercancel',up,{once:true});
   };
   function mv(e){if(!R)return;R.ev=e;if(!R.raf)R.raf=requestAnimationFrame(frame)}
+  var gv=null,gh=null;
+  function guides(){if(!gv){gv=document.createElement('div');gv.id='snapGuideV';gh=document.createElement('div');gh.id='snapGuideH';document.body.appendChild(gv);document.body.appendChild(gh)}}
   function frame(){
-    if(!R)return;R.raf=0;var e=R.ev;if(!e)return;
+    if(!R)return;R.raf=0;var e=R.ev;if(!e)return;guides();
+    var wr=wrap().getBoundingClientRect(),er=R.el.getBoundingClientRect(),T=10;
+    var minW=window.innerWidth<681?100:120;
+    var w=Math.max(minW,Math.min(R.cw,R.w+(e.clientX-R.x)));
     var h=Math.max(110,Math.min(1600,R.h+(e.clientY-R.y)));
+    var left=er.left,top=er.top,sx=null,sy=null;
+    // edge detection: container edges + every other widget's edges
+    var xs=[wr.right,wr.left+R.cw/2],ys=[];
+    Array.prototype.forEach.call(wrap().querySelectorAll('.dash-w'),function(o){
+      if(o===R.el||o.offsetParent===null)return;var r=o.getBoundingClientRect();xs.push(r.right,r.left);ys.push(r.bottom);
+    });
+    var best=T+1;xs.forEach(function(x){var d=Math.abs(left+w-x);if(d<best){best=d;sx=x}});
+    if(sx!==null&&best<=T){w=sx-left}else sx=null;
+    if(left+w>wr.right)w=wr.right-left;
+    best=T+1;ys.forEach(function(y){var d=Math.abs(top+h-y);if(d<best){best=d;sy=y}});
+    if(sy!==null&&best<=T){h=sy-top}else sy=null;
+    w=Math.max(minW,w);
     R.el.style.height=h+'px';R.el.classList.add('dash-w-sized');
-    var txt=Math.round(h)+'px';
-    if(isDesk()){
-      var w=Math.max(150,Math.min(R.cw,R.w+(e.clientX-R.x)));
-      if(R.cw-w<14)w=R.cw;
-      R.el.style.setProperty('--ww',Math.round(w)+'px');R.el.classList.add('has-w');
-      R.el.classList.toggle('dash-w-full',w>=R.cw);
-      R.lw=w;txt=Math.round(w)+' × '+txt;
-    }
-    R.lh=h;
-    var t=tipEl();t.style.left=e.clientX+'px';t.style.top=e.clientY+'px';t.innerHTML=txt;
+    R.el.style.setProperty('--ww',Math.round(w)+'px');R.el.classList.add('has-w');
+    R.el.classList.toggle('dash-w-full',w>=R.cw-1);
+    gv.style.left=(sx===null?-9:sx)+'px';gv.classList.toggle('on',sx!==null);
+    gh.style.top=(sy===null?-9:sy)+'px';gh.classList.toggle('on',sy!==null);
+    R.lw=w;R.lh=h;
+    var t=tipEl();t.style.left=e.clientX+'px';t.style.top=e.clientY+'px';t.innerHTML=Math.round(w)+' × '+Math.round(h);
   }
   function up(){
     document.removeEventListener('pointermove',mv);
     document.body.style.userSelect='';
     if(tip)tip.classList.remove('on');
+    if(gv){gv.classList.remove('on');gh.classList.remove('on')}
     if(!R)return;
     if(R.raf){cancelAnimationFrame(R.raf);frame()}
     var el=R.el;el.classList.remove('resizing');
     var c=getDashCfg();c.widgetBox=c.widgetBox||{};
     var bx=c.widgetBox[el.dataset.wid]||{};
     if(R.lh)bx.h=Math.round(R.lh);
-    if(R.lw)bx.w=Math.min(1,+(R.lw/R.cw).toFixed(4));
+    if(R.lw)bx.w=Math.min(1,+((R.lw+16)/(R.cw+16)).toFixed(5));
     c.widgetBox[el.dataset.wid]=bx;S.s('dashCfg',c);R=null;
   }
   window._resetWidgetSize=function(e){

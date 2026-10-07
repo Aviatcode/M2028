@@ -33,10 +33,10 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 // it only shows what the page last told it to. If the browser suspends the
 // page for a long time the notification stops updating until the app reopens.
 
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
-const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'apple-touch-icon.png', 'push.js'];
+const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'apple-touch-icon.png', 'push.js', 'leaf-icons.css', 'pom-duo.webp'];
 const LIB_HOSTS = ['cdn.jsdelivr.net'];
 
 self.addEventListener('install', (event) => {
@@ -59,7 +59,7 @@ self.addEventListener('activate', (event) => {
     const names = await caches.keys();
     await Promise.all(names.filter((n) => n.startsWith('m2028') && !keep.includes(n)).map((n) => caches.delete(n)));
     if (self.registration.navigationPreload) {
-      try { await self.registration.navigationPreload.enable(); } catch (e) {}
+      try { await self.registration.navigationPreload.disable(); } catch (e) {}
     }
     await self.clients.claim();
   })());
@@ -69,8 +69,13 @@ self.addEventListener('activate', (event) => {
 async function staleWhileRevalidate(event, cacheName, cacheKey) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(cacheKey || event.request, { ignoreSearch: !!cacheKey });
+  const age = cached ? Date.now() - new Date(cached.headers.get('date') || 0).getTime() : Infinity;
   const refresh = (async () => {
     try {
+      if (cached) {
+        if (event.request.mode === 'navigate' && age < 3e5) return null; // opened again within 5 min: nothing to refresh
+        await new Promise((r) => setTimeout(r, 3000)); // let the app start before downloading anything in the background
+      }
       const preload = event.preloadResponse ? await event.preloadResponse : null;
       const res = preload || (await fetch(event.request));
       if (res && res.ok && (res.type === 'basic' || res.type === 'cors')) {

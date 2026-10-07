@@ -2702,13 +2702,13 @@ body:not(:has(#v-dash.on)) #reorderBtn{display:none!important}
 
 /* Laptop: 3 widgets side by side + vertical week calendar on the right */
 @media (min-width:1024px){
-  #v-dash.on #dashWidgets{grid-template-columns:repeat(3,minmax(0,1fr)) 170px;column-gap:16px;row-gap:0}
-  #v-dash.on #dashWidgets>.dash-w{margin-bottom:16px}
-  #v-dash.on #dashWidgets>.dash-w-full{grid-column:1/4}
-  #v-dash.on #dashWidgets>#dw-cal{grid-column:4;grid-row:1/span 30;align-self:start;position:sticky;top:116px}
-  /* calendar hidden -> use the full width for the 3 columns */
-  #v-dash.on #dashWidgets:has(#dw-cal[style*="none"]){grid-template-columns:repeat(3,minmax(0,1fr))}
-  #v-dash.on #dashWidgets:has(#dw-cal[style*="none"])>.dash-w-full{grid-column:1/-1}
+  /* masonry-style columns: widgets stack under each other, no empty holes */
+  #v-dash.on #dashWidgets{display:block;column-count:3;column-gap:16px;position:relative;padding-right:186px;min-height:470px}
+  #v-dash.on #dashWidgets:has(#dw-cal[style*="none"]){padding-right:0;min-height:0}
+  #v-dash.on #dashWidgets>.dash-w{display:block;width:100%;box-sizing:border-box;break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:16px}
+  #v-dash.on #dashWidgets>.dash-w-full{column-span:all}
+  /* week calendar pinned as a vertical strip on the right */
+  #v-dash.on #dashWidgets>#dw-cal{position:absolute;top:0;right:0;width:170px;column-span:none;margin-bottom:0}
 
   /* vertical week */
   #dw-cal .wc>div:nth-child(3){display:none}

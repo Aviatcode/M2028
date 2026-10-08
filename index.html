@@ -3752,6 +3752,12 @@ html body #v-upsc #upscSubs>div.fl-sized [id^=sub_] .bi{height:100%;margin-botto
 /* AI: My Projects list grows with its card */
 html body #v-ai>.card.fl-sized{display:flex;flex-direction:column;box-sizing:border-box}
 html body #v-ai>.card.fl-sized>#myProjList{flex:1 1 auto}
+/* Countdown widget: the ring is always a true circle and scales with its card (it used to be squashed by flex-shrink) */
+html body .wc-cd .cdwrap{flex:0 0 auto;aspect-ratio:1/1;height:auto;width:var(--cdw,148px);max-width:100%;min-width:0}
+html body .cv-item.dash-w>.wc.wc-cd{container-type:size;--cdw:clamp(72px,min(100cqw - 32px,100cqh - 68px),320px)}
+html body .wc-cd .cdin b{font-size:calc(var(--cdw,148px)*.3)}
+html body .wc-cd .cdin span{font-size:max(9px,calc(var(--cdw,148px)*.075));text-align:center;white-space:nowrap;line-height:1.1}
+html body .wc-cd .cdring{--t:calc(var(--cdw,148px)*.09);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - var(--t) - 1px),#000 calc(100% - var(--t)));mask:radial-gradient(farthest-side,transparent calc(100% - var(--t) - 1px),#000 calc(100% - var(--t)))}
 </style>
 <script id="m2028-canvas-js">
 (function(){

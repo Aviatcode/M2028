@@ -33,7 +33,7 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 // it only shows what the page last told it to. If the browser suspends the
 // page for a long time the notification stops updating until the app reopens.
 
-const VERSION = 'v8';
+const VERSION = 'v9';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
 const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'apple-touch-icon.png', 'push.js', 'leaf-icons.css', 'pom-duo.webp'];
@@ -73,13 +73,19 @@ async function staleWhileRevalidate(event, cacheName, cacheKey) {
   const refresh = (async () => {
     try {
       if (cached) {
-        if (event.request.mode === 'navigate' && age < 3e5) return null; // opened again within 5 min: nothing to refresh
+        if (event.request.mode === 'navigate' && age < 3e4) return null; // opened again within 30 s: nothing to refresh
         await new Promise((r) => setTimeout(r, 3000)); // let the app start before downloading anything in the background
       }
       const preload = event.preloadResponse ? await event.preloadResponse : null;
-      const res = preload || (await fetch(event.request));
+      const same = new URL(event.request.url).origin === self.location.origin;
+      const req = event.request.mode === 'navigate' ? new Request(cacheKey || 'index.html', { cache: 'no-cache' })
+        : same ? new Request(event.request, { cache: 'no-cache' }) : event.request; // no-cache = always revalidate (cheap 304), never trust the 10-min HTTP cache
+      const res = preload || (await fetch(req));
       if (res && res.ok && (res.type === 'basic' || res.type === 'cors')) {
+        const sig = (r) => (r.headers.get('etag') || '') + '|' + (r.headers.get('last-modified') || '') + '|' + (r.headers.get('content-length') || '');
+        const changed = cached && event.request.mode === 'navigate' && sig(res) !== sig(cached);
         await cache.put(cacheKey || event.request, res.clone());
+        if (changed) (await self.clients.matchAll({ type: 'window' })).forEach((c) => c.postMessage({ type: 'M2028_UPDATED' }));
       }
       return res;
     } catch (e) {

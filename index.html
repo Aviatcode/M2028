@@ -3640,6 +3640,14 @@ html body .vw>.cv-guide-h{position:absolute!important;flex:none!important;height
 body.cv-edit #cvBar{display:flex}
 #cvBar .cv-t{font-size:12.5px;font-weight:700;color:var(--tx);margin-right:4px;white-space:nowrap}
 #cvBar .btn{white-space:nowrap}
+/* FIX: some canvas items are plain wrappers (e.g. #schedPanel-calendar > div > .card). The edit box is sized to the wrapper,
+   so the visible card must stretch to fill it, otherwise box and widget differ in size. */
+html body .cv-canvas .cv-item:not(.card):not(.wc):not(.ssr):not(.dash-w):not([style*="display:none"]):not([style*="display: none"]):has(>.card),
+html body .cv-canvas .cv-item:not(.card):not(.wc):not(.ssr):not(.dash-w):not([style*="display:none"]):not([style*="display: none"]):has(>div:not(.flr-wrap):not([data-cv-ui])>.card){display:flex!important;flex-direction:column}
+html body .cv-canvas .cv-item:not(.card):not(.wc):not(.ssr):not(.dash-w):not([style*="display:none"]):not([style*="display: none"])>.card,
+html body .cv-canvas .cv-item:not(.card):not(.wc):not(.ssr):not(.dash-w):not([style*="display:none"]):not([style*="display: none"])>div:not(.flr-wrap):not([data-cv-ui]):has(>.card){flex:1 1 auto;min-height:0;margin:0!important;overflow-x:hidden;overflow-y:auto;box-sizing:border-box}
+html body .cv-canvas .cv-item:not(.card):not(.wc):not(.ssr):not(.dash-w):not([style*="display:none"]):not([style*="display: none"])>div:not(.flr-wrap):not([data-cv-ui]):has(>.card){display:flex;flex-direction:column}
+html body .cv-canvas .cv-item:not(.card):not(.wc):not(.ssr):not(.dash-w):not([style*="display:none"]):not([style*="display: none"])>div:not(.flr-wrap):not([data-cv-ui])>.card{flex:1 1 auto;min-height:0;margin:0!important;overflow-x:hidden;overflow-y:auto;box-sizing:border-box}
 @media (max-width:680px){#cvBar{display:none!important}}
 </style>
 <script id="m2028-canvas-js">

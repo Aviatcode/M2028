@@ -3905,7 +3905,10 @@ function apply(v){
   if(editing===v&&!drag)buildBoxes(v);
 }
 function sch(v){
-  if(!v)return;cancelAnimationFrame(schT[v]);
+  if(!v)return;
+  /* apply right away (before the browser paints) so widgets never show one frame in the old flow layout, then re-apply next frame once fonts/content settle */
+  if(!editing&&!drag){try{apply(v)}catch(e){console.warn('canvas',e)}}
+  cancelAnimationFrame(schT[v]);
   schT[v]=requestAnimationFrame(function(){try{apply(v)}catch(e){console.warn('canvas',e)}});
 }
 function schAll(){VIEWS.forEach(function(v){var rt=root(v);if(rt&&(rt.classList.contains('on')||rt.classList.contains('cv-canvas')))sch(v)})}

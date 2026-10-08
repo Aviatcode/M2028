@@ -3253,13 +3253,12 @@ html body:not(:has(#v-dash.on)):not(:has(#v-wall.on)) #reorderBtn{display:inline
 <style id="m2028-stickers-css">
 #stickerBtn{display:none}
 body.pink #stickerBtn{display:block}
-body.pink.no-stickers #pomDuo{display:none!important}
-body.pink.no-stickers .mo::before,body.pink.no-stickers .mo::after{content:none!important;display:none!important}
-body.pink.no-stickers #pinkFloat,body.pink.no-stickers #pinkCursor,body.pink.no-stickers .sparkle-dot{display:none!important}
+body.no-stickers #stkLayer{display:none!important}
 </style>
 <script id="m2028-stickers">
 (function(){
-  function on(){return S.go("stickers",true)!==false}
+  function on(){return true}  /* emoji stickers, leaves and sparkles are never switched off */
+  function bgOn(){return S.go("stickers",true)!==false}  /* the switch only controls the background sticker collage */
   var SVG_HOME=null;
   /* effects: stickers replacing emojis, falling leaves, cursor sparkles */
   var sp=window.startPinkEffects;
@@ -3281,18 +3280,17 @@ body.pink.no-stickers #pinkFloat,body.pink.no-stickers #pinkCursor,body.pink.no-
     if(e==="pink"&&!on()){var n=document.getElementById("themeBtn");if(n){n.textContent="\uD83C\uDF38";return}}
     return st.apply(this,arguments)};
 
-  function label(){var b=document.getElementById("stickerBtn");if(b)b.textContent="\uD83C\uDF38 Stickers: "+(on()?"On":"Off")}
+  function label(){var b=document.getElementById("stickerBtn");if(b)b.textContent="Background stickers: "+(bgOn()?"On":"Off")}
   function apply(){
-    document.body.classList.toggle("no-stickers",!on());
+    document.body.classList.toggle("no-stickers",!bgOn());
     var pink=document.body.classList.contains("pink");
-    if(pink){try{stopPinkEffects()}catch(e){}if(on()){try{startPinkEffects()}catch(e){}}}
     try{renderNavAll()}catch(e){}
     try{setThemeBtnIcon(pink?"pink":S.go("theme","dark"),THEME_ICON)}catch(e){}
     label();
   }
-  window.toggleStickers=function(){S.s("stickers",!on());apply();banner(on()?"Stickers on":"Stickers off")};
+  window.toggleStickers=function(){S.s("stickers",!bgOn());apply();banner(bgOn()?"Background stickers on":"Background stickers off")};
   var pt=window.paintTheme;
-  window.paintTheme=function(){var r=pt.apply(this,arguments);document.body.classList.toggle("no-stickers",!on());label();return r};
+  window.paintTheme=function(){var r=pt.apply(this,arguments);document.body.classList.toggle("no-stickers",!bgOn());label();return r};
   setTimeout(apply,400);
 })();
 </script>

@@ -2902,7 +2902,7 @@ html:has(body.light)::after,html:has(body.pink)::after{display:none}
     if(tip)tip.classList.remove('on');
     if(gv){gv.classList.remove('on');gh.classList.remove('on')}
     if(!R)return;
-    if(R.raf){cancelAnimationFrame(R.raf);frame()}
+    if(R.raf){cancelAnimationFrame(R.raf);frame();if(gv){gv.classList.remove('on');gh.classList.remove('on')}}
     var el=R.el;el.classList.remove('resizing');
     var c=getDashCfg(),BKK=BK();c[BKK]=c[BKK]||{};
     var bx=c[BKK][el.dataset.wid]||{};
@@ -3176,7 +3176,7 @@ html body:not(:has(#v-dash.on)):not(:has(#v-wall.on)) #reorderBtn{display:inline
   function up(){
     document.removeEventListener('pointermove',mv);document.body.style.userSelect='';
     if(tip)tip.classList.remove('on');if(gv){gv.classList.remove('on');gh.classList.remove('on')}
-    if(!R)return;if(R.raf){cancelAnimationFrame(R.raf);frame()}
+    if(!R)return;if(R.raf){cancelAnimationFrame(R.raf);frame();if(gv){gv.classList.remove('on');gh.classList.remove('on')}}
     R.el.classList.remove('resizing');
     var all=store();all[R.name]=all[R.name]||{};
     var k=R.el.dataset.flk,b=all[R.name][k]||{};
@@ -4325,6 +4325,15 @@ if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){sch
 window.addEventListener('load',function(){schedAll(50);setTimeout(function(){sched(null)},900);setTimeout(function(){sched(null)},2200)});
 setTimeout(function(){sched(null)},400);
 window.__fit={refit:sched,all:function(){sched(null)}};
+})();
+</script>
+<script id="m2028-guide-fix">
+/* Safety net: the blue snap lines (#snapGuideV / #snapGuideH) are position:fixed, so if one is left switched on it
+   stays across the whole screen. Always switch them off shortly after a finger/mouse is released and when Done is tapped. */
+(function(){
+  function off(){document.querySelectorAll('#snapGuideV,#snapGuideH').forEach(function(g){g.classList.remove('on')})}
+  ['pointerup','pointercancel','touchend','touchcancel'].forEach(function(t){document.addEventListener(t,function(){setTimeout(off,80)},true)});
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('#reorderBtn,[data-a="done"]');if(b)off()},true);
 })();
 </script>
 </body>

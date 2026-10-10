@@ -4232,7 +4232,7 @@ html body .dash-w.dash-w-sized>.wc,html body .fl-panel.fl-sized,html body .cv-it
 <script id="m2028-fit-js">
 (function(){
 'use strict';
-var MIN=.55,MAX=1.45,LMAX=1.2;
+var MIN=1,MAX=1,LMAX=1; /* text size is now the same in every widget: no auto-zoom */
 var seen=new WeakSet(),last=new WeakMap(),ro=null;
 function isUI(c){return c.hasAttribute('data-cv-ui')||c.classList.contains('flr-wrap')||c.classList.contains('dragHandle')||c.classList.contains('resizeHandle')||/^(SCRIPT|STYLE|AUDIO|TEMPLATE|LINK)$/.test(c.tagName)}
 function kids(e){var o=[],i,c;for(i=0;i<e.children.length;i++){c=e.children[i];if(isUI(c))continue;if(getComputedStyle(c).display==='none')continue;o.push(c)}return o}
@@ -4336,5 +4336,16 @@ window.__fit={refit:sched,all:function(){sched(null)}};
   document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('#reorderBtn,[data-a="done"]');if(b)off()},true);
 })();
 </script>
+<style id="m2028-text-consistency">
+/* One text size everywhere: resized widgets never zoom their content (it scrolls instead), and tiny text gets a readable floor */
+html body .fz-root>*{zoom:1!important}
+html body :is(.dash-w,.cv-item,.fl-panel) [style*="font-size:9px"],
+html body :is(.dash-w,.cv-item,.fl-panel) [style*="font-size:10px"],
+html body :is(.dash-w,.cv-item,.fl-panel) [style*="font-size:11px"],
+html body :is(.dash-w,.cv-item,.fl-panel) [style*="font-size: 11px"]{font-size:12px!important}
+html body :is(.dash-w,.cv-item,.fl-panel) :is(.ct,.clhead .t){font-size:15px!important}
+html body :is(.dash-w,.cv-item,.fl-panel) :is(.rtext,.hr,.chip,.mw-dn span){font-size:14px}
+html body :is(.dash-w,.cv-item,.fl-panel) :is(.tag,.rck+*,.chip){font-size:12px}
+</style>
 </body>
 </html>

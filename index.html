@@ -498,13 +498,27 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 <div style="font-size:13px;color:var(--m2);margin-bottom:12px">What habit would you like to add?</div>
 <input type="text" id="newHabName" class="inp" placeholder="e.g. Drink coffee" style="margin-bottom:6px" onkeydown="if(event.key==='Enter')showHabStep('days')">
 <div style="font-size:11px;color:var(--mt);margin-bottom:16px">Keep it short and clear, e.g. Drink coffee</div>
+<div id="habTimeOld" style="display:none" aria-hidden="true">
 <div style="font-size:13px;color:var(--m2);margin-bottom:6px">⏰ Reminder time <span style="font-size:11px;color:var(--mt)">(optional)</span></div>
 <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
 <input type="time" id="newHabTime" class="inp" style="flex:1">
 <button type="button" class="btn b-gh sm" onclick="document.getElementById('newHabTime').value=''">Clear</button>
 </div>
 <div style="font-size:11px;color:var(--mt);margin-bottom:16px">You'll get a notification at this time on your days, on every signed-in device, unless the habit is already ticked.</div>
+</div>
 <button class="btn b-ai" style="width:100%" onclick="showHabStep('days')">Next →</button>
+</div>
+<div id="hab-step-time" style="display:none">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+<div class="mot" style="margin-bottom:0">⏰ Reminder time</div>
+</div>
+<div style="font-size:13px;color:var(--m2);margin-bottom:6px" id="habTimePrompt"></div>
+<div style="font-size:11px;color:var(--mt);margin-bottom:16px">Pick a time and you'll get a notification then, on your habit's days, on every signed-in device (unless it's already ticked). You can skip this.</div>
+<input type="time" id="habAskTime" class="inp" style="width:100%;margin-bottom:14px">
+<div style="display:flex;gap:8px">
+<button type="button" class="btn b-gh" style="flex:1" onclick="habTimeSkip()">Skip</button>
+<button type="button" class="btn b-ai" style="flex:2" onclick="habTimeSet()">Set reminder</button>
+</div>
 </div>
 <div id="hab-step-days" style="display:none">
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
@@ -2817,7 +2831,8 @@ html:has(body.light)::after,html:has(body.pink)::after{display:none}
   var isDesk=function(){return true};
   var FULL_DEFAULT=function(id){return id==='tasks'||id==='meds'||id.indexOf('cw:')===0};
 
-  function boxes(){var c=getDashCfg();return c.widgetBox||{}}
+  function BK(){return window.innerWidth<681?'widgetBoxP':'widgetBox'}
+  function boxes(){var c=getDashCfg();return c[BK()]||{}}
   function applyBoxes(){
     var w=wrap();if(!w)return;
     var b=boxes(),cw=w.clientWidth||1;
@@ -2889,16 +2904,16 @@ html:has(body.light)::after,html:has(body.pink)::after{display:none}
     if(!R)return;
     if(R.raf){cancelAnimationFrame(R.raf);frame()}
     var el=R.el;el.classList.remove('resizing');
-    var c=getDashCfg();c.widgetBox=c.widgetBox||{};
-    var bx=c.widgetBox[el.dataset.wid]||{};
+    var c=getDashCfg(),BKK=BK();c[BKK]=c[BKK]||{};
+    var bx=c[BKK][el.dataset.wid]||{};
     if(R.lh)bx.h=Math.round(R.lh);
     if(R.lw)bx.w=Math.min(1,+((R.lw+16)/(R.cw+16)).toFixed(5));
-    c.widgetBox[el.dataset.wid]=bx;S.s('dashCfg',c);R=null;
+    c[BKK][el.dataset.wid]=bx;S.s('dashCfg',c);R=null;
   }
   window._resetWidgetSize=function(e){
     e.preventDefault();e.stopPropagation();
     var el=e.currentTarget.closest('.dash-w');if(!el)return;
-    var c=getDashCfg();if(c.widgetBox)delete c.widgetBox[el.dataset.wid];S.s('dashCfg',c);
+    var c=getDashCfg(),BKK=BK();if(c[BKK])delete c[BKK][el.dataset.wid];S.s('dashCfg',c);
     applyBoxes();banner('Reset to default size');
   };
 
@@ -3236,6 +3251,37 @@ html body:not(:has(#v-dash.on)):not(:has(#v-wall.on)) #reorderBtn{display:inline
   if(typeof base==="function")window.m2028ReminderItems=function(){var o=base();try{o=o.concat(habItems())}catch(e){}
     o.sort(function(a,b){return a.ts-b.ts});return o.slice(0,150)};
   window.m2028HabitItems=habItems;
+
+  /* ----- ask for the reminder time ONCE, right after a new habit is added (skippable) ----- */
+  var askId=null;
+  function stepEl(){return document.getElementById("hab-step-time")}
+  var sh2=window.showHabStep;
+  window.showHabStep=function(step){var el=stepEl();if(el)el.style.display="none";return sh2.apply(this,arguments)};
+  var sn2=window.saveNewHabit;
+  window.saveNewHabit=function(){
+    var isNew=_habEditIdx===null,n0=getHabs().length,r=sn2.apply(this,arguments);
+    try{
+      var hs=getHabs();
+      if(isNew&&hs.length>n0){
+        var h=hs[hs.length-1];askId=h.id;
+        ["list","add","days"].forEach(function(k){var e=document.getElementById("hab-step-"+k);if(e)e.style.display="none"});
+        var el=stepEl(),pr=document.getElementById("habTimePrompt"),inp=document.getElementById("habAskTime");
+        if(pr)pr.textContent='When should I remind you about "'+String(h.label||"")+'"?';
+        if(inp)inp.value="";
+        if(el)el.style.display="block";
+        if(inp)setTimeout(function(){try{inp.focus()}catch(e){}},50);
+      }
+    }catch(e){console.warn("habit time step",e)}
+    return r};
+  window.habTimeSkip=function(){askId=null;showHabStep("list")};
+  window.habTimeSet=function(){
+    var inp=document.getElementById("habAskTime"),t=inp&&inp.value||"";
+    if(!t){banner("Pick a time, or tap Skip.");return}
+    var hs=getHabs(),h=hs.filter(function(x){return x.id===askId})[0];
+    if(h){h.time=t;S.s("habs",hs);rerender();
+      if("Notification" in window&&Notification.permission==="default"){try{reqNotif()}catch(e){}}
+      resync();banner("Reminder set for "+fmt(t))}
+    askId=null;showHabStep("list")};
 
   /* ----- in-app nudge while the app is open (system notification comes from the push path) ----- */
   var seen={};
@@ -4106,17 +4152,14 @@ window.__cv={enter:enterEdit,exit:exitEdit,fill:fill};
 })();
 </script>
 <style id="m2028-phone-pagescroll">
-/* PHONE: widgets never scroll on their own - swiping anywhere scrolls the whole tab */
+/* PHONE: widgets you have not resized flow naturally (swiping anywhere scrolls the page).
+   Widgets you HAVE resized keep the width and height you gave them; their content scales to fit (see m2028-fit). */
 @media (max-width:680px){
-  html body .dash-w,
-  html body .dash-w.dash-w-sized,
-  html body #dw-habits.dash-w-sized,
-  html body #dw-tasks.dash-w-sized,
-  html body #dw-meds.dash-w-sized,
-  html body .dash-w.dash-w-sized[data-cwtype="checklist"]{height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important}
-  html body .dash-w.dash-w-sized>.wc,
-  html body .dash-w>.wc{height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important}
-  html body #tskList,html body #pomLog{max-height:none!important;overflow:visible!important}
+  html body .dash-w:not(.dash-w-sized){height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important}
+  html body .dash-w:not(.dash-w-sized)>.wc{height:auto!important;max-height:none!important;overflow:visible!important;overscroll-behavior:auto!important}
+  html body .dash-w.dash-w-sized{overflow:hidden!important}
+  html body .dash-w.dash-w-sized>.wc{height:100%!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior-y:auto!important}
+  html body .dash-w:not(.dash-w-sized) #tskList,html body .dash-w:not(.dash-w-sized) #pomLog,html body #pomLog{max-height:none!important;overflow:visible!important}
 }
 </style>
 <style id="m2028-fast">
@@ -4161,6 +4204,127 @@ html:not(.m-ready) .dash-w,html:not(.m-ready) .dash-w *{transition:none!importan
   setTimeout(function(){document.documentElement.classList.add('m-ready')},4000);
   function showUpd(){if(document.getElementById('m2028upd'))return;var b=document.createElement('button');b.id='m2028upd';b.textContent='New version ready - tap to refresh';b.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:99999;padding:10px 16px;border-radius:12px;border:none;background:var(--ai,#4fd8a0);color:#000;font:600 13px system-ui;box-shadow:0 6px 24px rgba(0,0,0,.35);cursor:pointer';b.onclick=function(){location.reload()};document.body.appendChild(b)}
   if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',function(e){if(e.data&&e.data.type==='M2028_UPDATED')showUpd()});
+})();
+</script>
+<style id="m2028-fit">
+/* ===== Resized widgets: everything inside scales with the widget (every tab, theme, device, orientation) =====
+   The script below finds, for each widget the user has sized, the largest scale at which its content still fits,
+   and publishes it as --fz. Children of the widget's scroll box are zoomed by that factor. */
+.fz-root>*:not(.flr-wrap):not(.dragHandle):not(.resizeHandle):not([data-cv-ui]){zoom:var(--fz,1)}
+/* rows inside a scaled widget may never be squashed below their own content (that hid overflow and made text overlap) */
+html body .fz-root :is(.sr,.pc-row,.hr,.bi,.ci2>*,#bodyMiles>*,#schedCard>.sr){flex-shrink:0!important;min-height:min-content}
+html body #schedCard>.sr,html body #bodyMiles>.hr{flex:1 0 auto!important}
+html body .fz-root #bodyMiles .hr{overflow:visible}
+/* NSDR card: its title follows the card width instead of the screen width, so it never runs over the play button */
+html body .ssr-stage{container-type:inline-size}
+html body .ssr-title{font-size:clamp(13px,7.2cqw,34px)!important;line-height:1.1;overflow-wrap:anywhere}
+/* touch screens: bigger grab handles so a thumb can hit them */
+@media (pointer:coarse){
+  .dash-w .dragHandle,.dash-w .resizeHandle,.flr,.fld{width:42px;height:42px;border-radius:14px}
+  .dash-w .resizeHandle{bottom:6px;right:6px}.dash-w .dragHandle{top:6px;right:6px}
+  .flr{top:6px;right:6px}.fld{top:6px;left:6px}
+}
+/* a widget being resized never lets the page scroll under the finger */
+.dash-w.resizing,.fl-panel.resizing,.dash-w.dragging,.fl-panel.fl-dragging{touch-action:none}
+/* resized widgets honour their size on every screen; only content that cannot be scaled any further scrolls inside */
+html body .dash-w.dash-w-sized>.wc,html body .fl-panel.fl-sized,html body .cv-item{overscroll-behavior-y:auto}
+</style>
+<script id="m2028-fit-js">
+(function(){
+'use strict';
+var MIN=.55,MAX=1.45,LMAX=1.2;
+var seen=new WeakSet(),last=new WeakMap(),ro=null;
+function isUI(c){return c.hasAttribute('data-cv-ui')||c.classList.contains('flr-wrap')||c.classList.contains('dragHandle')||c.classList.contains('resizeHandle')||/^(SCRIPT|STYLE|AUDIO|TEMPLATE|LINK)$/.test(c.tagName)}
+function kids(e){var o=[],i,c;for(i=0;i<e.children.length;i++){c=e.children[i];if(isUI(c))continue;if(getComputedStyle(c).display==='none')continue;o.push(c)}return o}
+function scroller(c){var ov=getComputedStyle(c).overflowY;return ov==='auto'||ov==='scroll'}
+/* the element whose children get scaled: the card inside a dashboard widget, or the panel itself;
+   plain wrappers that only hold one scrolling card are looked through */
+function rootOf(el){
+  var r=el;
+  if(el.classList.contains('dash-w')){var w=el.querySelector(':scope>.wc');if(w)r=w}
+  for(var i=0;i<3;i++){var k=kids(r);if(k.length!==1||!scroller(k[0]))break;r=k[0]}
+  return r;
+}
+function sized(el){
+  if(el.matches('.ph'))return false;
+  if(el.classList.contains('cv-item'))return true;
+  if(el.classList.contains('dash-w'))return el.classList.contains('dash-w-sized');
+  if(el.classList.contains('fl-panel'))return el.classList.contains('fl-sized');
+  return false;
+}
+function clear(r){if(r&&r.classList&&r.classList.contains('fz-root')){r.classList.remove('fz-root');r.style.removeProperty('--fz')}}
+function apply(r,z){if(!r.classList.contains('fz-root'))r.classList.add('fz-root');r.style.setProperty('--fz',z.toFixed(3))}
+/* boxes that fill themselves (flex children) hide overflow from the root, so check scrolling descendants too;
+   deliberately scrolling lists (those with a max-height) do not count */
+function scrollersOf(r){
+  var out=[r],all=r.querySelectorAll('*'),n=Math.min(all.length,600),i,e,cs;
+  for(i=0;i<n;i++){e=all[i];if(!e.firstElementChild)continue;cs=getComputedStyle(e);
+    if((cs.overflowY==='auto'||cs.overflowY==='scroll')&&cs.maxHeight==='none'&&e.clientHeight>0)out.push(e)}
+  return out;
+}
+function fits(list){
+  for(var i=0;i<list.length;i++){var s=list[i];if(s.scrollHeight>s.clientHeight+1||s.scrollWidth>s.clientWidth+1)return false}
+  return true;
+}
+function capOf(r){return r.querySelector('textarea,input.rtext,#tskList,#wHabits,#habList,[id^=clw-],#myProjList')?LMAX:MAX}
+function solve(r,list,mx){
+  apply(r,mx);if(fits(list))return mx;
+  apply(r,MIN);if(!fits(list))return MIN;
+  var lo=MIN,hi=mx,m,i;
+  for(i=0;i<7;i++){m=(lo+hi)/2;apply(r,m);if(fits(list))lo=m;else hi=m}
+  return lo;
+}
+function refit(el){
+  var root=rootOf(el),prev=last.get(el);
+  if(prev&&prev.root!==root)clear(prev.root);
+  if(!sized(el)||!el.offsetParent||root.clientHeight<16||root.clientWidth<60||!kids(root).length){clear(root);last.delete(el);return}
+  var list=scrollersOf(root),cap=capOf(root),z;
+  if(prev&&prev.root===root){
+    /* cheap stability test: still fits at the old scale, and does not fit a little bigger -> keep it */
+    apply(root,prev.z);
+    if(fits(list)&&(prev.z>=cap-.01||(apply(root,Math.min(cap,prev.z+.04)),!fits(list)))){apply(root,prev.z);return}
+  }
+  z=solve(root,list,cap);
+  if(z>1&&z<1.02){apply(root,1);if(fits(list))z=1}
+  apply(root,z);
+  last.set(el,{root:root,z:z});
+}
+function collect(){
+  var out=Array.prototype.slice.call(document.querySelectorAll('.vw.on .cv-item,.vw.on .fl-panel.fl-sized,.vw.on .dash-w.dash-w-sized'));
+  out.forEach(function(el){if(ro&&!seen.has(el)){seen.add(el);ro.observe(el)}});
+  return out;
+}
+var pend=new Set(),all=false,raf=0;
+function sched(el){if(el)pend.add(el);else all=true;if(!raf)raf=requestAnimationFrame(run)}
+function run(){
+  raf=0;
+  var list=all?collect():Array.prototype.slice.call(pend);all=false;pend.clear();
+  var keep=new Set();
+  list.forEach(function(el){try{refit(el);keep.add(rootOf(el))}catch(e){console.warn('fit',e)}});
+  if(list.length>1)Array.prototype.forEach.call(document.querySelectorAll('.fz-root'),function(r){if(!keep.has(r)&&!r.closest('.vw:not(.on)'))clear(r)});
+}
+var tAll=0;function schedAll(d){clearTimeout(tAll);tAll=setTimeout(function(){sched(null)},d==null?120:d)}
+if(window.ResizeObserver)ro=new ResizeObserver(function(es){es.forEach(function(e){sched(e.target)})});
+/* content changes (typing, ticking timers, re-rendered lists): refit only the widget that changed */
+new MutationObserver(function(ms){
+  ms.forEach(function(m){
+    var n=m.target.nodeType===1?m.target:m.target.parentElement;if(!n||!n.closest)return;
+    if(n.closest('[data-cv-ui],.fz-measure'))return;
+    var el=n.closest('.cv-item,.fl-panel,.dash-w');
+    if(!el){schedAll(250);return}
+    clearTimeout(el.__fzT);el.__fzT=setTimeout(function(){sched(el)},m.type==='characterData'?500:200);
+  });
+}).observe(document.body,{childList:true,subtree:true,characterData:true});
+window.addEventListener('resize',function(){schedAll(100)});
+window.addEventListener('orientationchange',function(){schedAll(300);setTimeout(function(){sched(null)},800)});
+if(window.visualViewport)window.visualViewport.addEventListener('resize',function(){schedAll(150)});
+new MutationObserver(function(){schedAll(150)}).observe(document.body,{attributes:true,attributeFilter:['class']});
+var sv=window.showV;
+if(typeof sv==='function')window.showV=function(){var r=sv.apply(this,arguments);schedAll(60);setTimeout(function(){sched(null)},400);return r};
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){schedAll(50)});
+window.addEventListener('load',function(){schedAll(50);setTimeout(function(){sched(null)},900);setTimeout(function(){sched(null)},2200)});
+setTimeout(function(){sched(null)},400);
+window.__fit={refit:sched,all:function(){sched(null)}};
 })();
 </script>
 </body>

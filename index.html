@@ -4380,7 +4380,7 @@ html body :is(.dash-w,.cv-item,.fl-panel) :is(.tag,.rck+*,.chip){font-size:12px}
   html body #v-pomo.on:not(.cv-canvas)>:not(.ph):not(.pomo-grid):not(.fl-panel){grid-column:1/-1;grid-row:auto;width:auto}
 }
 
-@media (min-width:681px) and (max-width:899px) and (orientation:portrait){
+@media (min-width:681px) and (max-width:1100px) and (orientation:portrait){
   html body.pink #v-pomo .pomo-left{--k:min(1cqw,4.2px)}
   html body #v-pomo.on:not(.cv-canvas){grid-template-rows:none}
   html body #v-pomo.on:not(.cv-canvas) .pomo-timer{grid-column:1/-1;grid-row:2;align-self:start}
@@ -4414,13 +4414,9 @@ html body.pink #v-pomo .pomo-snd select{font-size:clamp(10px,calc(4.4*var(--k)),
 @media (min-width:681px){
   html body:not(.pink) #v-pomo.cv-canvas .pomo-timer{container-type:size;--pr:clamp(120px,min(74cqw,calc(100cqh - 230px)),900px)}
 }
-/* ---- phone portrait: the clock card fills the screen (sticker becomes a soft backdrop) ---- */
+/* ---- phone portrait: girl theme keeps clock + sticker side by side in a full-width card; other themes' clock card fills the screen ---- */
 @media (max-width:680px) and (orientation:portrait){
-  html body #v-pomo .pomo-timer{min-height:max(480px,calc(100vh - 290px));min-height:max(480px,calc(100svh - 290px));justify-content:center}
-  html body.pink #v-pomo .pomo-timer{flex-direction:column;align-items:center;justify-content:center}
-  html body.pink #v-pomo .pomo-left{width:100%;--k:min(1cqw,3.6px);--pr:clamp(120px,calc(86*var(--k)),2000px)}
-  html body.pink #pomDuo{left:50%!important;right:auto!important;top:auto!important;bottom:0!important;transform:translateX(-50%);width:84%!important;max-width:340px!important;max-height:62%!important;opacity:.3;z-index:0;-webkit-mask-image:linear-gradient(transparent,#000 35%,#000 55%,transparent 98%);mask-image:linear-gradient(transparent,#000 35%,#000 55%,transparent 98%)}
-  html body:not(.pink) #v-pomo .pomo-timer{--pr:clamp(240px,calc(100vw - 72px),420px)}
+  html body:not(.pink) #v-pomo .pomo-timer{min-height:max(480px,calc(100vh - 290px));min-height:max(480px,calc(100svh - 290px));justify-content:center;--pr:clamp(240px,calc(100vw - 72px),420px)}
 }
 </style>
 </body>

@@ -255,6 +255,7 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 <div class="ph"><div class="ph-t">Pomodoro Timer</div><div class="ph-s">50 min focus · 10 min break (30 min every full round) · phone away</div></div>
 <div class="pomo-grid">
 <div class="card pomo-timer">
+<div class="pomo-left">
 <div id="pomLbl" data-mode="focus">FOCUS SESSION</div>
 <div class="pr" id="pomRing"><div class="pi"><div class="pm" id="pomM">50</div><div class="pse" id="pomS">:00</div></div></div>
 <div class="pom-txt pom-sess">Session <span id="pomSess">1</span> / <span id="pomTot">4</span></div>
@@ -274,6 +275,7 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 <option value="marimba">Marimba</option>
 <option value="pulse">Ping pulse</option>
 </select></label>
+</div>
 </div>
 <img id="pomDuo" alt="" width="520" height="530" decoding="async" draggable="false">
 </div>
@@ -3932,8 +3934,21 @@ function syncCustom(v){
     else{var typing=false;try{typing=_typing(el)}catch(e){}if(!typing)el.innerHTML=renderCWWidget(w)}
   });
 }
+/* Pomodoro keeps one saved layout for the girl theme and one for every other theme (older layouts were made in the girl theme) */
+function pomGroup(){return document.body&&document.body.classList.contains('pink')?'pink':'std'}
+function pomSwap(){
+  var g=pomGroup(),cur=LAY._pomoFor||'pink';
+  if(cur===g){LAY._pomoFor=g;return false}
+  var a=LAY.pomo,b=LAY._pomoAlt;
+  if(b)LAY.pomo=b;else delete LAY.pomo;
+  if(a)LAY._pomoAlt=a;else delete LAY._pomoAlt;
+  LAY._pomoFor=g;
+  if(a||b)saveLay();
+  return true;
+}
 function apply(v){
   var rt=root(v);if(!rt)return;
+  if(v==='pomo'&&!editing&&!drag)pomSwap();
   syncCustom(v);
   if(!MQ()||!(hasLay(v)||editing===v)){release(v);return}
   if(!rt.classList.contains('on')||rt.clientWidth<50)return;
@@ -4132,6 +4147,7 @@ hook('_flushRefresh',function(o,a){var r=o.apply(this,a);
 
 function boot(){
   loadLay();ensureBar();
+  new MutationObserver(function(){if(!editing&&!drag&&pomSwap())sch('pomo')}).observe(document.body,{attributes:true,attributeFilter:['class']});
   mo=new MutationObserver(function(ms){
     var vs={};ms.forEach(function(m){
       var all=Array.prototype.slice.call(m.addedNodes).concat(Array.prototype.slice.call(m.removedNodes));
@@ -4346,6 +4362,49 @@ html body :is(.dash-w,.cv-item,.fl-panel) [style*="font-size: 11px"]{font-size:1
 html body :is(.dash-w,.cv-item,.fl-panel) :is(.ct,.clhead .t){font-size:15px!important}
 html body :is(.dash-w,.cv-item,.fl-panel) :is(.rtext,.hr,.chip,.mw-dn span){font-size:14px}
 html body :is(.dash-w,.cv-item,.fl-panel) :is(.tag,.rck+*,.chip){font-size:12px}
+</style>
+<style id="m2028-pomo-theme">
+/* ===== Pomodoro tab: every theme gets its own tidy layout; the girl-theme sticker never squeezes the clock ===== */
+#v-pomo .pomo-left{display:contents}
+
+/* ---- default (no saved layout) on laptop/tablet: clock on the left, the other widgets stacked on the right, no holes ---- */
+@media (min-width:681px){
+  html body #v-pomo.on:not(.cv-canvas){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto auto auto auto minmax(0,1fr);gap:calc(14px*var(--s,1)) 16px;align-items:start;align-content:start}
+  html body #v-pomo.on:not(.cv-canvas)>.ph{grid-column:1/-1;grid-row:1;width:auto}
+  html body #v-pomo.on:not(.cv-canvas) .fl-panel:not(.has-w){width:auto}
+  html body #v-pomo.on:not(.cv-canvas) .pomo-timer{grid-column:1;grid-row:2/7;align-self:stretch}
+  html body #v-pomo.on:not(.cv-canvas) .pom-study{grid-column:2;grid-row:2}
+  html body #v-pomo.on:not(.cv-canvas) .ssr{grid-column:2;grid-row:3}
+  html body #v-pomo.on:not(.cv-canvas) #pomSubCard{grid-column:2;grid-row:4}
+  html body #v-pomo.on:not(.cv-canvas) .pom-logc{grid-column:2;grid-row:5}
+  html body #v-pomo.on:not(.cv-canvas)>:not(.ph):not(.pomo-grid):not(.fl-panel){grid-column:1/-1;grid-row:auto;width:auto}
+}
+
+@media (min-width:681px) and (max-width:899px){
+  html body #v-pomo.on:not(.cv-canvas){grid-template-rows:none}
+  html body #v-pomo.on:not(.cv-canvas) .pomo-timer{grid-column:1/-1;grid-row:2;align-self:start}
+  html body #v-pomo.on:not(.cv-canvas) .pom-study{grid-column:1;grid-row:3}
+  html body #v-pomo.on:not(.cv-canvas) #pomSubCard{grid-column:2;grid-row:3}
+  html body #v-pomo.on:not(.cv-canvas) .ssr{grid-column:1/-1;grid-row:4}
+  html body #v-pomo.on:not(.cv-canvas) .pom-logc{grid-column:1/-1;grid-row:5}
+}
+/* ---- girl theme: clock column + sticker are sized from the card itself, so they fit at any width ---- */
+html body.pink #v-pomo .pomo-timer{container-type:normal;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;position:relative;overflow:hidden;padding-left:12px;padding-right:12px;padding-top:clamp(12px,calc(14px*var(--s,1)),22px);padding-bottom:clamp(12px,calc(14px*var(--s,1)),22px)}
+html body.pink #v-pomo .pomo-left{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto;width:calc(53% - 6px);min-width:0;margin:0;text-align:center;position:relative;z-index:1;container-type:inline-size;--pr:clamp(96px,min(86cqw,calc(236px*var(--s,1))),236px)}
+html body.pink #pomDuo{display:block!important;position:absolute!important;left:auto!important;right:-8px!important;top:var(--duo-top,130px)!important;bottom:auto!important;width:50%!important;max-width:380px!important;height:auto!important;max-height:calc(100% - var(--duo-top,130px) + 8px)!important;margin:0!important;object-fit:cover!important;object-position:50% 0!important;align-self:auto!important;-webkit-mask-image:linear-gradient(#000 58%,transparent 97%);mask-image:linear-gradient(#000 58%,transparent 97%)}
+html body.pink #v-pomo #pomLbl{margin:0 0 clamp(6px,3.6cqw,14px);padding:clamp(3px,1.6cqw,6px) clamp(8px,5cqw,14px);font-size:clamp(8px,5cqw,11px);gap:clamp(5px,2.6cqw,8px);letter-spacing:.14em;max-width:100%;white-space:nowrap}
+html body.pink #v-pomo .pr{margin:0 auto clamp(6px,3.4cqw,14px)}
+html body.pink #v-pomo .pom-sess{margin:0 0 clamp(6px,3.6cqw,14px);padding:clamp(2px,1.4cqw,5px) clamp(8px,5cqw,14px);font-size:clamp(9px,5cqw,12px);white-space:nowrap}
+html body.pink #v-pomo .pomo-ctrl{gap:clamp(4px,2.4cqw,10px);margin:0 0 clamp(5px,3cqw,10px);max-width:100%}
+html body.pink #v-pomo .pomo-ctrl .pomo-step{width:clamp(26px,13cqw,40px);height:clamp(26px,13cqw,40px);flex:none}
+html body.pink #v-pomo .pomo-step svg{width:46%;height:46%}
+html body.pink #v-pomo .pomo-primary{height:clamp(32px,16cqw,46px);min-width:0;padding:0 clamp(10px,6cqw,24px);gap:clamp(5px,2.4cqw,9px);font-size:clamp(11px,6.4cqw,15px)}
+html body.pink #v-pomo .pomo-primary svg{width:clamp(12px,6cqw,18px);height:clamp(12px,6cqw,18px)}
+html body.pink #v-pomo .pomo-end{padding:clamp(4px,1.8cqw,6px) clamp(10px,6cqw,16px);font-size:clamp(10px,5.2cqw,12px);gap:clamp(5px,2.4cqw,8px);max-width:100%;white-space:nowrap}
+html body.pink #v-pomo .pomo-foot{margin-top:clamp(8px,4cqw,12px);padding-top:clamp(6px,3cqw,10px);gap:6px 8px;justify-content:center}
+html body.pink #v-pomo .pomo-today{font-size:clamp(10px,5.2cqw,12px)}
+html body.pink #v-pomo .pomo-snd{padding:clamp(4px,1.8cqw,6px) 26px clamp(4px,1.8cqw,6px) 10px;max-width:100%}
+html body.pink #v-pomo .pomo-snd select{font-size:clamp(10px,5.2cqw,12px);max-width:100%}
 </style>
 </body>
 </html>

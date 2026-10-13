@@ -4434,10 +4434,13 @@ html body.pink #v-pomo .pomo-snd select{font-size:clamp(10px,calc(4.4*var(--k)),
 #qaMsg{flex:1;min-width:0;font-size:12px;color:var(--ai,#4fd8a0);min-height:16px}
 #qaAdd{border:none;border-radius:12px;padding:11px 20px;font-size:14px;font-weight:700;background:var(--ai,#4fd8a0);color:#000;cursor:pointer}
 #qaClose{border:1px solid var(--b,#2a2f3a);border-radius:12px;padding:10px 14px;font-size:13px;background:none;color:var(--m2,#9a98b0);cursor:pointer}
-#m2028Inst{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);z-index:9500;max-width:460px;margin:0 auto;display:none;gap:10px;align-items:center;box-sizing:border-box;background:var(--s1,#12151c);color:var(--tx,#e0dff0);border:1px solid var(--ai,#4fd8a0);border-radius:16px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.4);font-size:13px;line-height:1.4}
+#m2028Inst{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100002;width:min(88vw,380px);display:none;flex-direction:column;align-items:center;text-align:center;gap:18px;box-sizing:border-box;background:var(--s1,#12151c);color:var(--tx,#e0dff0);border:1px solid var(--ai,#4fd8a0);border-radius:24px;padding:30px 24px 24px;box-shadow:0 0 0 100vmax rgba(0,0,0,.6),0 20px 60px rgba(0,0,0,.5);font-size:15px;line-height:1.5}
 #m2028Inst.on{display:flex}
-#m2028Inst .tx{flex:1;min-width:0}
-#m2028Inst button{border-radius:10px;padding:8px 13px;font-size:13px;cursor:pointer;border:1px solid var(--b,#2a2f3a);background:none;color:var(--m2,#9a98b0)}
+#m2028Inst img{width:76px;height:76px;border-radius:18px}
+#m2028Inst .tt{font-size:22px;font-weight:700}
+#m2028Inst .tx{color:var(--m2,#9a98b0)}
+#m2028Inst .btns{display:flex;flex-direction:column;gap:10px;width:100%}
+#m2028Inst button{border-radius:14px;padding:14px 16px;font-size:16px;cursor:pointer;border:1px solid var(--b,#2a2f3a);background:none;color:var(--m2,#9a98b0)}
 #m2028Inst button.go{background:var(--ai,#4fd8a0);border-color:var(--ai,#4fd8a0);color:#000;font-weight:700}
 #m2028Pill{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);z-index:9400;display:none;pointer-events:none;background:var(--s2,#1a1e27);color:var(--m2,#9a98b0);border:1px solid var(--b,#2a2f3a);border-radius:999px;padding:5px 11px;font-size:11px}
 #m2028Pill.on{display:block}
@@ -4525,7 +4528,7 @@ function standalone(){return(window.matchMedia&&matchMedia("(display-mode: stand
 function instCard(){
   var c=$("m2028Inst");if(c)return c;
   c=document.createElement("div");c.id="m2028Inst";
-  c.innerHTML='<div class="tx"><b>Install M2028</b><br>Add tasks straight from your home screen and keep working offline.</div><button type="button" id="m2028InstNo">Not now</button><button type="button" class="go" id="m2028InstGo">Install</button>';
+  c.innerHTML='<img src="icon-192.png" alt=""><div class="tt">Install M2028</div><div class="tx">Add tasks straight from your home screen and keep working offline.</div><div class="btns"><button type="button" class="go" id="m2028InstGo">Install</button><button type="button" id="m2028InstNo">Not now</button></div>';
   document.body.appendChild(c);
   $("m2028InstNo").onclick=function(){try{localStorage.setItem("m2028_inst_no",String(Date.now()))}catch(e){}c.classList.remove("on")};
   $("m2028InstGo").onclick=function(){

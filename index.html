@@ -4593,13 +4593,17 @@ function qaSave(){
   $("qaMsg").textContent="Added"+(qaAdded>1?" ("+qaAdded+")":"")+(navigator.onLine?"":" - saved on this device");
   inp.focus();
 }
-function qaFromUrl(){
+function qaFromParams(p){
   try{
-    var p=new URLSearchParams(location.search);
     var shared=[p.get("title"),p.get("text"),p.get("url")].filter(Boolean).join(" - ");
     if(p.get("action")==="add-task"||shared)qaOpen(shared);
   }catch(e){}
 }
+function qaFromUrl(){try{qaFromParams(new URLSearchParams(location.search))}catch(e){}}
+/* the manifest uses focus-existing, so a shortcut tap on an already-open app arrives here instead of reloading the page */
+if("launchQueue" in window)launchQueue.setConsumer(function(l){
+  try{if(l&&l.targetURL)qaFromParams(new URL(l.targetURL).searchParams)}catch(e){}
+});
 window.m2028QuickAdd=qaOpen;
 setTimeout(qaFromUrl,500);
 addEventListener("pageshow",function(e){if(e.persisted)qaFromUrl()});

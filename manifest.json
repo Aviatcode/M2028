@@ -44,5 +44,29 @@
       "focus-existing",
       "auto"
     ]
+  },
+  "shortcuts": [
+    {
+      "name": "Add task",
+      "short_name": "Add task",
+      "description": "Add a task without opening the dashboard",
+      "url": "./index.html?action=add-task",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
   }
 }

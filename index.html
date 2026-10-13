@@ -4459,7 +4459,7 @@ function readStored(){try{var s=JSON.parse(localStorage.getItem(STORE_KEY));retu
 function cacheLib(){
   try{
     if(!("caches" in window)||typeof supabase==="undefined"||!navigator.onLine)return;
-    caches.open("m2028-lib").then(function(c){
+    caches.open("pwa-lib").then(function(c){
       return c.match(LIB).then(function(h){
         if(h)return;
         return fetch(LIB,{mode:"cors"}).then(function(r){if(r&&r.ok)return c.put(LIB,r)})
@@ -4469,7 +4469,7 @@ function cacheLib(){
 }
 
 function libFromCache(){
-  return caches.open("m2028-lib").then(function(c){return c.match(LIB)}).then(function(r){
+  return caches.match(LIB).then(function(r){return r}).then(function(r){
     if(!r)return false;
     return r.blob().then(function(b){
       var url=URL.createObjectURL(b);

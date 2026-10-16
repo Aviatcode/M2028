@@ -2787,8 +2787,9 @@ body:not(:has(#v-dash.on)) #reorderBtn{display:none!important}
 
 
 .dash-w.dash-w-sized{overflow:hidden!important;overscroll-behavior:auto}
+/* outer box only clips; the inner .wc is the single scroll container (no nested scrollers, no scroll-chain trap) */
 #dw-habits.dash-w-sized,#dw-tasks.dash-w-sized,#dw-meds.dash-w-sized,
-.dash-w.dash-w-sized[data-cwtype="checklist"]{overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain}
+.dash-w.dash-w-sized[data-cwtype="checklist"]{overflow:hidden!important;overscroll-behavior:auto}
 
 
 html:not(.haswp) body:not(.x):not(.light):not(.pink)::before{
@@ -2804,7 +2805,7 @@ html body:not(.x):not(.light):not(.pink) .hero::after{
 
 .dash-w{border-radius:24px}
 .dash-w.dash-w-sized{overflow:hidden!important}
-.dash-w.dash-w-sized>.wc{height:100%!important;margin:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;box-sizing:border-box}
+.dash-w.dash-w-sized>.wc{height:100%!important;margin:0!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:auto;box-sizing:border-box}
 .dash-w.dash-w-sized>.wc.mw{height:100%!important}
 @media (min-width:681px){
   html body #v-dash.on #dashWidgets{display:flex!important;flex-wrap:wrap;gap:16px;align-items:flex-start;align-content:flex-start;column-count:auto!important;column-gap:16px;padding-right:0!important;min-height:0!important;position:relative}
@@ -2980,7 +2981,7 @@ html body #v-period .g2>div>.pc-info{flex:0 0 100%;width:100%}
 
 .fl-panel{--fw:calc((100% - 16px)/2);flex:0 0 auto!important;width:var(--fw);max-width:100%;min-width:0;margin:0!important;box-sizing:border-box;position:relative}
 html body .fl-panel.has-w{width:var(--ww)!important}
-.fl-panel.fl-sized{overflow:auto!important;overscroll-behavior:contain}
+.fl-panel.fl-sized{overflow:auto!important;overscroll-behavior:auto}
 #upscTierInfo.fl-panel,#upscCustomBooks>.fl-panel,#roadInfo.fl-panel,#schedPanel-timetable.fl-panel,#schedPanel-calendar.fl-panel,#v-ai>.card.fl-panel{--fw:100%}
 @media (min-width:1000px){#v-body .fl-panel,#v-period .fl-panel{--fw:calc((100% - 32px)/3)}}
 @media (max-width:680px){.fl-panel{--fw:100%!important}}
@@ -4729,69 +4730,6 @@ html body #dpCropMo .mo::before{content:none!important;display:none!important}
 html body #dpCropMo #cropCancel{background:rgba(255,255,255,.16)!important;color:#fff!important}
 html body #dpCropMo #cropDone{background:#4fd8a0!important;color:#06241a!important}
 </style>
-<script id="m2028-chain-scroll">
-/* Phone-style scrolling: a flick that starts inside a widget's own scroll area carries on into the page
-   as soon as the widget reaches its end, instead of stopping dead there. */
-(function(){
-if(window.__m2028Chain)return;window.__m2028Chain=1;
-if(!("ontouchstart" in window)&&!(navigator.maxTouchPoints>0))return;
-var root=document.scrollingElement||document.documentElement,raf=0,st=null;
-function restore(){root.style.scrollBehavior=""}
-function stopAll(){if(raf){cancelAnimationFrame(raf);raf=0}restore()}
-function findScroller(el){
-  while(el&&el!==document.body&&el!==document.documentElement&&el.nodeType===1){
-    if(el.classList&&el.classList.contains("ov"))return null; /* modals keep their own behaviour */
-    var oy=getComputedStyle(el).overflowY;
-    if((oy==="auto"||oy==="scroll")&&el.scrollHeight>el.clientHeight+1)return el;
-    el=el.parentNode}
-  return null}
-function fling(v){
-  root.style.scrollBehavior="auto";
-  var last=performance.now();
-  (function step(now){
-    var dt=Math.min(32,Math.max(1,now-last));last=now;
-    var before=root.scrollTop;window.scrollTo(0,before+v*dt);
-    var moved=root.scrollTop-before;v*=Math.pow(.9975,dt);
-    if(Math.abs(v)<.03||Math.abs(moved)<.4){raf=0;restore();return}
-    raf=requestAnimationFrame(step)})(last)}
-document.addEventListener("touchstart",function(e){
-  stopAll();st=null;
-  if(e.touches.length!==1)return;
-  var sc=findScroller(e.target);if(!sc)return;
-  sc.style.setProperty("overscroll-behavior-y","none","important"); /* we hand over ourselves: no bounce, no double scroll */
-  var t=e.touches[0];
-  st={sc:sc,x0:t.clientX,y0:t.clientY,y:t.clientY,t:e.timeStamp,v:0,axis:null,ho:false}
-},{passive:true,capture:true});
-document.addEventListener("touchmove",function(e){
-  if(!st)return;var t=e.touches[0];
-  if(!st.axis){var ax=Math.abs(t.clientX-st.x0),ay=Math.abs(t.clientY-st.y0);
-    if(ax<6&&ay<6)return;st.axis=ay>ax?"y":"x";if(st.axis==="x"){st=null;return}}
-  var dy=t.clientY-st.y,dt=Math.max(1,e.timeStamp-st.t);
-  st.v=st.v*.6+(dy/dt)*.4;st.y=t.clientY;st.t=e.timeStamp;
-  var sc=st.sc,atTop=sc.scrollTop<=0,atBot=sc.scrollTop+sc.clientHeight>=sc.scrollHeight-1;
-  if((dy>0&&atTop)||(dy<0&&atBot)){
-    if(!st.ho){st.ho=true;root.style.scrollBehavior="auto"}
-    window.scrollTo(0,root.scrollTop-dy)}
-},{passive:true,capture:true});
-function finish(e){
-  if(!st)return;var s0=st;st=null;var v=s0.v,sc=s0.sc;
-  if(Math.abs(v)<.3){restore();return}
-  if(s0.ho){fling(-v);return}
-  var t0=performance.now(),last=sc.scrollTop,still=0;
-  (function watch(now){
-    var cur=sc.scrollTop;if(cur!==last){last=cur;still=0}else still++;
-    var el=now-t0;
-    if(el>60&&still>=3){
-      var atTop=cur<=0,atBot=cur+sc.clientHeight>=sc.scrollHeight-1;
-      if(((v>0&&atTop)||(v<0&&atBot))&&el<1800){var vp=-v*Math.exp(-el/420);if(Math.abs(vp)>.12){raf=0;fling(vp);return}}
-      raf=0;return}
-    if(el>2500){raf=0;return}
-    raf=requestAnimationFrame(watch)})(t0);
-}
-document.addEventListener("touchend",finish,{passive:true,capture:true});
-document.addEventListener("touchcancel",finish,{passive:true,capture:true});
-})();
-</script>
 
 <style id="m2028-settings-compact">
 html body #acctMo .mo.set-mo{max-width:340px;padding:14px}

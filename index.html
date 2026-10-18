@@ -1082,7 +1082,6 @@ html.m2028-staged body>*{visibility:hidden!important}
 .m2028-shock canvas{animation:m2028Shake .5s cubic-bezier(.36,.07,.19,.97) both}
 @keyframes m2028Shake{10%,90%{transform:translate3d(-3px,0,0)}20%,80%{transform:translate3d(6px,2px,0)}30%,50%,70%{transform:translate3d(-9px,-3px,0)}40%,60%{transform:translate3d(9px,3px,0)}100%{transform:none}}
 .m2028-banner{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 4.5vh);text-align:center;pointer-events:none;padding:0 18px;z-index:2;animation:m2028BanIn .7s cubic-bezier(.2,1.4,.4,1) .08s both}
-.m2028-pick .gk,#m2028Pick .gk{padding:6px 4px}#m2028Key{width:100%;box-sizing:border-box;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;font-size:13px}
 .m2028-clip{position:absolute;left:50%;top:34%;transform:translateX(-50%);z-index:1;pointer-events:none;opacity:0;transition:opacity .6s}
 .m2028-clip.on{opacity:1}
 .m2028-clip .f{position:relative;border-radius:16px;overflow:hidden;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 40px rgba(0,0,0,.65),0 0 24px var(--c1,#ffd166);background:#000}
@@ -1095,21 +1094,6 @@ html.m2028-staged body>*{visibility:hidden!important}
 @keyframes m2028BanIn{from{opacity:0;transform:translateY(-14px) scale(.7)}to{opacity:1;transform:none}}
 @keyframes m2028Glow{from{text-shadow:0 0 10px var(--c1),0 0 24px var(--c1),0 0 46px var(--c2)}to{text-shadow:0 0 16px var(--c2),0 0 38px var(--c2),0 0 80px var(--c1)}}
 
-/* test mode only (open the app with #m2028test) */
-.m2028-src{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:92vw;text-align:center;font:600 12px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 14px;z-index:6;pointer-events:none}
-.m2028-src:empty{display:none}
-.m2028-testbar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);right:calc(env(safe-area-inset-right,0px) + 12px);display:flex;gap:8px;z-index:6}
-.m2028-testbar button{font:600 12px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:8px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.m2028-testbar button:active{background:rgba(255,255,255,.25)}
-#m2028TestFab{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 76px);z-index:10040;font:600 12px system-ui,sans-serif;color:#fff;background:#7c3aed;border:0;border-radius:999px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer}
-/* preview picker */
-#m2028Pick{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.66);display:flex;align-items:center;justify-content:center;padding:18px}
-#m2028Pick .pk{width:min(380px,100%);max-height:84vh;overflow:auto;background:var(--s1,#12161f);border:1px solid var(--b,#2a3142);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-#m2028Pick .h{font-weight:700;font-size:15px;margin:2px 4px 6px;color:var(--tx,#fff)}
-#m2028Pick button{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;font:inherit;font-size:13px;color:var(--tx,#fff);background:var(--s2,#1a2030);border:1px solid var(--b,#2a3142);border-radius:10px;padding:10px 12px;cursor:pointer}
-#m2028Pick button i{font-style:normal;font-size:10.5px;color:var(--mt,#8a93a8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%}
-#m2028Pick button:hover{border-color:var(--ai,#4fd8a0)}
-#m2028Pick button.x{justify-content:center;margin-top:4px;background:transparent}
 
 /* rocket countdown widget */
 .cd-orbit{position:absolute;inset:0;transform:rotate(var(--ang,0deg));pointer-events:none;transition:transform .5s linear}
@@ -1158,18 +1142,20 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
      To use your own audio instead, drop a file at  songs/<id>.mp3  next to index.html
      (it is tried first, e.g. songs/tiger.mp3). */
   var SONGS = [
-    { id: 'queen', q: 'We Will Rock You Queen', t: 'we will rock you', a: 'queen', bpm: 82 },
-    { id: 'tiger', q: 'Eye of the Tiger Survivor', t: 'eye of the tiger', a: 'survivor', bpm: 109 },
-    { id: 'best', q: "You're The Best Joe Esposito", t: 'the best', a: 'esposito', bpm: 116 },
-    { id: 'standing', q: "I'm Still Standing Elton John", t: 'still standing', a: 'elton', bpm: 88 },
-    { id: 'rocky', q: 'Gonna Fly Now Bill Conti', t: 'gonna fly now', a: 'conti', bpm: 96 },
-    { id: 'hof', q: 'Hall of Fame The Script will.i.am', t: 'hall of fame', a: 'script', bpm: 86 },
-    { id: 'win', q: 'All I Do Is Win DJ Khaled', t: 'all i do is win', a: 'khaled', bpm: 75 },
-    { id: 'unstop', q: 'Unstoppable Sia', t: 'unstoppable', a: 'sia', bpm: 80 },
-    { id: 'champ', q: 'The Champion Carrie Underwood Ludacris', t: 'champion', a: 'ludacris', bpm: 80 },
-    { id: 'stronger', q: 'Stronger What Doesnt Kill You Kelly Clarkson', t: 'stronger', a: 'clarkson', bpm: 116 },
-    { id: 'titanium', q: 'Titanium David Guetta Sia', t: 'titanium', a: 'guetta', bpm: 126 },
-    { id: 'fighter', q: 'The Fighter Gym Class Heroes', t: 'the fighter', a: 'gym class', bpm: 100 },
+    { id: 'uptown', q: 'Uptown Funk Mark Ronson Bruno Mars', t: 'uptown funk', a: 'ronson', bpm: 115 },
+    { id: 'kuduro', q: 'Danza Kuduro Don Omar Lucenzo', t: 'danza kuduro', a: 'don omar', bpm: 130 },
+    { id: 'dragostea', q: 'Dragostea Din Tei O-Zone', t: 'dragostea din tei', a: 'zone', bpm: 128 },
+    { id: 'jerusalema', q: 'Jerusalema Master KG Nomcebo Zikode', t: 'jerusalema', a: 'master kg', bpm: 124 },
+    { id: 'aiseeu', q: 'Ai Se Eu Te Pego Michel Telo', t: 'ai se eu te pego', a: 'michel', bpm: 130 },
+    { id: 'happy', q: 'Happy Pharrell Williams', t: 'happy', a: 'pharrell', bpm: 80 },
+    { id: 'getlucky', q: 'Get Lucky Daft Punk Pharrell', t: 'get lucky', a: 'daft', bpm: 116 },
+    { id: 'despacito', q: 'Despacito Luis Fonsi Daddy Yankee', t: 'despacito', a: 'fonsi', bpm: 89 },
+    { id: 'alorsondanse', q: 'Alors on danse Stromae', t: 'alors on danse', a: 'stromae', bpm: 119 },
+    { id: 'gangnam', q: 'Gangnam Style PSY', t: 'gangnam style', a: 'psy', bpm: 132 },
+    { id: 'nwantiti', q: 'Love Nwantiti CKay', t: 'love nwantiti', a: 'ckay', bpm: 105 },
+    { id: 'zorba', q: 'Zorbas Dance Mikis Theodorakis', t: 'zorba', a: 'theodorakis', bpm: 120 },
+    { id: 'badtameez', q: 'Badtameez Dil Yeh Jawaani Hai Deewani Benny Dayal', t: 'badtameez dil', a: 'benny', bpm: 100 },
+    { id: 'fantastic', q: 'Fantastic Baby BIGBANG', t: 'fantastic baby', a: 'bang', bpm: 128 },
     { id: 'jagga', q: 'Jagga Jiteya Daler Mehndi', t: 'jagga', a: 'daler', bpm: 108 }
   ];
   /* One row per streak milestone (by day count).
@@ -1180,17 +1166,17 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     7:    { dur: 30,  dancers: 3,  fw: 1.4, big: 0.78, song: 1 },
     15:   { dur: 40,  dancers: 4,  fw: 1.8, big: 0.88, song: 2 },
     30:   { dur: 50,  dancers: 5,  fw: 2.2, big: 0.98, song: 3 },
-    50:   { dur: 65,  dancers: 6,  fw: 2.6, big: 1.06, song: 3 },
-    100:  { dur: 80,  dancers: 6,  fw: 3.0, big: 1.14, song: 4 },
-    150:  { dur: 100, dancers: 7,  fw: 3.4, big: 1.22, song: 5 },
-    200:  { dur: 120, dancers: 8,  fw: 3.8, big: 1.30, song: 6 },
-    250:  { dur: 140, dancers: 8,  fw: 4.2, big: 1.38, song: 7 },
-    365:  { dur: 165, dancers: 9,  fw: 4.6, big: 1.46, song: 8 },
-    730:  { dur: 195, dancers: 9,  fw: 5.0, big: 1.54, song: 9 },
-    913:  { dur: 225, dancers: 10, fw: 5.4, big: 1.62, song: 9 },
-    1095: { dur: 255, dancers: 10, fw: 5.8, big: 1.70, song: 10 },
-    1460: { dur: 280, dancers: 11, fw: 6.2, big: 1.78, song: 11 },
-    1825: { dur: 300, dancers: 12, fw: 7.0, big: 1.90, song: 12 }
+    50:   { dur: 65,  dancers: 6,  fw: 2.6, big: 1.06, song: 4 },
+    100:  { dur: 80,  dancers: 6,  fw: 3.0, big: 1.14, song: 5 },
+    150:  { dur: 100, dancers: 7,  fw: 3.4, big: 1.22, song: 6 },
+    200:  { dur: 120, dancers: 8,  fw: 3.8, big: 1.30, song: 7 },
+    250:  { dur: 140, dancers: 8,  fw: 4.2, big: 1.38, song: 8 },
+    365:  { dur: 165, dancers: 9,  fw: 4.6, big: 1.46, song: 9 },
+    730:  { dur: 195, dancers: 9,  fw: 5.0, big: 1.54, song: 10 },
+    913:  { dur: 225, dancers: 10, fw: 5.4, big: 1.62, song: 11 },
+    1095: { dur: 255, dancers: 10, fw: 5.8, big: 1.70, song: 12 },
+    1460: { dur: 280, dancers: 11, fw: 6.2, big: 1.78, song: 13 },
+    1825: { dur: 300, dancers: 12, fw: 7.0, big: 1.90, song: 14 }
   };
   var PALETTE_FALLBACK = ['#ffd166', '#ff5e78'];
 
@@ -1354,8 +1340,74 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     913:  ['Moulin Rouge dance scene', 'West Side Story dance'],
     1095: ['The Greatest Showman dance', 'Chicago movie dance'],
     1460: ['Footloose dance', 'Dirty Dancing finale lift'],
-    1825: ['Grease finale dance', 'Slumdog Millionaire dance', 'Saturday Night Fever strut']
+    1825: ['Uri: The Surgical Strike::Uri The Surgical Strike scene', "Uri \u00B7 How's the Josh?::Uri The Surgical Strike How's the Josh", 'Uri \u00B7 Vicky Kaushal::Uri The Surgical Strike Vicky Kaushal', 'Uri \u00B7 The Surgical Strike::Uri The Surgical Strike action']
   };
+
+  /* Every milestone gets Leonardo DiCaprio (the Gatsby toast + his dance scenes), then a rotating mix of Bollywood
+     dance scenes, famous dances from around the world and famous celebration scenes. Entries are 'Caption::search terms'. */
+  var CLIP_LEO = [
+    'Leonardo DiCaprio \u00B7 Gatsby toast::Leonardo DiCaprio Great Gatsby cheers toast',
+    'Leonardo DiCaprio \u00B7 Wolf of Wall Street dance::Leonardo DiCaprio Wolf of Wall Street dance',
+    'Leonardo DiCaprio \u00B7 dancing::Leonardo DiCaprio dancing'
+  ];
+  var CLIP_BOLLY = [
+    'Chaiyya Chaiyya \u00B7 Shah Rukh Khan::Chaiyya Chaiyya Shah Rukh Khan dance',
+    'Kala Chashma \u00B7 Katrina Kaif::Kala Chashma dance Katrina Kaif',
+    'Jai Ho \u00B7 Slumdog Millionaire::Slumdog Millionaire Jai Ho dance',
+    'Naatu Naatu \u00B7 RRR::Naatu Naatu RRR dance',
+    'Badtameez Dil \u00B7 Ranbir Kapoor::Badtameez Dil Ranbir Kapoor dance',
+    'Lungi Dance \u00B7 Chennai Express::Lungi Dance Shah Rukh Khan',
+    'Balam Pichkari \u00B7 Holi::Balam Pichkari Yeh Jawaani Hai Deewani',
+    'Dola Re Dola \u00B7 Devdas::Dola Re Dola Devdas Madhuri Dixit',
+    'Ghoomar \u00B7 Padmaavat::Ghoomar Padmaavat Deepika Padukone',
+    'Malhari \u00B7 Bajirao Mastani::Malhari Ranveer Singh dance',
+    'Dhoom Machale \u00B7 Dhoom::Dhoom Machale Bollywood dance',
+    'Senorita \u00B7 Zindagi Na Milegi Dobara::Zindagi Na Milegi Dobara Senorita dance',
+    'Om Shanti Om \u00B7 Shah Rukh Khan::Om Shanti Om dance Shah Rukh Khan',
+    'Tujhe Dekha Toh \u00B7 DDLJ::DDLJ Shah Rukh Khan Kajol dance',
+    'Chammak Challo \u00B7 Ra.One::Chammak Challo Bollywood dance'
+  ];
+  var CLIP_WORLD = [
+    'Gangnam Style \u00B7 South Korea::Gangnam Style Psy dance',
+    'Macarena \u00B7 Spain::Macarena dance',
+    'Zorba the Greek \u00B7 Greece::Zorba the Greek dance',
+    'Scent of a Woman \u00B7 Argentine tango::Scent of a Woman tango scene',
+    'Samba \u00B7 Rio Carnival::Rio carnival samba dance',
+    'Flamenco \u00B7 Spain::Flamenco dance',
+    'Haka \u00B7 New Zealand::Haka dance',
+    'Riverdance \u00B7 Ireland::Riverdance',
+    'Coco \u00B7 Mexico::Coco Mexican celebration',
+    'Encanto \u00B7 Colombia::Encanto celebration dance',
+    'Moana \u00B7 Polynesia::Moana celebration dance',
+    'Hakuna Matata \u00B7 The Lion King::Lion King Hakuna Matata dance',
+    'Thriller \u00B7 Michael Jackson::Michael Jackson Thriller dance',
+    'Carlton Dance \u00B7 Fresh Prince::Carlton dance Fresh Prince',
+    'Afrobeats \u00B7 Nigeria::Afrobeats dance'
+  ];
+  var CLIP_CELEB = [
+    'Wolf of Wall Street \u00B7 office celebration::The Wolf of Wall Street office celebration',
+    'Rocky \u00B7 victory::Rocky Balboa victory celebration',
+    'Titanic \u00B7 King of the world::Titanic king of the world Leonardo DiCaprio',
+    'Lagaan \u00B7 victory::Lagaan celebration',
+    'Chak De India \u00B7 celebration::Chak De India celebration',
+    '3 Idiots \u00B7 All Is Well::3 Idiots All Is Well celebration',
+    'Dangal \u00B7 victory::Dangal celebration',
+    'Rudy \u00B7 carried off::Rudy carried off celebration',
+    'Dead Poets Society \u00B7 O Captain::Dead Poets Society O Captain',
+    'The Breakfast Club \u00B7 fist pump::Breakfast Club fist pump',
+    'Ferris Bueller \u00B7 parade::Ferris Bueller Twist and Shout parade',
+    'Cool Runnings \u00B7 celebration::Cool Runnings celebration',
+    'Avengers \u00B7 assemble::Avengers celebration',
+    'Home Alone \u00B7 celebration::Home Alone celebration',
+    'The Hangover \u00B7 celebration::The Hangover celebration'
+  ];
+  /* order matters: clips rotate in this order, so even the shortest milestone gets DiCaprio, Bollywood and more */
+  function clipPlan(days) {
+    var keys = Object.keys(CLIP_QUERIES).map(Number).sort(function (a, b) { return a - b; }), i = Math.max(0, keys.indexOf(days));
+    if (days === 1825) return CLIP_QUERIES[1825];                      /* 5-year show: Uri: The Surgical Strike scenes only */
+    var base = CLIP_QUERIES[days] || CLIP_QUERIES[1];
+    return [CLIP_LEO[0], CLIP_BOLLY[i % CLIP_BOLLY.length], CLIP_LEO[1], CLIP_CELEB[i % CLIP_CELEB.length], CLIP_WORLD[i % CLIP_WORLD.length], CLIP_LEO[2]].concat(base);
+  }
   var Clips = {
     note: '',
     key: function () { var k = ''; try { k = localStorage.getItem('m2028_giphy_key') || ''; } catch (e) { } return (k || GIPHY_KEY || '').trim(); },
@@ -1377,9 +1429,9 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
       var key = Clips.key(), h = { alive: true, el: null, tm: 0 };
       h.stop = function () { h.alive = false; clearInterval(h.tm); if (h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el); };
       if (!key) { Clips.note = 'no GIPHY key – movie clips off'; return h; }
-      var qs = CLIP_QUERIES[days] || CLIP_QUERIES[1];
+      var qs = clipPlan(days);
       Clips.note = 'loading movie clips…';
-      Promise.all(qs.map(function (q) { return Clips.fetchOne(q, key).then(function (it) { return it.map(function (x) { x.q = q; return x; }); }, function () { return []; }); })).then(function (lists) {
+      Promise.all(qs.map(function (q) { var pr = String(q).split('::'), label = pr[0], term = pr[pr.length - 1]; return Clips.fetchOne(term, key).then(function (it) { return it.map(function (x) { x.q = label; return x; }); }, function () { return []; }); })).then(function (lists) {
         if (!h.alive) return;
         var items = []; for (var i = 0; i < 12; i++) lists.forEach(function (l) { if (l[i]) items.push(l[i]); });
         if (!items.length) { Clips.note = 'no movie clips available'; return; }
@@ -1409,14 +1461,6 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     var root = document.createElement('div'); root.id = 'm2028Stage'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', opts.aria || 'Celebration');
     var cv = document.createElement('canvas'); root.appendChild(cv);
     if (scene.banner) { var b = scene.banner(); if (b) root.appendChild(b); }
-    if (opts.test) {
-      var tb = document.createElement('div'); tb.className = 'm2028-testbar'; tb.innerHTML = '<button type="button" data-a="skip">Next &#9654;</button><button type="button" data-a="stop">&#9632; Stop all</button>'; root.appendChild(tb);
-      tb.addEventListener('click', function (e) { var bt = e.target.closest ? e.target.closest('button') : null; if (!bt) return; e.stopPropagation(); if (bt.getAttribute('data-a') === 'stop') queue.length = 0; end(true); });
-    }
-    if (opts.test) {
-      var cap = document.createElement('div'); cap.className = 'm2028-src'; root.appendChild(cap);
-      var capT = setInterval(function () { var m = Music.cur; cap.textContent = !m || !m.alive ? '' : m.mode === 'media' ? '\u266A ' + m.src : m.mode === 'none' ? '\u266A silent \u2013 ' + m.why : '\u266A finding the song\u2026'; if (Clips.note) cap.textContent += (cap.textContent ? '  \u00B7  ' : '') + Clips.note; }, 400);
-    }
     if (opts.shock) { var fl = document.createElement('div'); fl.className = 'm2028-flash'; root.appendChild(fl); root.classList.add('m2028-shock'); }
     document.documentElement.appendChild(root); document.documentElement.classList.add('m2028-staged');
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; }).catch(function () { }); } catch (e) { }
@@ -1450,7 +1494,7 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     function end(skipped) {
       if (ended) return; ended = true; cancelAnimationFrame(raf);
       window.removeEventListener('resize', size); window.removeEventListener('orientationchange', size);
-      clearInterval(wd); if (typeof capT !== 'undefined') clearInterval(capT); document.removeEventListener('keydown', keyEat, true); document.removeEventListener('keyup', keyEat, true); document.removeEventListener('keypress', keyEat, true);
+      clearInterval(wd); document.removeEventListener('keydown', keyEat, true); document.removeEventListener('keyup', keyEat, true); document.removeEventListener('keypress', keyEat, true);
       try { scene.stop(); } catch (e) { }
       try { if (wakeLock) wakeLock.release(); } catch (e) { } wakeLock = null;
       if (root.parentNode) root.parentNode.removeChild(root);
@@ -1472,9 +1516,10 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     stops.forEach(function (s) { gr.addColorStop(s[0], s[1]); });
     g.fillStyle = gr; g.fillRect(0, 0, size, size); return cv;
   }
-  function RocketScene() {
+  function RocketScene(info) {
+    var titles = (info && info.titles) || [], T_MSG = 10.6;
     var W = 0, H = 0, u = 1, gY = 0, pX = 0, Rh = 200, bg = null, stars = [], parts = [], t = 0, snd = null, started = false;
-    var T_IGN = 1.0, T_REL = 4.4, END = 15.4, endAt = END, prevNozzleY = null, nozzleY = 0, alt = 0, thr = 0, shake = 0;
+    var T_IGN = 1.0, T_REL = 4.4, END = 15.4 + (titles.length ? 1.6 : 0), endAt = END, prevNozzleY = null, nozzleY = 0, alt = 0, thr = 0, shake = 0;
     var smokeSpr = makeSprite(64, [[0, 'rgba(255,255,255,0.95)'], [0.45, 'rgba(235,238,245,0.55)'], [1, 'rgba(220,224,235,0)']]);
     var fireSpr = makeSprite(64, [[0, 'rgba(255,245,200,1)'], [0.3, 'rgba(255,170,50,0.85)'], [0.7, 'rgba(255,80,10,0.25)'], [1, 'rgba(255,60,0,0)']]);
     var glowSpr = makeSprite(128, [[0, 'rgba(255,200,120,0.9)'], [0.35, 'rgba(255,120,40,0.35)'], [1, 'rgba(255,80,20,0)']]);
@@ -1609,8 +1654,33 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
         /* foreground billows */
         drawParts(c, true);
         c.restore();
+        if (titles.length && t > T_MSG) drawDeleteMsg(c);
       }
     };
+    /* finale: once the rocket has left the sky, the countdown's name is struck through, dissolves, and "deleted" appears */
+    function drawDeleteMsg(c) {
+      var k = t - T_MSG, fam = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
+      var a = sstep(0, 0.8, k), fs = clamp(Math.min(W, H * 0.7) * 0.075, 20, 46), maxW = W * 0.86, cy = H * 0.36;
+      var txt = titles.length > 1 ? titles.length + ' countdowns' : String(titles[0] || 'Countdown');
+      function fit(weight, size) { var f = size; c.font = weight + ' ' + f + 'px ' + fam; while (f > 12 && c.measureText(txt).width > maxW) { f -= 2; c.font = weight + ' ' + f + 'px ' + fam; } return f; }
+      c.save(); c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = 'rgba(0,0,0,.85)'; c.shadowBlur = 14 * u;
+      var dis = sstep(1.8, 2.8, k);
+      /* heading + the countdown's name, struck through, then dissolving upward */
+      c.globalAlpha = a * (1 - sstep(2.0, 2.8, k));
+      c.fillStyle = '#ffd166'; c.font = '700 ' + Math.round(fs * 0.42) + 'px ' + fam; c.fillText('COUNTDOWN COMPLETE', W / 2, cy - fs * 1.15);
+      c.globalAlpha = a * (1 - dis);
+      var f = fit('800', fs), tw = c.measureText(txt).width, yy = cy - dis * fs * 0.6;
+      c.fillStyle = '#fff'; c.fillText(txt, W / 2, yy);
+      var sk = sstep(0.9, 1.6, k);
+      if (sk > 0) { c.strokeStyle = '#ff5a5a'; c.lineWidth = Math.max(2, f * 0.09); c.lineCap = 'round'; c.beginPath(); c.moveTo(W / 2 - tw / 2 - 6 * u, yy); c.lineTo(W / 2 - tw / 2 - 6 * u + (tw + 12 * u) * sk, yy); c.stroke(); }
+      /* deleted confirmation */
+      var dl = sstep(2.2, 2.9, k);
+      if (dl > 0) {
+        c.globalAlpha = dl; c.fillStyle = '#ff8a8a'; c.font = '700 ' + Math.round(fs * 0.62) + 'px ' + fam; c.fillText('\u2713 Countdown deleted', W / 2, cy);
+        c.globalAlpha = dl * 0.8; c.fillStyle = 'rgba(255,255,255,.8)'; fit('500', Math.round(fs * 0.4)); c.fillText(txt, W / 2, cy + fs * 0.85);
+      }
+      c.restore();
+    }
     function drawParts(c, fg) {
       for (var i = 0; i < parts.length; i++) {
         var p = parts[i]; if (p.kind !== 'smoke' || p.fg !== fg) continue;
@@ -1912,9 +1982,9 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     if (st.mode === 'tdays') return { p: st.n / 10 * 100, color: st.n >= 5 ? '#ffb347' : '#ff7a59', big: 'T-' + st.n, small: 'days to launch', cls: 'cd-rkt' };
     if (st.mode === 'clock') {
       var s = Math.ceil(st.diff / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
-      return { p: st.diff / DAY * 100, color: '#ff4d4d', big: pad2(h) + ':' + pad2(m) + ':' + pad2(sec), small: 'T-minus · liftoff', cls: 'cd-rkt cd-clock' + (s <= 10 ? ' cd-final' : '') };
+      return { p: st.diff / DAY * 100, color: '#ff4d4d', big: pad2(h) + ':' + pad2(m) + ':' + pad2(sec), small: 'T-minus', cls: 'cd-rkt cd-clock' + (s <= 10 ? ' cd-final' : '') };
     }
-    return { p: 100, color: 'var(--rd)', big: '🚀', small: st.days === 0 ? 'liftoff!' : 'launched ' + st.days + (st.days === 1 ? ' day ago' : ' days ago'), cls: 'cd-done' };
+    return { p: 100, color: 'var(--rd)', big: '🚀', small: st.days === 0 ? 'launched!' : 'launched ' + st.days + (st.days === 1 ? ' day ago' : ' days ago'), cls: 'cd-done' };
   }
   var RK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="cd-fl" d="M9.6 17.2h4.8L12 23.4z" fill="#ffb02e"/><path class="cd-fl2" d="M10.8 17.2h2.4L12 21z" fill="#fff4c2"/><path d="M12 0.8c3 2.3 4.4 6 4.4 9.8v6.6H7.6v-6.6C7.6 6.8 9 3.1 12 0.8z" fill="#f4f6fb"/><path d="M12 0.8c1.9 1.5 3.1 3.7 3.7 6.1H8.3C8.9 4.5 10.1 2.3 12 0.8z" fill="#e0392d"/><circle cx="12" cy="10.6" r="1.9" fill="#2b6cb0" stroke="#20263a" stroke-width=".7"/><path d="M7.6 12.6L4.2 18l3.4-1.2zM16.4 12.6l3.4 5.4-3.4-1.2z" fill="#e0392d"/></svg>';
   function applyView(el, v) {
@@ -1941,24 +2011,47 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     }
   }
   function countdownWidgets() { try { return (S.go('customWidgets', []) || []).filter(function (w) { return w && w.type === 'countdown' && w.enabled !== false && w.date; }); } catch (e) { return []; } }
+  /* once a countdown has launched it is deleted for good (a countdown is a one-shot widget) */
+  var cdPending = {};
+  function deleteCountdown(id) {
+    try {
+      var all = (S.go('customWidgets', []) || []).filter(function (w) { return w && w.id !== id; });
+      S.s('customWidgets', all);
+      var cfg = S.go('dashCfg', null);
+      if (cfg) {
+        var tag = 'cw:' + id;
+        if (Array.isArray(cfg.order)) cfg.order = cfg.order.filter(function (x) { return x !== tag; });
+        if (cfg.widgetSize) delete cfg.widgetSize[tag];
+        if (cfg.widgetHeight) delete cfg.widgetHeight[tag];
+        S.s('dashCfg', cfg);
+      }
+      if (typeof applyDashCfg === 'function') applyDashCfg();
+    } catch (e) { }
+  }
   function checkLaunches() {
-    var L = store('m2028_launched') || {}, dirty = false, fire = false;
+    var L = store('m2028_launched') || {}, dirty = false, fire = [], gone = [];
     countdownWidgets().forEach(function (w) {
       var key = w.id + '|' + w.date, diff = targetOf(w.date) - Date.now();
-      if (isNaN(diff) || diff > 0 || L[key]) return;
-      L[key] = Date.now(); dirty = true;
+      if (isNaN(diff) || diff > 0 || cdPending[key]) return;
       var created = /^cw(\d+)$/.test(w.id || '') ? +RegExp.$1 : 0;               /* widget made after its own date → don't launch */
-      if (diff > -DAY && !(created && created >= targetOf(w.date))) fire = true;
+      var real = !(created && created >= targetOf(w.date));
+      if (L[key]) { if (real) gone.push(w.id); return; }                          /* launched in an earlier session → just delete it */
+      L[key] = Date.now(); dirty = true;
+      if (diff > -DAY && real) fire.push({ id: w.id, key: key, title: w.title });
     });
     if (dirty) store('m2028_launched', L);
-    if (fire) runLaunch(false);
+    gone.forEach(deleteCountdown);
+    if (fire.length) {
+      fire.forEach(function (f) { cdPending[f.key] = 1; });
+      runLaunch(function () { fire.forEach(function (f) { delete cdPending[f.key]; deleteCountdown(f.id); }); }, fire.map(function (f) { return f.title; }));
+    }
   }
   setInterval(function () { tickDom(); checkLaunches(); }, 500);
 
   /* ===================================================================
      PUBLIC: launch / celebrations / hook into the app's milestone flow
      =================================================================== */
-  function runLaunch(test) { runStage(RocketScene(), { aria: 'Rocket launch', test: test === true }); }
+  function runLaunch(onEnd, titles) { runStage(RocketScene({ titles: titles || [] }), { aria: 'Rocket launch', onEnd: onEnd }); }
   function showFor(days) {
     if (SHOW[days]) return SHOW[days];
     var keys = Object.keys(SHOW).map(Number).sort(function (a, b) { return a - b; }), k = keys[0];
@@ -1968,9 +2061,9 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     var i = Math.max(0, (m.tier || 1) - 1), pal = (typeof MS_PALETTE !== 'undefined' && MS_PALETTE[i]) || PALETTE_FALLBACK, msgs = typeof MS_MESSAGES !== 'undefined' ? MS_MESSAGES : [];
     return { days: m.days || 1, tier: m.tier || 1, emoji: m.emoji || '🎉', title: (m.label || ('Day ' + m.days)) + '!', msg: msgs[Math.min(i, msgs.length - 1)] || '', c1: pal[0], c2: pal[1] };
   }
-  function runMilestone(m, onEnd, test) {
+  function runMilestone(m, onEnd) {
     var show = showFor(m.days || 1), meta = metaFor(m);
-    runStage(PartyScene(show, meta), { aria: meta.title, onEnd: onEnd, test: test === true });
+    runStage(PartyScene(show, meta), { aria: meta.title, onEnd: onEnd });
   }
   var _origCelebrate = null;
   function installHooks() {
@@ -1984,30 +2077,9 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     };
     wrapped.__m2028 = true; window.celebrateMilestone = wrapped;
   }
-  var TEST = true;   /* TESTER ON: remove this flag (and the test code) once the show is approved */
-  function testPicker() {
-    if (document.getElementById('m2028Pick')) return;
-    var ms = typeof STREAK_MILESTONES !== 'undefined' ? STREAK_MILESTONES : [], o = document.createElement('div'); o.id = 'm2028Pick';
-    function fmt(s) { return s >= 60 ? (Math.round(s / 6) / 10) + ' min' : s + 's'; }
-    var tot = 15 + ms.reduce(function (a, m) { return a + showFor(m.days).dur; }, 0);
-    o.innerHTML = '<div class="pk" role="dialog" aria-label="Test celebrations"><div class="h">Test celebrations</div>' +
-      '<button data-k="all">&#9654; Play ALL in order <i>~' + Math.round(tot / 60) + ' min</i></button><button data-k="launch">&#128640; Rocket launch <i>~15s</i></button>' +
-      ms.map(function (m, i) { var sh = showFor(m.days); return '<button data-k="' + i + '">' + esc(m.emoji) + ' ' + esc(m.label) + ' <i>' + fmt(sh.dur) + ' &middot; ' + esc(SONGS[sh.song].q.split(' ').slice(0, 4).join(' ')) + '</i></button>'; }).join('') +
-      '<div class="gk"><input id="m2028Key" type="text" placeholder="GIPHY API key (movie clips)" autocomplete="off" value="' + esc(Clips.key()) + '"></div>' + '<button class="x" data-k="x">Close</button></div>';
-    o.addEventListener('click', function (e) {
-      var kin = document.getElementById('m2028Key'); if (e.target === kin) return;
-      if (kin) { try { localStorage.setItem('m2028_giphy_key', kin.value.trim()); } catch (er) { } }
-      var b = e.target.closest ? e.target.closest('button') : null, k = b ? b.getAttribute('data-k') : (e.target === o ? 'x' : null); if (!k) return;
-      o.parentNode && o.parentNode.removeChild(o);
-      if (k === 'all') { runLaunch(true); ms.forEach(function (m) { runMilestone(m, null, true); }); }
-      else if (k === 'launch') runLaunch(true); else if (k !== 'x') runMilestone(ms[+k], null, true);
-    });
-    document.body.appendChild(o);
-  }
   window.m2028Show = { SHOW: SHOW, SONGS: SONGS, status: function () { return Music.cur ? { mode: Music.cur.mode, src: Music.cur.src, why: Music.cur.why, alive: Music.cur.alive } : null; } };   /* read-only info; shows start only from a real milestone or a countdown reaching 00:00 */
   function boot() {
     installHooks();
-    if (TEST) { var fb = document.createElement('button'); fb.id = 'm2028TestFab'; fb.type = 'button'; fb.textContent = 'Test celebrations'; fb.onclick = testPicker; document.body.appendChild(fb); }
     try { var cur = calcStreak(), nx = STREAK_MILESTONES.filter(function (m) { return m.days > cur; })[0]; if (nx) setTimeout(function () { resolveSong(SONGS[showFor(nx.days).song]).catch(function () { }); }, 5000); } catch (e) { }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else setTimeout(boot, 0);

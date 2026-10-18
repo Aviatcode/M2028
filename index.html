@@ -1082,6 +1082,13 @@ html.m2028-staged body>*{visibility:hidden!important}
 .m2028-shock canvas{animation:m2028Shake .5s cubic-bezier(.36,.07,.19,.97) both}
 @keyframes m2028Shake{10%,90%{transform:translate3d(-3px,0,0)}20%,80%{transform:translate3d(6px,2px,0)}30%,50%,70%{transform:translate3d(-9px,-3px,0)}40%,60%{transform:translate3d(9px,3px,0)}100%{transform:none}}
 .m2028-banner{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 4.5vh);text-align:center;pointer-events:none;padding:0 18px;z-index:2;animation:m2028BanIn .7s cubic-bezier(.2,1.4,.4,1) .08s both}
+.m2028-pick .gk,#m2028Pick .gk{padding:6px 4px}#m2028Key{width:100%;box-sizing:border-box;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;font-size:13px}
+.m2028-clip{position:absolute;left:50%;top:34%;transform:translateX(-50%);z-index:1;pointer-events:none;opacity:0;transition:opacity .6s}
+.m2028-clip.on{opacity:1}
+.m2028-clip .f{position:relative;border-radius:16px;overflow:hidden;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 40px rgba(0,0,0,.65),0 0 24px var(--c1,#ffd166);background:#000}
+.m2028-clip img{display:block;width:min(88vw,520px);max-height:46vh;object-fit:contain}
+.m2028-clip .cap{position:absolute;left:0;right:0;bottom:0;padding:14px 10px 6px;font-size:12px;font-weight:700;color:#fff;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+.m2028-clip .pw{margin-top:6px;text-align:center;font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.85);text-transform:uppercase}
 .m2028-banner .e{font-size:clamp(34px,9vw,68px);line-height:1;filter:drop-shadow(0 0 18px var(--c1))}
 .m2028-banner .t{font-size:clamp(24px,7vw,54px);font-weight:900;letter-spacing:.02em;margin-top:6px;color:#fff;text-shadow:0 0 12px var(--c1),0 0 30px var(--c1),0 0 60px var(--c2);animation:m2028Glow 1.6s ease-in-out infinite alternate}
 .m2028-banner .s{font-size:clamp(12px,3.2vw,18px);margin:8px auto 0;max-width:34em;color:rgba(255,255,255,.88);text-shadow:0 1px 8px rgba(0,0,0,.8)}
@@ -1223,76 +1230,15 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
   }
   ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (ev) { document.addEventListener(ev, unlockAudio, { capture: true, passive: true }); });
 
-  /* ---- sound effects ---- */
+  /* ---- sound effects: REMOVED (celebrations play only the iTunes preview song) ---- */
   var Sfx = {
-    rocket: function () {
-      var c = ready(); if (!c) return { fade: function () { }, stop: function () { } };
-      var now = c.currentTime, out = c.createGain(); out.gain.setValueAtTime(0.0001, now); out.gain.linearRampToValueAtTime(0.95, now + 0.5);
-      out.gain.setValueAtTime(0.95, now + 9.2); out.gain.linearRampToValueAtTime(0.0001, now + 15);
-      out.connect(c.destination);
-      var nodes = [];
-      function noise(buf) { var n = c.createBufferSource(); n.buffer = buf; n.loop = true; n.start(now); nodes.push(n); return n; }
-      /* low roar */
-      var n1 = noise(getNoise(c)), lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(110, now + 1); lp.frequency.exponentialRampToValueAtTime(1300, now + 6.5);
-      var g1 = c.createGain(); g1.gain.setValueAtTime(0.0001, now + 0.9); g1.gain.exponentialRampToValueAtTime(1.0, now + 3.8);
-      n1.connect(lp); lp.connect(g1); g1.connect(out);
-      /* crackle / hiss */
-      whiteBuf = whiteBuf || getWhite(c);
-      var n2 = noise(whiteBuf), hp = c.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 2400; hp.Q.value = 0.5;
-      var g2 = c.createGain(); g2.gain.setValueAtTime(0.0001, now + 1); g2.gain.exponentialRampToValueAtTime(0.16, now + 4.5);
-      var lfo = c.createOscillator(), lfoG = c.createGain(); lfo.frequency.value = 23; lfoG.gain.value = 0.08; lfo.connect(lfoG); lfoG.connect(g2.gain); lfo.start(now); nodes.push(lfo);
-      n2.connect(hp); hp.connect(g2); g2.connect(out);
-      /* ignition thump + sub */
-      var o = c.createOscillator(), og = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(75, now + 0.9); o.frequency.exponentialRampToValueAtTime(26, now + 2.6);
-      og.gain.setValueAtTime(0.0001, now + 0.9); og.gain.exponentialRampToValueAtTime(1.0, now + 1.05); og.gain.exponentialRampToValueAtTime(0.0001, now + 3.2);
-      o.connect(og); og.connect(out); o.start(now + 0.9); o.stop(now + 3.3); nodes.push(o);
-      var o2 = c.createOscillator(), o2g = c.createGain(); o2.type = 'sawtooth'; o2.frequency.value = 44; o2g.gain.setValueAtTime(0.0001, now + 1); o2g.gain.linearRampToValueAtTime(0.16, now + 4); o2g.gain.linearRampToValueAtTime(0.0001, now + 14);
-      var f2 = c.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = 180; o2.connect(f2); f2.connect(o2g); o2g.connect(out); o2.start(now + 1); nodes.push(o2);
-      return {
-        fade: function (s) { try { var t = c.currentTime; out.gain.cancelScheduledValues(t); out.gain.setValueAtTime(Math.max(out.gain.value, 0.0001), t); out.gain.linearRampToValueAtTime(0.0001, t + (s || 0.5)); } catch (e) { } },
-        stop: function () { setTimeout(function () { nodes.forEach(function (n) { try { n.stop(); } catch (e) { } }); try { out.disconnect(); } catch (e) { } }, 700); }
-      };
-    },
+    rocket: function () { return { fade: function () { }, stop: function () { } }; },
     lastBoom: 0,
-    boom: function (size, pan) {
-      var c = ready(); if (!c) return; var nowMs = performance.now(); if (nowMs - Sfx.lastBoom < 70) return; Sfx.lastBoom = nowMs;
-      var t = c.currentTime + 0.02, g = c.createGain(), v = clamp(0.1 + 0.12 * size, 0.08, 0.34);
-      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9 + size * 0.3);
-      var s = c.createBufferSource(); s.buffer = getNoise(c); var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320 + 160 * size;
-      var out = g; try { if (c.createStereoPanner) { var p = c.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); g.connect(p); p.connect(c.destination); out = null; } } catch (e) { }
-      if (out) g.connect(c.destination);
-      s.connect(lp); lp.connect(g); s.start(t, rnd() * 1.2); s.stop(t + 1.3);
-      var k = c.createOscillator(), kg = c.createGain(); k.frequency.setValueAtTime(110, t); k.frequency.exponentialRampToValueAtTime(34, t + 0.35); kg.gain.setValueAtTime(v * 1.2, t); kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-      k.connect(kg); kg.connect(c.destination); k.start(t); k.stop(t + 0.55);
-      if (size > 0.9) { /* crackle tail */
-        whiteBuf = whiteBuf || getWhite(c); var cs = c.createBufferSource(); cs.buffer = whiteBuf; var hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3500;
-        var cg = c.createGain(); cg.gain.setValueAtTime(0.0001, t + 0.25); cg.gain.linearRampToValueAtTime(v * 0.35, t + 0.3); cg.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
-        var lf = c.createOscillator(), lg = c.createGain(); lf.frequency.value = 38; lg.gain.value = v * 0.3; lf.connect(lg); lg.connect(cg.gain); lf.start(t); lf.stop(t + 1.2);
-        cs.connect(hp); hp.connect(cg); cg.connect(c.destination); cs.start(t + 0.2); cs.stop(t + 1.2);
-      }
-    }
+    boom: function () { }
   };
 
-  /* ---- built-in backing track (used only when a real song can't be loaded) ---- */
-  var Synth = {
-    start: function (bpm, tier) {
-      var c = ready(); if (!c) return null;
-      var g = c.createGain(); g.gain.value = 0; g.connect(c.destination);
-      var beat = 60 / bpm, next = c.currentTime + 0.06, step = 0, roots = [110, 87.31, 130.81, 98], penta = [0, 3, 5, 7, 10, 12, 15];
-      function env(o, t, a, d, peak) { var gg = c.createGain(); gg.gain.setValueAtTime(0.0001, t); gg.gain.linearRampToValueAtTime(peak, t + a); gg.gain.exponentialRampToValueAtTime(0.0001, t + a + d); o.connect(gg); gg.connect(g); return gg; }
-      function noiseHit(t, hpF, d, peak) { whiteBuf = whiteBuf || getWhite(c); var s = c.createBufferSource(); s.buffer = whiteBuf; var f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hpF; s.connect(f); env(f, t, 0.002, d, peak); s.start(t, rnd()); s.stop(t + d + 0.05); }
-      function sched(st, t) {
-        var bar = (st / 8) | 0, root = roots[bar % 4], pos = st % 8;
-        if (pos % 2 === 0) { var k = c.createOscillator(); k.frequency.setValueAtTime(160, t); k.frequency.exponentialRampToValueAtTime(42, t + 0.12); env(k, t, 0.003, 0.22, 0.9); k.start(t); k.stop(t + 0.3); }
-        if (pos === 2 || pos === 6) noiseHit(t, 1400, 0.16, 0.38);
-        if (pos % 2 === 1) noiseHit(t, 7000, 0.05, 0.14);
-        if (pos === 0 || pos === 3 || pos === 6 || pos === 7) { var b = c.createOscillator(); b.type = 'sawtooth'; b.frequency.value = pos === 7 ? root * 1.5 : root; var lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; b.connect(lp); env(lp, t, 0.01, beat * 0.42, 0.34); b.start(t); b.stop(t + beat * 0.5); }
-        if (tier >= 2) { var n = root * 4 * Math.pow(2, penta[(st * 3 + bar) % penta.length] / 12); var l = c.createOscillator(); l.type = 'triangle'; l.frequency.value = n; env(l, t, 0.01, beat * 0.4, 0.1); l.start(t); l.stop(t + beat * 0.5); }
-      }
-      var tm = setInterval(function () { while (next < c.currentTime + 0.3) { sched(step, next); next += beat / 2; step++; } }, 70);
-      return { gain: g, stop: function () { clearInterval(tm); setTimeout(function () { try { g.disconnect(); } catch (e) { } }, 400); } };
-    }
-  };
+  /* ---- built-in backing track: REMOVED (silence if no song can be loaded) ---- */
+  var Synth = { start: function () { return null; } };
 
   /* ---- song lookup: your own file → iTunes 30-second preview (the catchy part) → built-in beat ---- */
   function normTxt(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
@@ -1370,7 +1316,7 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
         try { if (h.mode === 'media' && mediaEl) { mediaEl.pause(); mediaEl.removeAttribute('src'); mediaEl.load(); } } catch (e) { }
         if (h.synth) h.synth.stop();
       };
-      function fall(why) { if (!h.alive) return; h.why = why; try { mediaEl && mediaEl.pause(); } catch (e) { } h.mode = 'synth'; h.synth = Synth.start(song.bpm, tier); apply(); }
+      function fall(why) { if (!h.alive) return; h.why = why; try { mediaEl && mediaEl.pause(); } catch (e) { } h.mode = 'none'; h.synth = null; }
       localExists('songs/' + song.id + '.mp3').then(function (yes) { if (!yes) throw 0; return tryUrl('songs/' + song.id + '.mp3'); }).then(function () { h.src = 'your file songs/' + song.id + '.mp3'; return true; }, function () {
         return resolveSong(song).then(function (u) {
           if (!u) { fall(lastNote || 'no preview found'); return false; }
@@ -1381,6 +1327,74 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
         if (!h.alive) { try { mediaEl.pause(); } catch (e) { } return; }
         h.mode = 'media'; apply();
       }).catch(function () { fall('unexpected error'); });
+      return h;
+    }
+  };
+
+  /* ===================================================================
+     MOVIE DANCE CLIPS  — Hollywood dance scenes via the GIPHY search API.
+     Paste a free key from developers.giphy.com into GIPHY_KEY (or run
+     localStorage.m2028_giphy_key = 'KEY' once). Without a key / network the
+     animated canvas dancers simply carry on alone.
+     GIPHY terms: show "Powered by GIPHY", call the API from the client, don't reorder results.
+     =================================================================== */
+  var GIPHY_KEY = '';
+  var CLIP_QUERIES = {
+    1:    ['Pulp Fiction dance', 'Dirty Dancing dance scene'],
+    7:    ['Footloose dance scene', 'Grease dance scene'],
+    15:   ['Saturday Night Fever dance', 'Napoleon Dynamite dance'],
+    30:   ['The Mask dance scene', 'Step Up dance scene'],
+    50:   ['Zoolander dance', 'Happy Feet dance movie'],
+    100:  ['La La Land dance scene', 'Singin in the Rain dance'],
+    150:  ['Mamma Mia dance scene', 'Hairspray movie dance'],
+    200:  ['Coming to America dance', 'Blues Brothers dance'],
+    250:  ['Flashdance dance scene', 'Billy Elliot dance'],
+    365:  ['Black Panther celebration dance', 'Hitch dance scene'],
+    730:  ['Pitch Perfect dance', 'Magic Mike dance scene'],
+    913:  ['Moulin Rouge dance scene', 'West Side Story dance'],
+    1095: ['The Greatest Showman dance', 'Chicago movie dance'],
+    1460: ['Footloose dance', 'Dirty Dancing finale lift'],
+    1825: ['Grease finale dance', 'Slumdog Millionaire dance', 'Saturday Night Fever strut']
+  };
+  var Clips = {
+    note: '',
+    key: function () { var k = ''; try { k = localStorage.getItem('m2028_giphy_key') || ''; } catch (e) { } return (k || GIPHY_KEY || '').trim(); },
+    fetchOne: function (q, key) {
+      var ck = 'm2028_clip_' + q.toLowerCase().replace(/[^a-z0-9]+/g, '_'), hit = store(ck);
+      if (hit && hit.items && hit.items.length && Date.now() - hit.ts < 7 * DAY) return Promise.resolve(hit.items);
+      var url = 'https://api.giphy.com/v1/gifs/search?api_key=' + encodeURIComponent(key) + '&q=' + encodeURIComponent(q) + '&limit=12&offset=' + ((rnd() * 12) | 0) + '&rating=pg-13&lang=en';
+      var ctl = window.AbortController ? new AbortController() : null, to = setTimeout(function () { ctl && ctl.abort(); }, 7000);
+      return fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (r) { clearTimeout(to); if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function (j) {
+        var items = (j && j.data || []).map(function (g) {
+          var im = g.images || {}, r = im.fixed_width || im.downsized || im.original;
+          return r && r.url ? { u: r.url, t: g.title || '' } : null;
+        }).filter(Boolean);
+        if (items.length) store(ck, { ts: Date.now(), items: items });
+        return items;
+      }).catch(function (e) { clearTimeout(to); throw e; });
+    },
+    play: function (days, host) {
+      var key = Clips.key(), h = { alive: true, el: null, tm: 0 };
+      h.stop = function () { h.alive = false; clearInterval(h.tm); if (h.el && h.el.parentNode) h.el.parentNode.removeChild(h.el); };
+      if (!key) { Clips.note = 'no GIPHY key – movie clips off'; return h; }
+      var qs = CLIP_QUERIES[days] || CLIP_QUERIES[1];
+      Clips.note = 'loading movie clips…';
+      Promise.all(qs.map(function (q) { return Clips.fetchOne(q, key).then(function (it) { return it.map(function (x) { x.q = q; return x; }); }, function () { return []; }); })).then(function (lists) {
+        if (!h.alive) return;
+        var items = []; for (var i = 0; i < 12; i++) lists.forEach(function (l) { if (l[i]) items.push(l[i]); });
+        if (!items.length) { Clips.note = 'no movie clips available'; return; }
+        var el = h.el = document.createElement('div'); el.className = 'm2028-clip';
+        el.innerHTML = '<div class="f"><img alt="" decoding="async"><div class="cap"></div></div><div class="pw">Powered by GIPHY</div>';
+        host.appendChild(el);
+        var img = el.querySelector('img'), cap = el.querySelector('.cap'), idx = 0, fails = 0;
+        function show() {
+          if (!h.alive) return; var it = items[idx % items.length]; idx++;
+          var pre = new Image(); pre.onload = function () { if (!h.alive) return; img.src = it.u; cap.textContent = '🎬 ' + it.q.replace(/ (dance|scene|dance scene)$/i, ''); el.classList.add('on'); Clips.note = '🎬 movie clip: ' + it.q; };
+          pre.onerror = function () { if (++fails > 6 && h.alive) { Clips.note = 'movie clips failed to load'; el.classList.remove('on'); } };
+          pre.src = it.u;
+        }
+        show(); h.tm = setInterval(show, 6500);
+      }).catch(function () { Clips.note = 'movie clips unavailable'; });
       return h;
     }
   };
@@ -1401,7 +1415,7 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     }
     if (opts.test) {
       var cap = document.createElement('div'); cap.className = 'm2028-src'; root.appendChild(cap);
-      var capT = setInterval(function () { var m = Music.cur; cap.textContent = !m || !m.alive ? '' : m.mode === 'media' ? '\u266A ' + m.src : m.mode === 'synth' ? '\u266A built-in beat: ' + m.why : '\u266A finding the song\u2026'; }, 400);
+      var capT = setInterval(function () { var m = Music.cur; cap.textContent = !m || !m.alive ? '' : m.mode === 'media' ? '\u266A ' + m.src : m.mode === 'none' ? '\u266A silent \u2013 ' + m.why : '\u266A finding the song\u2026'; if (Clips.note) cap.textContent += (cap.textContent ? '  \u00B7  ' : '') + Clips.note; }, 400);
     }
     if (opts.shock) { var fl = document.createElement('div'); fl.className = 'm2028-flash'; root.appendChild(fl); root.classList.add('m2028-shock'); }
     document.documentElement.appendChild(root); document.documentElement.classList.add('m2028-staged');
@@ -1809,24 +1823,19 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
   }
 
   function PartyScene(show, meta) {
-    var W = 0, H = 0, u = 1, gY = 0, t = 0, endAt = show.dur, started = false, music = null;
+    var W = 0, H = 0, u = 1, gY = 0, t = 0, endAt = show.dur, started = false, music = null, clipH = null;
     var tier = meta.tier, c1 = meta.c1, c2 = meta.c2, song = SONGS[show.song], bpm = song.bpm, beat = 60 / bpm;
     var dancers = [], rockets = [], sparks = [], confetti = [], stars = [], beams = [], bgCv = null, nextFw = 0.02, quality = 1, lastBeatIdx = -1, beatFlash = 0, bannerEl = null;
-    for (var i = 0; i < show.dancers; i++) dancers.push(new Dancer(i, show.dancers));
+    /* dancers removed: only the movie clip, banner text and iTunes song remain */
     var big = show.big, hues = [c1, c2, '#ffffff', '#ffd166', '#ff5e78', '#4cc9f0', '#80ed99', '#b388ff'];
     var total = show.dur, finaleAt = total - Math.max(4, total * 0.13);
 
     function buildBg() {
       bgCv = document.createElement('canvas'); bgCv.width = W; bgCv.height = H; var g = bgCv.getContext('2d');
-      var sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#04050f'); sky.addColorStop(0.6, '#10122b'); sky.addColorStop(1, '#1a1440');
+      var sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#04050f'); sky.addColorStop(1, '#14102e');
       g.fillStyle = sky; g.fillRect(0, 0, W, H);
-      var tint = g.createRadialGradient(W / 2, gY, 0, W / 2, gY, Math.max(W, H) * 0.7); tint.addColorStop(0, rgba(c1, 0.22)); tint.addColorStop(1, rgba(c1, 0));
+      var tint = g.createRadialGradient(W / 2, H * 0.55, 0, W / 2, H * 0.55, Math.max(W, H) * 0.7); tint.addColorStop(0, rgba(c1, 0.18)); tint.addColorStop(1, rgba(c1, 0));
       g.fillStyle = tint; g.fillRect(0, 0, W, H);
-      /* skyline */
-      var x = -10; g.fillStyle = '#0a0b1a';
-      while (x < W + 10) { var bw = (26 + rnd() * 50) * u, bh = (H * 0.07 + rnd() * H * 0.2); g.fillRect(x, gY - bh, bw, bh + 4); for (var wy = gY - bh + 6 * u; wy < gY - 8 * u; wy += 9 * u) for (var wx = x + 4 * u; wx < x + bw - 6 * u; wx += 8 * u) if (rnd() < 0.3) { g.fillStyle = rnd() < 0.5 ? 'rgba(255,220,130,0.7)' : 'rgba(150,210,255,0.55)'; g.fillRect(wx, wy, 3 * u, 4 * u); } g.fillStyle = '#0a0b1a'; x += bw + (2 + rnd() * 6) * u; }
-      /* floor base */
-      var fl = g.createLinearGradient(0, gY, 0, H); fl.addColorStop(0, '#15122e'); fl.addColorStop(1, '#07060f'); g.fillStyle = fl; g.fillRect(0, gY, W, H - gY);
     }
     function launch(x, size, delay) {
       var ty = H * (0.14 + rnd() * 0.3), sy = gY - 6 * u, col = rnd() < 0.25 ? '#ffd9a0' : '#ffe9c4';
@@ -1868,73 +1877,15 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
         n2 > 1 && dancers.sort(function (a, b) { return a.y - b.y; });
         buildBg(); rockets.length = 0; sparks.length = 0; confetti.length = 0;
       },
-      start: function () { music = Music.play(song, tier); Sfx.boom(2.4, 0); setTimeout(function () { Sfx.boom(1.8, -0.5); }, 140); setTimeout(function () { Sfx.boom(1.8, 0.5); }, 260); },
-      stop: function () { if (music) music.stop(); },
+      start: function () { music = Music.play(song, tier); Clips.note = ''; clipH = Clips.play(meta.days || 1, stage && stage.root ? stage.root : document.body); },
+      stop: function () { if (music) music.stop(); if (clipH) { clipH.stop(); clipH = null; } },
       finished: function () { return t >= endAt; },
       overlayAlpha: function () { return sstep(endAt - 1.2, endAt, t); },
       update: function (dt) {
         t += dt;
         if (music) { var v = sstep(0, 0.35, t) * (1 - sstep(endAt - 1.8, endAt, t)); music.setVol(v); }
-        var bi = Math.floor(t / beat); if (bi !== lastBeatIdx) { lastBeatIdx = bi; beatFlash = 1; } beatFlash *= Math.exp(-6 * dt);
-        /* swap dance moves now and then */
-        dancers.forEach(function (d) { d.nextSwap -= dt; if (d.nextSwap <= 0) { d.nextSwap = 6 + rnd() * 8; d.move = pick(MOVES); } });
-        /* fireworks scheduler */
-        var inFinale = t > finaleAt, rate = show.fw * (inFinale ? 3.2 : 1) * (t < 1.2 ? 1.6 : 1);
-        nextFw -= dt; while (nextFw <= 0) {
-          var size = big * (0.8 + rnd() * 0.45) * (inFinale ? 1.15 : 1), vol = inFinale && rnd() < 0.25 ? 2 : 1;
-          for (var q = 0; q < vol; q++) launch(W * (0.08 + rnd() * 0.84), size, q * 0.15);
-          if (tier >= 6 && rnd() < 0.18) { var sx = W * (0.15 + rnd() * 0.7); for (var z = 0; z < 3; z++) launch(sx + (z - 1) * W * 0.07, size * 0.9, z * 0.1); }
-          nextFw += (1 / rate) * (0.55 + rnd() * 0.9);
-        }
-        if (inFinale && endAt - t < 1.6 && !sc._final) { sc._final = true; for (var f = 0; f < 5 + Math.min(7, tier); f++) launch(W * (0.08 + f * 0.9 / (5 + Math.min(7, tier))), big * 1.35, f * 0.08); }
-        for (var i = rockets.length - 1; i >= 0; i--) {
-          var r = rockets[i]; if (r.delay > 0) { r.delay -= dt; continue; }
-          r.p += dt / r.dur; var e = 1 - Math.pow(1 - Math.min(r.p, 1), 2); r.x = r.x0 + r.drift * e; r.y = lerp(r.y0, r.ty, e);
-          if (rnd() < 0.9) sparks.push({ x: r.x, y: r.y, px: r.x, py: r.y, vx: (rnd() - 0.5) * 20 * u, vy: 30 * u, life: 0.5, max: 0.5, col: '#ffcf8a', w: 1.4 * u, g: 40 * u, drag: 2, tw: false });
-          if (r.p >= 1) { burst(r.x, r.y, r.size); rockets.splice(i, 1); }
-        }
-        for (var j = sparks.length - 1; j >= 0; j--) {
-          var s = sparks[j]; s.life -= dt; if (s.life <= 0) { sparks.splice(j, 1); continue; }
-          s.px = s.x; s.py = s.y; var dg = Math.exp(-s.drag * dt); s.vx *= dg; s.vy = s.vy * dg + s.g * dt; s.x += s.vx * dt; s.y += s.vy * dt;
-        }
-        var cr = (2 + tier * 1.6) * dt; if (rnd() < cr % 1) dropConfetti(1); dropConfetti(Math.floor(cr));
-        if (t < 0.9 && !sc._pop) { sc._pop = true; dropConfetti(60 + tier * 10); }
-        for (var k = confetti.length - 1; k >= 0; k--) { var f2 = confetti[k]; f2.ph += dt * 3; f2.x += (f2.vx + Math.sin(f2.ph) * 30 * u) * dt; f2.y += f2.vy * dt; f2.r += f2.vr * dt; if (f2.y > H + 20) confetti.splice(k, 1); }
       },
-      draw: function (c) {
-        c.drawImage(bgCv, 0, 0);
-        for (var i = 0; i < stars.length; i++) { var s = stars[i]; c.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.sp + s.p))).toFixed(3) + ')'; c.fillRect(s.x, s.y, s.r, s.r); }
-        c.globalCompositeOperation = 'lighter';
-        /* sparks (behind dancers) */
-        c.lineCap = 'round';
-        for (var j = 0; j < sparks.length; j++) {
-          var p = sparks[j], k = p.life / p.max, a = Math.pow(clamp(k, 0, 1), 0.65); if (p.tw && rnd() < 0.3) a *= 0.3;
-          c.strokeStyle = rgba(p.col, a.toFixed(3)); c.lineWidth = p.w * (0.5 + 0.5 * k); c.beginPath(); c.moveTo(p.px, p.py); c.lineTo(p.x, p.y); c.stroke();
-        }
-        for (var r = 0; r < rockets.length; r++) { var ro = rockets[r]; if (ro.delay > 0) continue; c.fillStyle = 'rgba(255,240,210,0.95)'; c.beginPath(); c.arc(ro.x, ro.y, 2.2 * u, 0, TAU); c.fill(); }
-        /* sweeping spotlights */
-        for (var b = 0; b < beams.length; b++) {
-          var bm = beams[b], ang = Math.sin(t * bm.sp + bm.ph) * 0.55, len = H * 1.15, spread = 0.07 + 0.02 * beatFlash;
-          var g = c.createLinearGradient(bm.x, 0, bm.x + Math.sin(ang) * len, Math.cos(ang) * len); g.addColorStop(0, rgba(bm.col, 0.26 + 0.1 * beatFlash)); g.addColorStop(1, rgba(bm.col, 0));
-          c.fillStyle = g; c.beginPath(); c.moveTo(bm.x, 0); c.lineTo(bm.x + Math.sin(ang - spread) * len, Math.cos(ang - spread) * len); c.lineTo(bm.x + Math.sin(ang + spread) * len, Math.cos(ang + spread) * len); c.closePath(); c.fill();
-        }
-        /* disco floor */
-        var rows = 5, fh = H - gY, cols = 16;
-        for (var ry = 0; ry < rows; ry++) {
-          var y0 = gY + fh * (ry / rows), y1 = gY + fh * ((ry + 1) / rows), cw0 = W / cols * (0.55 + 0.45 * ry / rows) * 1.0;
-          for (var cx = -2; cx < cols + 2; cx++) {
-            var hh = Math.sin(cx * 0.9 + ry * 1.7 + t * (bpm / 60) * PI) * 0.5 + 0.5, col = hh > 0.5 ? c1 : c2, al = (0.04 + 0.2 * hh * (0.55 + 0.6 * beatFlash)) * (0.45 + 0.55 * ry / rows);
-            c.fillStyle = rgba(col, al.toFixed(3)); c.fillRect(W / 2 + (cx - cols / 2) * (W / cols) * (0.7 + 0.3 * (ry + 0.5) / rows) * 1.0, y0, (W / cols) * (0.7 + 0.3 * (ry + 0.5) / rows) - 2, y1 - y0 - 2);
-          }
-        }
-        c.globalCompositeOperation = 'source-over';
-        /* dancers */
-        for (var d = 0; d < dancers.length; d++) { var dn = dancers[d]; drawDancer(c, dn, dn.x, dn.y, dn.size, t / beat + dn.off); }
-        /* confetti */
-        for (var q = 0; q < confetti.length; q++) { var f = confetti[q]; c.save(); c.translate(f.x, f.y); c.rotate(f.r); c.scale(1, Math.abs(Math.cos(f.r * 1.7)) * 0.9 + 0.1); c.fillStyle = f.col; c.fillRect(-f.w / 2, -f.h / 2, f.w, f.h); c.restore(); }
-        /* camera-flash on the beat for the big finale */
-        if (t > finaleAt && beatFlash > 0.5) { c.fillStyle = 'rgba(255,255,255,' + (0.05 * beatFlash) + ')'; c.fillRect(0, 0, W, H); }
-      }
+      draw: function (c) { if (bgCv) c.drawImage(bgCv, 0, 0); }
     };
     return sc;
   }
@@ -2015,11 +1966,11 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
   }
   function metaFor(m) {
     var i = Math.max(0, (m.tier || 1) - 1), pal = (typeof MS_PALETTE !== 'undefined' && MS_PALETTE[i]) || PALETTE_FALLBACK, msgs = typeof MS_MESSAGES !== 'undefined' ? MS_MESSAGES : [];
-    return { tier: m.tier || 1, emoji: m.emoji || '🎉', title: (m.label || ('Day ' + m.days)) + '!', msg: msgs[Math.min(i, msgs.length - 1)] || '', c1: pal[0], c2: pal[1] };
+    return { days: m.days || 1, tier: m.tier || 1, emoji: m.emoji || '🎉', title: (m.label || ('Day ' + m.days)) + '!', msg: msgs[Math.min(i, msgs.length - 1)] || '', c1: pal[0], c2: pal[1] };
   }
   function runMilestone(m, onEnd, test) {
     var show = showFor(m.days || 1), meta = metaFor(m);
-    runStage(PartyScene(show, meta), { aria: meta.title, onEnd: onEnd, shock: true, test: test === true });
+    runStage(PartyScene(show, meta), { aria: meta.title, onEnd: onEnd, test: test === true });
   }
   var _origCelebrate = null;
   function installHooks() {
@@ -2042,8 +1993,10 @@ html body .wc-cd.cd-done .cdin b{font-size:calc(var(--cdw,148px)*.34)}
     o.innerHTML = '<div class="pk" role="dialog" aria-label="Test celebrations"><div class="h">Test celebrations</div>' +
       '<button data-k="all">&#9654; Play ALL in order <i>~' + Math.round(tot / 60) + ' min</i></button><button data-k="launch">&#128640; Rocket launch <i>~15s</i></button>' +
       ms.map(function (m, i) { var sh = showFor(m.days); return '<button data-k="' + i + '">' + esc(m.emoji) + ' ' + esc(m.label) + ' <i>' + fmt(sh.dur) + ' &middot; ' + esc(SONGS[sh.song].q.split(' ').slice(0, 4).join(' ')) + '</i></button>'; }).join('') +
-      '<button class="x" data-k="x">Close</button></div>';
+      '<div class="gk"><input id="m2028Key" type="text" placeholder="GIPHY API key (movie clips)" autocomplete="off" value="' + esc(Clips.key()) + '"></div>' + '<button class="x" data-k="x">Close</button></div>';
     o.addEventListener('click', function (e) {
+      var kin = document.getElementById('m2028Key'); if (e.target === kin) return;
+      if (kin) { try { localStorage.setItem('m2028_giphy_key', kin.value.trim()); } catch (er) { } }
       var b = e.target.closest ? e.target.closest('button') : null, k = b ? b.getAttribute('data-k') : (e.target === o ? 'x' : null); if (!k) return;
       o.parentNode && o.parentNode.removeChild(o);
       if (k === 'all') { runLaunch(true); ms.forEach(function (m) { runMilestone(m, null, true); }); }

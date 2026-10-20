@@ -64,58 +64,75 @@
     <!-- Main Tab View Content -->
     <main class="main-content">
 
-      <!-- 1. SCREEN TIME TAB -->
+      <!-- 1. TIME TRACKER PANEL -->
       <section class="vw on" id="tab-time">
+        <!-- Live Active Site Banner -->
         <div class="active-site-card" id="activeSiteCard">
-          <div class="active-site-top">
-            <span class="live-pulse"></span>
-            <span class="site-label">CURRENT ACTIVE TAB</span>
-            <span class="tag t-ai" id="activeCategoryBadge">Browsing</span>
+          <div class="pulse-indicator"></div>
+          <div class="active-site-icon" id="activeSiteFavicon">🌐</div>
+          <div class="active-site-details">
+            <div class="active-site-label">Currently Active Tab</div>
+            <div class="active-site-name" id="activeSiteDomain">Detecting active tab...</div>
+            <div class="active-site-time" id="activeSiteTime">Active today: 0m</div>
           </div>
-          <div class="active-site-domain" id="activeDomain">chrome://extensions</div>
-          <div class="active-site-meta">
-            <span id="activeTimeToday">Active today: 0m</span>
-            <span id="activeStatusDesc">Monitoring active tab</span>
+          <div class="active-site-badge badge-productive" id="activeSiteCategory">Productive</div>
+        </div>
+
+        <!-- Metric Summary Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">Screen Time Today</div>
+            <div class="metric-val" id="todayScreenTime">0m</div>
+            <div class="metric-sub" id="todaySiteCount">0 domains tracked</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Productivity Score</div>
+            <div class="metric-val text-accent" id="prodScore">100%</div>
+            <div class="metric-sub" id="prodBreakdown">High focus 🔥</div>
           </div>
         </div>
 
-        <div class="wc">
-          <div class="ct">
-            <span>Daily Screen Overview</span>
-            <span class="tag t-ai" id="scoreBadge">85% Focus</span>
-          </div>
-          <div class="st-stats-row">
-            <div class="st-stat-box">
-              <div class="sn" id="totalScreenTime">0h 00m</div>
-              <div class="sl">Total Tracked</div>
-            </div>
-            <div class="st-stat-box">
-              <div class="sn" id="prodScreenTime" style="color:var(--ai)">0h 00m</div>
-              <div class="sl">Productive</div>
-            </div>
-            <div class="st-stat-box">
-              <div class="sn" id="distScreenTime" style="color:var(--bd)">0h 00m</div>
-              <div class="sl">Entertainment</div>
+        <!-- Category Progress Distribution with Range Toggle -->
+        <div class="cat-bar-wrapper">
+          <div class="cat-bar-header">
+            <span>Category Breakdown</span>
+            <div class="range-toggle">
+              <button class="range-btn active" id="rangeTodayBtn">Today</button>
+              <button class="range-btn" id="rangeWeekBtn">7 Days</button>
             </div>
           </div>
-          <div class="pt" style="margin-top:12px;height:7px">
-            <div class="cat-progress-bar" id="catProgressBar">
-              <div class="cat-seg seg-prod" style="width: 50%" title="Productive"></div>
-              <div class="cat-seg seg-comm" style="width: 15%" title="Communication"></div>
-              <div class="cat-seg seg-soc" style="width: 15%" title="Social"></div>
-              <div class="cat-seg seg-ent" style="width: 20%" title="Entertainment"></div>
-            </div>
+          <div class="cat-progress-bar" id="catProgressBar">
+            <div class="cat-seg seg-prod" style="width: 0%" title="Productive"></div>
+            <div class="cat-seg seg-comm" style="width: 0%" title="Communication"></div>
+            <div class="cat-seg seg-soc" style="width: 0%" title="Social"></div>
+            <div class="cat-seg seg-ent" style="width: 0%" title="Entertainment"></div>
+            <div class="cat-seg seg-oth" style="width: 0%" title="Other"></div>
+          </div>
+          <div class="cat-legend">
+            <span class="legend-item"><span class="dot dot-prod"></span>Work/Study</span>
+            <span class="legend-item"><span class="dot dot-comm"></span>Comm</span>
+            <span class="legend-item"><span class="dot dot-soc"></span>Social</span>
+            <span class="legend-item"><span class="dot dot-ent"></span>Media</span>
           </div>
         </div>
 
-        <div class="wc">
-          <div class="ct">
-            <span>Top Visited Places</span>
-            <button class="btn b-gh sm" id="resetTrackerBtn" title="Reset Today's Stats">Reset</button>
+        <!-- Sub-Navigation: Top Visited Places vs Open Tabs & Time -->
+        <div class="section-heading">
+          <div class="time-sub-tabs">
+            <button class="time-sub-btn active" id="subTabTopSites">🏆 Top Visited Places</button>
+            <button class="time-sub-btn" id="subTabOpenTabs">🗂️ Open Tabs (<span id="openTabsCount">0</span>)</button>
           </div>
-          <div class="sites-list" id="topSitesList">
-            <div class="empty-msg">No browsing data recorded yet today. Active time will appear here automatically.</div>
-          </div>
+          <button class="btn b-gh sm" id="resetTrackerBtn" title="Reset Today's Stats">Reset</button>
+        </div>
+
+        <!-- Top Sites List (Default) -->
+        <div class="sites-list" id="topSitesList">
+          <div class="empty-state">No browsing data recorded yet today. Browse normally to see your time breakdown!</div>
+        </div>
+
+        <!-- Open Tabs List with Live Time Spent -->
+        <div class="sites-list" id="openTabsTimeList" style="display:none">
+          <div class="empty-state">Loading active tabs...</div>
         </div>
       </section>
 

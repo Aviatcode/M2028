@@ -233,7 +233,7 @@
       view.classList.toggle('on', view.id === 'tab-' + tab);
     });
 
-    if (tab === 'time') renderScreenTime();
+    if (tab === 'time') loadTrackerData();
     else if (tab === 'habits') renderHabits();
     else if (tab === 'tasks') renderTasks();
     else if (tab === 'pomo') syncPomoFromStorage();
@@ -243,97 +243,344 @@
   }
 
   // =====================================================================
-  // 3. Screen Time Monitor
+  // 3. Time Tracker & Active Tab Controller (Restored Rich Mode)
   // =====================================================================
-  function renderScreenTime() {
+  let trackerRange = 'today'; // 'today' or 'week'
+  let trackerTimer = null;
+
+  function formatDuration(totalSec) {
+    if (!totalSec || totalSec < 1) return '0m';
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  }
+
+  function sendBgMessage(msg, callback) {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-      chrome.runtime.sendMessage({ action: 'GET_STATS' }, function (res) {
-        if (res) updateScreenTimeUI(res);
-        else loadFallbackStats();
+      chrome.runtime.sendMessage(msg, function (res) {
+        if (chrome.runtime.lastError || !res) {
+          callback(getMockTrackerData());
+        } else {
+          callback(res);
+        }
       });
     } else {
-      loadFallbackStats();
+      callback(getMockTrackerData());
     }
   }
 
-  function loadFallbackStats() {
-    S.get('screenTimeDaily', {}, function (daily) {
-      const today = getTodayKey();
-      const stats = daily[today] || { totalSec: 7200, productiveSec: 4800, entertainmentSec: 1500, sites: { 'github.com': 3200, 'wikipedia.org': 1600, 'youtube.com': 1500 } };
-      updateScreenTimeUI({ todayStats: stats, currentDomain: 'localhost:8080', currentSec: 320 });
+  function getMockTrackerData() {
+    const today = getTodayKey();
+    return {
+      success: true,
+      today: today,
+      todayTotal: 8640,
+      todayDomains: {
+        'github.com': { seconds: 4320, title: 'M2028 - Master Planner', favicon: 'https://github.githubassets.com/favicons/favicon.svg', category: 'productive' },
+        'youtube.com': { seconds: 2160, title: 'Lofi Girl - Relaxing Beats', favicon: 'https://www.youtube.com/s/desktop/99cbfa75/img/favicon.ico', category: 'entertainment' },
+        'localhost:8080': { seconds: 1440, title: 'M2028 Web Dashboard', favicon: 'favicon-32.png', category: 'productive' },
+        'reddit.com': { seconds: 720, title: 'Reddit: Dive into anything', favicon: 'https://www.redditstatic.com/shreddit/assets/favicon/192x192.png', category: 'social' }
+      },
+      active: {
+        domain: 'localhost:8080',
+        category: 'productive',
+        favicon: 'favicon-32.png',
+        todayTotal: 1440
+      },
+      weekTotal: 46800,
+      weekDomains: {
+        'github.com': { seconds: 21000, category: 'productive' },
+        'youtube.com': { seconds: 12000, category: 'entertainment' },
+        'localhost:8080': { seconds: 8000, category: 'productive' },
+        'reddit.com': { seconds: 5800, category: 'social' }
+      }
+    };
+  }
+
+  let cachedDomainsData = {};
+  let currentActiveTabDomain = '';
+
+  function initTimeTracker() {
+    const rangeTodayBtn = document.getElementById('rangeTodayBtn');
+    const rangeWeekBtn = document.getElementById('rangeWeekBtn');
+    const resetBtn = document.getElementById('resetTrackerBtn');
+    const subTopBtn = document.getElementById('subTabTopSites');
+    const subTabsBtn = document.getElementById('subTabOpenTabs');
+    const topListEl = document.getElementById('topSitesList');
+    const openListEl = document.getElementById('openTabsTimeList');
+
+    if (rangeTodayBtn) {
+      rangeTodayBtn.addEventListener('click', function () {
+        trackerRange = 'today';
+        rangeTodayBtn.classList.add('active');
+        if (rangeWeekBtn) rangeWeekBtn.classList.remove('active');
+        loadTrackerData();
+      });
+    }
+
+    if (rangeWeekBtn) {
+      rangeWeekBtn.addEventListener('click', function () {
+        trackerRange = 'week';
+        rangeWeekBtn.classList.add('active');
+        if (rangeTodayBtn) rangeTodayBtn.classList.remove('active');
+        loadTrackerData();
+      });
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function () {
+        if (confirm("Reset today's tracking data?")) {
+          sendBgMessage({ type: 'RESET_TRACKER_DATA' }, function () {
+            loadTrackerData();
+          });
+        }
+      });
+    }
+
+    if (subTopBtn && subTabsBtn) {
+      subTopBtn.addEventListener('click', function () {
+        subTopBtn.classList.add('active');
+        subTabsBtn.classList.remove('active');
+        if (topListEl) topListEl.style.display = 'flex';
+        if (openListEl) openListEl.style.display = 'none';
+      });
+
+      subTabsBtn.addEventListener('click', function () {
+        subTabsBtn.classList.add('active');
+        subTopBtn.classList.remove('active');
+        if (topListEl) topListEl.style.display = 'none';
+        if (openListEl) openListEl.style.display = 'flex';
+        loadOpenTabsTimeBreakdown();
+      });
+    }
+
+    loadTrackerData();
+    // Live update every 2 seconds while viewing Time tab
+    clearInterval(trackerTimer);
+    trackerTimer = setInterval(function () {
+      if (activeTabName === 'time') loadTrackerData();
+    }, 2000);
+  }
+
+  function getDomainFromUrl(url) {
+    if (!url) return '';
+    try {
+      const u = new URL(url);
+      if (['http:', 'https:'].includes(u.protocol)) {
+        let h = u.hostname.toLowerCase();
+        if (h.startsWith('www.')) h = h.slice(4);
+        return h;
+      }
+      if (u.protocol === 'chrome:') return 'chrome://' + u.hostname;
+      if (u.protocol === 'file:') return 'local-file';
+      return '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function loadTrackerData() {
+    sendBgMessage({ type: 'GET_TRACKER_DATA' }, function (resp) {
+      if (!resp || !resp.success) return;
+
+      const isToday = trackerRange === 'today';
+      const totalSec = isToday ? resp.todayTotal : resp.weekTotal;
+      const domains = isToday ? resp.todayDomains : resp.weekDomains;
+      cachedDomainsData = domains || {};
+      const active = resp.active;
+
+      // 1. Live Active Site Banner
+      const activeDomainEl = document.getElementById('activeSiteDomain');
+      const activeFaviconEl = document.getElementById('activeSiteFavicon');
+      const activeBadgeEl = document.getElementById('activeSiteCategory');
+      const activeTimeEl = document.getElementById('activeSiteTime');
+
+      if (active && active.domain) {
+        currentActiveTabDomain = active.domain;
+        if (activeDomainEl) {
+          activeDomainEl.textContent = active.title ? `${active.domain} — ${active.title}` : active.domain;
+          activeDomainEl.title = active.title || active.domain;
+        }
+        if (activeBadgeEl) {
+          activeBadgeEl.textContent = active.category || 'productive';
+          activeBadgeEl.className = `active-site-badge badge-${active.category || 'other'}`;
+        }
+        if (activeFaviconEl) {
+          if (active.favicon) {
+            activeFaviconEl.innerHTML = `<img src="${escapeHtml(active.favicon)}" onerror="this.onerror=null;this.parentNode.innerHTML='🌐';">`;
+          } else {
+            activeFaviconEl.textContent = '🌐';
+          }
+        }
+        if (activeTimeEl) {
+          const domSec = (domains && domains[active.domain]) ? domains[active.domain].seconds : (active.todayTotal || 0);
+          activeTimeEl.textContent = `Active today: ${formatDuration(domSec)}`;
+        }
+      } else {
+        currentActiveTabDomain = '';
+        if (activeDomainEl) activeDomainEl.textContent = 'No active webpage';
+        if (activeBadgeEl) {
+          activeBadgeEl.textContent = 'Idle';
+          activeBadgeEl.className = 'active-site-badge badge-other';
+        }
+        if (activeFaviconEl) activeFaviconEl.textContent = '⏸️';
+        if (activeTimeEl) activeTimeEl.textContent = 'Browser idle or non-web tab';
+      }
+
+      // 2. Metrics Cards
+      const screenTimeEl = document.getElementById('todayScreenTime');
+      const siteCountEl = document.getElementById('todaySiteCount');
+      const prodScoreEl = document.getElementById('prodScore');
+      const prodBreakdownEl = document.getElementById('prodBreakdown');
+
+      if (screenTimeEl) screenTimeEl.textContent = formatDuration(totalSec);
+
+      const domainEntries = Object.entries(domains || {});
+      if (siteCountEl) siteCountEl.textContent = `${domainEntries.length} ${isToday ? 'visited today' : 'in 7 days'}`;
+
+      let prodSec = 0, commSec = 0, socSec = 0, entSec = 0, othSec = 0;
+      domainEntries.forEach(([_, item]) => {
+        const s = item.seconds || 0;
+        const cat = item.category || 'other';
+        if (cat === 'productive') prodSec += s;
+        else if (cat === 'communication') commSec += s;
+        else if (cat === 'social') socSec += s;
+        else if (cat === 'entertainment') entSec += s;
+        else othSec += s;
+      });
+
+      const validTotal = Math.max(totalSec, 1);
+      const prodScore = Math.round((prodSec / validTotal) * 100);
+      if (prodScoreEl) prodScoreEl.textContent = `${prodScore}%`;
+
+      if (prodBreakdownEl) {
+        if (prodScore >= 75) prodBreakdownEl.textContent = 'High focus 🔥';
+        else if (prodScore >= 50) prodBreakdownEl.textContent = 'Moderate focus ⚡';
+        else prodBreakdownEl.textContent = 'Distractions present ⚠️';
+      }
+
+      // 3. Category Bar Distribution
+      const pPct = ((prodSec / validTotal) * 100).toFixed(1);
+      const cPct = ((commSec / validTotal) * 100).toFixed(1);
+      const sPct = ((socSec / validTotal) * 100).toFixed(1);
+      const ePct = ((entSec / validTotal) * 100).toFixed(1);
+      const oPct = ((othSec / validTotal) * 100).toFixed(1);
+
+      const bar = document.getElementById('catProgressBar');
+      if (bar && bar.children.length >= 5) {
+        bar.children[0].style.width = pPct + '%';
+        bar.children[1].style.width = cPct + '%';
+        bar.children[2].style.width = sPct + '%';
+        bar.children[3].style.width = ePct + '%';
+        bar.children[4].style.width = oPct + '%';
+      }
+
+      // 4. Sites List with Relative Progress Bars & Favicons
+      const listEl = document.getElementById('topSitesList');
+      if (listEl) {
+        if (domainEntries.length === 0) {
+          listEl.innerHTML = '<div class="empty-state">No browsing time recorded yet. Start surfing and your stats will appear!</div>';
+        } else {
+          domainEntries.sort((a, b) => b[1].seconds - a[1].seconds);
+          const maxSec = domainEntries[0][1].seconds || 1;
+          const topList = domainEntries.slice(0, 10);
+
+          listEl.innerHTML = topList.map(([dom, data]) => {
+            const pct = Math.round((data.seconds / maxSec) * 100);
+            const cat = data.category || 'other';
+            const fav = data.favicon || `https://www.google.com/s2/favicons?domain=${dom}&sz=32`;
+
+            return `
+              <div class="site-row">
+                <img class="site-favicon" src="${escapeHtml(fav)}" onerror="this.onerror=null;this.style.display='none';">
+                <div class="site-info">
+                  <div class="site-name-wrap">
+                    <span class="site-name" title="${escapeHtml(data.title || dom)}">${escapeHtml(dom)}</span>
+                    <span class="site-time">${formatDuration(data.seconds)}</span>
+                  </div>
+                  <div class="site-bar-track">
+                    <div class="site-bar-fill seg-${cat.slice(0, 4)}" style="width: ${pct}%"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 5. Update Open Tabs List with Live Time Breakdown
+      loadOpenTabsTimeBreakdown();
     });
   }
 
-  function updateScreenTimeUI(data) {
-    const stats = data.todayStats || {};
-    const totalSec = stats.totalSec || 0;
-    const prodSec = stats.productiveSec || 0;
-    const distSec = stats.entertainmentSec || 0;
+  function loadOpenTabsTimeBreakdown() {
+    const listEl = document.getElementById('openTabsTimeList');
+    const countEl = document.getElementById('openTabsCount');
+    if (!listEl) return;
 
-    const totalEl = document.getElementById('totalScreenTime');
-    const prodEl = document.getElementById('prodScreenTime');
-    const distEl = document.getElementById('distScreenTime');
-    if (totalEl) totalEl.textContent = fmtTime(totalSec);
-    if (prodEl) prodEl.textContent = fmtTime(prodSec);
-    if (distEl) distEl.textContent = fmtTime(distSec);
-
-    const scoreBadge = document.getElementById('scoreBadge');
-    if (scoreBadge) {
-      const score = totalSec > 0 ? Math.round((prodSec / totalSec) * 100) : 100;
-      scoreBadge.textContent = score + '% Focus';
-    }
-
-    const curDomain = data.currentDomain || 'M2028 Workspace';
-    const curSec = data.currentSec || 0;
-    const curDomainEl = document.getElementById('activeDomain');
-    const curTimeEl = document.getElementById('activeTimeToday');
-    if (curDomainEl) curDomainEl.textContent = curDomain;
-    if (curTimeEl) curTimeEl.textContent = 'Active now: ' + fmtTime(curSec);
-
-    const catBar = document.getElementById('catProgressBar');
-    if (catBar && totalSec > 0) {
-      const pProd = Math.round((prodSec / totalSec) * 100);
-      const pDist = Math.round((distSec / totalSec) * 100);
-      const pRest = Math.max(0, 100 - pProd - pDist);
-      catBar.innerHTML = `
-        <div class="cat-seg seg-prod" style="width: ${pProd}%" title="Productive ${pProd}%"></div>
-        <div class="cat-seg seg-ent" style="width: ${pDist}%" title="Entertainment ${pDist}%"></div>
-        <div class="cat-seg seg-comm" style="width: ${pRest}%" title="Other ${pRest}%"></div>
-      `;
-    }
-
-    const sitesList = document.getElementById('topSitesList');
-    if (sitesList) {
-      const sitesObj = stats.sites || {};
-      const sorted = Object.keys(sitesObj).map(d => ({ domain: d, sec: sitesObj[d] })).sort((a, b) => b.sec - a.sec);
-      if (sorted.length === 0) {
-        sitesList.innerHTML = '<div class="empty-msg">No browsing data recorded yet today. Browse normally to see your time breakdown!</div>';
-      } else {
-        sitesList.innerHTML = sorted.slice(0, 6).map(item => `
-          <div class="site-row">
-            <div class="site-row-left">
-              <span style="font-size:14px">🌐</span>
-              <span class="site-domain-name" title="${item.domain}">${item.domain}</span>
-            </div>
-            <div class="site-row-right">
-              <span class="site-time-badge">${fmtTime(item.sec)}</span>
-            </div>
-          </div>
-        `).join('');
-      }
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({}, function (tabs) {
+        if (!tabs || tabs.length === 0) {
+          listEl.innerHTML = '<div class="empty-state">No open tabs detected.</div>';
+          if (countEl) countEl.textContent = '0';
+          return;
+        }
+        if (countEl) countEl.textContent = tabs.length;
+        renderOpenTabsTimeRows(tabs, listEl);
+      });
+    } else {
+      // Mock open tabs for web preview
+      const mockTabs = [
+        { id: 1, windowId: 1, title: 'M2028 Web Workspace & Hub', url: 'http://localhost:8080/index.html', favIconUrl: 'favicon-32.png', active: true },
+        { id: 2, windowId: 1, title: 'GitHub - Aviatcode/M2028: Master Productivity', url: 'https://github.com/Aviatcode/M2028', favIconUrl: 'https://github.githubassets.com/favicons/favicon.svg', active: false },
+        { id: 3, windowId: 1, title: 'YouTube - Lofi Hip Hop Beats to Relax/Study to', url: 'https://youtube.com', favIconUrl: 'https://www.youtube.com/s/desktop/99cbfa75/img/favicon.ico', active: false },
+        { id: 4, windowId: 1, title: 'Reddit: The front page of the internet', url: 'https://reddit.com', favIconUrl: 'https://www.redditstatic.com/shreddit/assets/favicon/192x192.png', active: false }
+      ];
+      if (countEl) countEl.textContent = mockTabs.length;
+      renderOpenTabsTimeRows(mockTabs, listEl);
     }
   }
 
-  const resetTrackerBtn = document.getElementById('resetTrackerBtn');
-  if (resetTrackerBtn) {
-    resetTrackerBtn.addEventListener('click', function () {
-      if (confirm("Reset today's screen time statistics?")) {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-          chrome.runtime.sendMessage({ action: 'RESET_TODAY' }, renderScreenTime);
-        } else {
-          renderScreenTime();
+  function renderOpenTabsTimeRows(tabs, container) {
+    container.innerHTML = tabs.map(tab => {
+      const dom = getDomainFromUrl(tab.url);
+      const timeData = cachedDomainsData[dom];
+      const timeStr = timeData && timeData.seconds ? formatDuration(timeData.seconds) + ' today' : 'New tab';
+      const fav = tab.favIconUrl || (dom ? `https://www.google.com/s2/favicons?domain=${dom}&sz=32` : 'favicon-32.png');
+      const isActive = !!tab.active || (currentActiveTabDomain && dom === currentActiveTabDomain);
+
+      return `
+        <div class="tab-row ${isActive ? 'is-active' : ''}" data-tabid="${tab.id}" data-winid="${tab.windowId}">
+          <img class="tab-row-favicon" src="${escapeHtml(fav)}" onerror="this.onerror=null;this.src='favicon-32.png';">
+          <div class="tab-row-info">
+            <div class="tab-row-title" title="${escapeHtml(tab.title || tab.url)}">${escapeHtml(tab.title || tab.url || 'Untitled Tab')}</div>
+            <div class="tab-row-meta">
+              <span>${escapeHtml(dom || 'local')}</span>
+              <span>•</span>
+              <span class="tab-row-time">${timeStr}</span>
+              ${isActive ? '<span class="tag t-ai sm" style="font-size:9px;padding:1px 5px">Active</span>' : ''}
+            </div>
+          </div>
+          <button class="tab-row-action">Switch ➔</button>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.tab-row').forEach(row => {
+      row.addEventListener('click', function () {
+        const tid = parseInt(this.getAttribute('data-tabid'), 10);
+        const wid = parseInt(this.getAttribute('data-winid'), 10);
+        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.update) {
+          chrome.tabs.update(tid, { active: true });
+          if (chrome.windows && chrome.windows.update) {
+            chrome.windows.update(wid, { focused: true });
+          }
         }
-      }
+      });
     });
   }
 
@@ -1050,77 +1297,115 @@
   // =====================================================================
   // 9. Quick Search & Open Tabs Controller
   // =====================================================================
+  let allLoadedOpenTabs = [];
+
+  function initQuickSearch() {
+    const inp = document.getElementById('quickSearchInput');
+    const refreshBtn = document.getElementById('refreshTabsBtn');
+
+    if (refreshBtn) refreshBtn.addEventListener('click', loadOpenTabs);
+
+    document.querySelectorAll('.engine-chips-row .engine-pill').forEach(btn => {
+      btn.addEventListener('click', function () {
+        const p = this.getAttribute('data-prefix');
+        if (inp) {
+          inp.value = p + ' ';
+          inp.focus();
+          filterOpenTabs(inp.value);
+        }
+      });
+    });
+
+    if (inp) {
+      inp.addEventListener('input', function () {
+        filterOpenTabs(this.value);
+      });
+
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          executeSearch(this.value);
+        }
+      });
+    }
+
+    loadOpenTabs();
+  }
+
   function loadOpenTabs() {
     const listEl = document.getElementById('searchResultsList');
     if (!listEl) return;
 
     if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
       chrome.tabs.query({}, function (tabs) {
-        if (!tabs || tabs.length === 0) {
-          listEl.innerHTML = '<div class="empty-msg">No active tabs found.</div>';
-          return;
-        }
-        renderTabsList(tabs);
+        allLoadedOpenTabs = tabs || [];
+        const inp = document.getElementById('quickSearchInput');
+        filterOpenTabs(inp ? inp.value : '');
       });
     } else {
-      listEl.innerHTML = `
-        <div class="tab-item-row" onclick="window.open('http://localhost:8080/index.html','_blank')">
-          <span class="tab-item-title">M2028 Web Dashboard</span>
-          <span class="tag t-ai">Local</span>
-        </div>
-        <div class="tab-item-row" onclick="window.open('https://github.com','_blank')">
-          <span class="tab-item-title">GitHub</span>
-          <span class="tag t-ai">Web</span>
-        </div>
-      `;
+      allLoadedOpenTabs = [
+        { id: 1, windowId: 1, title: 'M2028 Web Workspace & Hub', url: 'http://localhost:8080/index.html', favIconUrl: 'favicon-32.png', active: true },
+        { id: 2, windowId: 1, title: 'GitHub - Aviatcode/M2028: Master Productivity', url: 'https://github.com/Aviatcode/M2028', favIconUrl: 'https://github.githubassets.com/favicons/favicon.svg', active: false },
+        { id: 3, windowId: 1, title: 'YouTube - Lofi Hip Hop Beats to Relax/Study to', url: 'https://youtube.com', favIconUrl: 'https://www.youtube.com/s/desktop/99cbfa75/img/favicon.ico', active: false },
+        { id: 4, windowId: 1, title: 'Reddit: The front page of the internet', url: 'https://reddit.com', favIconUrl: 'https://www.redditstatic.com/shreddit/assets/favicon/192x192.png', active: false }
+      ];
+      const inp = document.getElementById('quickSearchInput');
+      filterOpenTabs(inp ? inp.value : '');
     }
   }
 
-  function renderTabsList(tabs) {
+  function filterOpenTabs(rawQuery) {
     const listEl = document.getElementById('searchResultsList');
     if (!listEl) return;
-    listEl.innerHTML = tabs.map(t => `
-      <div class="tab-item-row" data-tabid="${t.id}" data-winid="${t.windowId}">
-        <span class="tab-item-title">${escapeHtml(t.title || t.url || 'Untitled Tab')}</span>
-        <span class="tag sm" style="font-size:9.5px;color:var(--mt)">Switch</span>
-      </div>
-    `).join('');
 
-    listEl.querySelectorAll('.tab-item-row').forEach(row => {
-      row.addEventListener('click', function () {
-        const tid = parseInt(this.getAttribute('data-tabid'), 10);
-        const wid = parseInt(this.getAttribute('data-winid'), 10);
-        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.update) {
-          chrome.tabs.update(tid, { active: true });
-          if (chrome.windows && chrome.windows.update) {
-            chrome.windows.update(wid, { focused: true });
-          }
-        }
+    const q = (rawQuery || '').trim().toLowerCase();
+
+    // Search engine prefix detection
+    const match = q.match(/^(g|yt|gh|w|r|ddg)\s+(.*)/i);
+    if (match) {
+      const eng = match[1].toLowerCase();
+      const term = match[2];
+      const engNames = { g: 'Google', yt: 'YouTube', gh: 'GitHub', w: 'Wikipedia', r: 'Reddit', ddg: 'DuckDuckGo' };
+      listEl.innerHTML = `
+        <div class="tab-row" id="executeCustomSearchItem" style="border-color:var(--ai)">
+          <span style="font-size:18px">🚀</span>
+          <div class="tab-row-info">
+            <div class="tab-row-title">Search <b>"${escapeHtml(term)}"</b> on ${engNames[eng] || 'Web'}</div>
+            <div class="tab-row-meta"><span style="color:var(--ai)">Press Enter ↵ to launch search</span></div>
+          </div>
+          <button class="tab-row-action">Search ➔</button>
+        </div>
+      `;
+      const actionItem = document.getElementById('executeCustomSearchItem');
+      if (actionItem) actionItem.addEventListener('click', () => executeSearch(rawQuery));
+      return;
+    }
+
+    let matched = allLoadedOpenTabs;
+    if (q) {
+      matched = allLoadedOpenTabs.filter(t => {
+        const title = (t.title || '').toLowerCase();
+        const url = (t.url || '').toLowerCase();
+        return title.includes(q) || url.includes(q);
       });
-    });
-  }
+    }
 
-  const refreshTabsBtn = document.getElementById('refreshTabsBtn');
-  if (refreshTabsBtn) refreshTabsBtn.addEventListener('click', loadOpenTabs);
+    if (matched.length === 0) {
+      listEl.innerHTML = `
+        <div class="tab-row" id="executeDefaultGoogleItem" style="border-color:var(--b2)">
+          <span style="font-size:18px">🔍</span>
+          <div class="tab-row-info">
+            <div class="tab-row-title">Google Search <b>"${escapeHtml(rawQuery)}"</b></div>
+            <div class="tab-row-meta"><span style="color:var(--m2)">Press Enter ↵ or click to open</span></div>
+          </div>
+          <button class="tab-row-action">Search ➔</button>
+        </div>
+      `;
+      const actionItem = document.getElementById('executeDefaultGoogleItem');
+      if (actionItem) actionItem.addEventListener('click', () => executeSearch(rawQuery));
+      return;
+    }
 
-  document.querySelectorAll('.engine-chips-row .engine-pill').forEach(btn => {
-    btn.addEventListener('click', function () {
-      const p = this.getAttribute('data-prefix');
-      const inp = document.getElementById('quickSearchInput');
-      if (inp) {
-        inp.value = p + ' ';
-        inp.focus();
-      }
-    });
-  });
-
-  const quickSearchInput = document.getElementById('quickSearchInput');
-  if (quickSearchInput) {
-    quickSearchInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        executeSearch(this.value);
-      }
-    });
+    renderOpenTabsTimeRows(matched, listEl);
   }
 
   function executeSearch(raw) {
@@ -1204,11 +1489,12 @@
     initTheme();
     initNav();
     initPomo();
-    renderScreenTime();
+    initTimeTracker();
     renderHabits();
     renderTasks();
     renderCountdowns();
     initNotes();
+    initQuickSearch();
   });
 
 })();

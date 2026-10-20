@@ -108,10 +108,18 @@ function extractDomain(url) {
   if (!url) return null;
   try {
     const u = new URL(url);
-    if (!['http:', 'https:'].includes(u.protocol)) return null;
-    let hostname = u.hostname.toLowerCase();
-    if (hostname.startsWith('www.')) hostname = hostname.slice(4);
-    return hostname;
+    if (['http:', 'https:'].includes(u.protocol)) {
+      let hostname = u.hostname.toLowerCase();
+      if (hostname.startsWith('www.')) hostname = hostname.slice(4);
+      return hostname;
+    }
+    if (u.protocol === 'chrome:') {
+      return 'chrome://' + u.hostname;
+    }
+    if (u.protocol === 'file:') {
+      return 'local-file';
+    }
+    return null;
   } catch (e) {
     return null;
   }
@@ -225,7 +233,15 @@ async function updateActiveTarget(url, title, favicon) {
 // Check current active tab in focused window
 async function checkCurrentTab() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    let [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab) {
+      const curTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      tab = curTabs && curTabs[0];
+    }
+    if (!tab) {
+      const anyTabs = await chrome.tabs.query({ active: true });
+      tab = anyTabs && anyTabs[0];
+    }
     if (tab && tab.url) {
       await updateActiveTarget(tab.url, tab.title, tab.favIconUrl);
     } else {
@@ -311,12 +327,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     switch (message.type) {
       case 'GET_TRACKER_DATA': {
+        await checkCurrentTab();
         await flushTime();
         const today = getTodayKey();
         const res = await chrome.storage.local.get([STORAGE_KEY_STATS, STORAGE_KEY_ACTIVE]);
         const stats = res[STORAGE_KEY_STATS] || {};
         const todayData = stats[today] || { totalSeconds: 0, domains: {} };
         const active = res[STORAGE_KEY_ACTIVE] || null;
+        if (active && active.domain && todayData.domains && todayData.domains[active.domain]) {
+          active.todayTotal = todayData.domains[active.domain].seconds;
+        }
 
         // Calculate 7-day stats
         let weekTotalSeconds = 0;

@@ -91,7 +91,6 @@
     if (existing) existing.remove();
 
     if (!colors || !(colors.bg || colors.tx || colors.ac)) {
-      document.documentElement.classList.remove('ucolors');
       return;
     }
 
@@ -109,13 +108,13 @@
       return 0.2126 * f(a[0]) + 0.7152 * f(a[1]) + 0.0722 * f(a[2]);
     };
 
-    const s = P(colors.bg || (theme === 'light' ? '#f4f7fe' : '#0d1014'));
-    const d = P(colors.tx || (theme === 'light' ? '#1a1a2e' : '#e6ecf3'));
+    const s = P(colors.bg || (theme === 'light' ? '#faf4f2' : theme === 'pink' ? '#ffb7ce' : '#0a0000'));
+    const d = P(colors.tx || (theme === 'light' ? '#2b0b09' : theme === 'pink' ? '#4a1230' : '#fff1ee'));
     const dk = L(s) < 0.25;
     const s1 = dk ? M(s, d, 0.06) : M(s, [255, 255, 255], 0.7);
     const s2 = dk ? M(s, d, 0.09) : M(s, d, 0.04);
     const s3 = dk ? M(s, d, 0.15) : M(s, d, 0.11);
-    const ac = P(colors.ac || (theme === 'pink' ? '#ff6eb4' : '#35c48f'));
+    const ac = P(colors.ac || (theme === 'pink' ? '#ff6eb4' : theme === 'light' ? '#fd2a1f' : '#c42018'));
 
     let css = `
       :root {
@@ -131,6 +130,11 @@
         --ai: ${R(ac)} !important;
         --a2: ${A(ac, 0.16)} !important;
         --dn: ${R(ac)} !important;
+        --card-bg: ${dk ? `linear-gradient(135deg, ${A(ac, 0.24)} 0%, ${R(s1)} 38%, ${R(s)} 100%)` : '#ffffff'} !important;
+        --card-bd: ${A(ac, 0.35)} !important;
+        --card-sh: 0 14px 44px rgba(0,0,0,0.65), 0 0 32px ${A(ac, 0.2)} !important;
+        --pill-bg: ${R(ac)} !important;
+        --pill-tx: ${L(ac) > 0.4 ? '#0b0f1a' : '#ffffff'} !important;
       }
       body { background: ${R(s)} !important; color: ${R(d)} !important; }
       .tb { background: ${A(s, 0.95)} !important; }
@@ -140,21 +144,27 @@
     st.id = 'm2028-custom-theme-style';
     st.textContent = css;
     document.head.appendChild(st);
-    document.documentElement.classList.add('ucolors');
   }
 
   function paintTheme(themeName) {
     const validTheme = THEME_NEXT[themeName] ? themeName : 'dark';
     document.documentElement.setAttribute('data-theme', validTheme);
     document.body.classList.remove('light', 'pink');
-    if (validTheme !== 'dark') {
-      document.body.classList.add(validTheme);
+    
+    if (validTheme === 'light') {
+      document.documentElement.className = 'ucolors ucac redx';
+      document.body.classList.add('light');
+    } else if (validTheme === 'pink') {
+      document.documentElement.className = 'm-ready';
+      document.body.classList.add('pink');
+    } else {
+      document.documentElement.className = 'ucolors ucac redx m-ready';
     }
 
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) {
       if (validTheme === 'light') {
-        themeBtn.title = 'Current: Light (Click for Girl Mode 🌸)';
+        themeBtn.title = 'Current: Light ☀️ (Click for Girl Mode 🌸)';
         themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">🌸</span>';
       } else if (validTheme === 'pink') {
         themeBtn.title = 'Current: Girl Mode 🌸 (Click for Dark Mode 🌙)';
@@ -179,6 +189,9 @@
       }
       applyCustomColors(cfg, validTheme);
     });
+
+    if (activeTabName === 'habits') renderHabits();
+    if (activeTabName === 'tasks') renderTasks();
   }
 
   function toggleTheme() {
@@ -210,15 +223,16 @@
     if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
     const openPlannerBtn = document.getElementById('openPlannerBtn');
-    if (openPlannerBtn) {
-      openPlannerBtn.addEventListener('click', function () {
-        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
-          chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
-        } else {
-          window.open('index.html', '_blank');
-        }
-      });
+    const openHubInsideBtn = document.getElementById('openHubInsideBtn');
+    function openFullApp() {
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+        chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
+      } else {
+        window.open('index.html', '_blank');
+      }
     }
+    if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
+    if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
   }
 
   function switchTab(tab) {
@@ -626,6 +640,31 @@
     return count;
   }
 
+  function calcHabitItemStreak(hid, hdMap) {
+    let count = 0;
+    let n = new Date();
+    n.setHours(0, 0, 0, 0);
+    const todayK = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+    if (!hdMap[todayK] || !hdMap[todayK][hid]) {
+      n = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
+    }
+    for (; count < 365; ) {
+      const k = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+      if (!hdMap[k] || !hdMap[k][hid]) break;
+      count++;
+      n = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
+    }
+    return count;
+  }
+
+  function deleteHabit(hid) {
+    S.get('habs', DEF_HABS, function (allHabits) {
+      const updated = allHabits.filter(h => h.id !== hid);
+      S.set('habs', updated);
+      renderHabits();
+    });
+  }
+
   function renderHabits() {
     S.get('habs', DEF_HABS, function (allHabits) {
       S.get('hd', {}, function (hdMap) {
@@ -665,16 +704,20 @@
 
         const listEl = document.getElementById('habListContainer');
         if (listEl) {
+          const isPink = document.body.classList.contains('pink');
           listEl.innerHTML = scheduled.map(h => {
             const isDone = !!todayDone[h.id];
+            const r = calcHabitItemStreak(h.id, hdMap);
             return `
               <div class="hr ${isDone ? 'ck' : ''}" data-hid="${h.id}">
-                <div class="hr-label">
-                  <span class="hr-text">${h.label}</span>
-                </div>
                 <button class="hc ${isDone ? 'ck' : ''}" data-hid="${h.id}" title="Toggle Done">
                   ${isDone ? '✓' : ''}
                 </button>
+                <div class="hr-label">
+                  <span class="hr-text">${escapeHtml(h.label)}</span>
+                </div>
+                ${r > 0 ? `<span class="hr-streak">🔥 ${r}</span>` : ''}
+                <button class="ract del-hab" data-delhid="${h.id}" title="Delete Habit">✕</button>
               </div>
             `;
           }).join('');
@@ -683,6 +726,13 @@
             btn.addEventListener('click', function (e) {
               e.stopPropagation();
               toggleHabit(this.getAttribute('data-hid'));
+            });
+          });
+
+          listEl.querySelectorAll('.del-hab').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+              e.stopPropagation();
+              deleteHabit(this.getAttribute('data-delhid'));
             });
           });
         }
@@ -763,6 +813,7 @@
       const today = getTodayKey();
       const pending = tasks.filter(t => !t.done);
       const completed = tasks.filter(t => t.done);
+      const isPink = document.body.classList.contains('pink');
 
       const countEl = document.getElementById('tskCount');
       if (countEl) countEl.textContent = pending.length + ' to do';
@@ -783,7 +834,7 @@
                 <button class="rck" data-tid="${t.id}" title="Mark done"></button>
                 <input type="text" class="rtext" data-tid="${t.id}" value="${escapeHtml(t.text)}">
                 ${dueChip}
-                <button class="ract del" data-tid="${t.id}" title="Delete task">×</button>
+                <button class="ract del" data-tid="${t.id}" title="Delete task">✕</button>
               </div>
             `;
           }).join('');
@@ -817,7 +868,7 @@
             <div class="row is-done" data-tid="${t.id}">
               <button class="rck on" data-tid="${t.id}" title="Mark undone">✓</button>
               <span class="rtext">${escapeHtml(t.text)}</span>
-              <button class="ract del" data-tid="${t.id}" title="Delete task">×</button>
+              <button class="ract del" data-tid="${t.id}" title="Delete task">✕</button>
             </div>
           `).join('');
 

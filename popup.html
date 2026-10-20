@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="dark" class="ucolors ucac redx m-ready">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,7 +20,7 @@
         <div class="sp" id="streakBadge" title="Habits completed today">
           <span>🔥</span> <span id="streakCount">0d</span>
         </div>
-        <button id="themeToggleBtn" class="tb-btn" title="Toggle Dark / Light Theme" aria-label="Toggle Theme">
+        <button id="themeToggleBtn" class="tb-btn" title="Toggle Dark / Light / Girl Mode Theme" aria-label="Toggle Theme">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         </button>
         <button id="openPlannerBtn" class="tb-btn primary" title="Open Full M2028 Web App">
@@ -66,6 +66,12 @@
 
       <!-- 1. TIME TRACKER PANEL -->
       <section class="vw on" id="tab-time">
+        <!-- Screen Time & Hub Card Header -->
+        <div class="ct" style="margin-bottom:10px">
+          <span style="display:flex;align-items:center;gap:6px"><span>⏱️</span> Screen Time &amp; Hub</span>
+          <button class="btn b-ai sm" id="openHubInsideBtn" title="Open One-Stop Hub">⚡ Open Hub</button>
+        </div>
+
         <!-- Live Active Site Banner -->
         <div class="active-site-card" id="activeSiteCard">
           <div class="pulse-indicator"></div>

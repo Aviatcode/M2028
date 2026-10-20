@@ -39,7 +39,8 @@
     "http://127.0.0.1/*",
     "http://localhost:*/*",
     "http://127.0.0.1:*/*",
-    "https://aviatcode.github.io/M2028/*"
+    "https://aviatcode.github.io/M2028/*",
+    "https://*.supabase.co/*"
   ],
   "content_scripts": [
     {

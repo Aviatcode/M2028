@@ -20,6 +20,13 @@
         <div class="sp" id="streakBadge" title="Habits completed today">
           <span>🔥</span> <span id="streakCount">0d</span>
         </div>
+        <button id="authBtn" class="tb-auth-btn" title="Sign In to sync habits, tasks, countdowns & pomo">
+          <span class="auth-icon">👤</span>
+          <span class="auth-text" id="authBtnText">Sign In</span>
+        </button>
+        <button id="quickSignOutBtn" class="tb-auth-btn sign-out-quick" style="display:none" title="Sign Out of M2028">
+          <span>Sign Out</span>
+        </button>
         <button id="themeToggleBtn" class="tb-btn" title="Toggle Dark / Light / Girl Mode Theme" aria-label="Toggle Theme">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
         </button>
@@ -314,6 +321,86 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- Account & Cloud Sync Modal -->
+  <div class="ov" id="authModal">
+    <div class="mo auth-mo">
+      <div class="auth-mo-head">
+        <div class="auth-mo-title" id="authModalTitle">M2028 Account</div>
+        <button type="button" class="auth-mo-close" id="authModalClose" aria-label="Close">✕</button>
+      </div>
+
+      <!-- View A: Signed Out (Login / Sign Up) -->
+      <div id="authSignedOutView">
+        <div class="auth-brand-badge">
+          <div class="auth-brand-name">Sign In to M2028</div>
+          <div class="auth-brand-sub">Sync habits, tasks, countdowns, pomo timer, and theme across your extension and website.</div>
+        </div>
+
+        <div class="auth-fields">
+          <div class="auth-field-group">
+            <label class="auth-field-lbl" for="authEmailInp">EMAIL</label>
+            <input type="email" id="authEmailInp" class="inp" placeholder="you@email.com" autocomplete="email">
+          </div>
+
+          <div class="auth-field-group">
+            <label class="auth-field-lbl" for="authPwInp">PASSWORD</label>
+            <div style="position:relative">
+              <input type="password" id="authPwInp" class="inp" placeholder="••••••••" autocomplete="current-password">
+              <button type="button" id="authPwToggle" class="auth-eye-btn" title="Toggle password visibility">👁</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="authAlertMsg" class="auth-alert" style="display:none"></div>
+
+        <div class="auth-actions">
+          <button type="button" class="btn b-ai" id="authSubmitSignIn" style="width:100%">Sign In</button>
+          <button type="button" class="btn b-gh" id="authSubmitSignUp" style="width:100%">Create Account</button>
+        </div>
+
+        <div class="auth-divider"><span>OR</span></div>
+
+        <button type="button" class="btn b-gh sm auth-web-sync-btn" id="authSyncWebBtn">
+          ⚡ Sync with Open Web App Tab
+        </button>
+
+        <div style="text-align:center;margin-top:12px">
+          <button type="button" id="authContinueGuestBtn" class="auth-ghost-btn">
+            Continue offline as Guest
+          </button>
+        </div>
+      </div>
+
+      <!-- View B: Signed In (Account Info & Sync Status) -->
+      <div id="authSignedInView" style="display:none">
+        <div class="auth-user-card">
+          <div class="auth-avatar-circle">👤</div>
+          <div class="auth-user-email" id="authCardEmail">you@email.com</div>
+          <div class="auth-sync-pill">
+            <span class="auth-dot-live"></span>
+            <span>Cloud Sync Active</span>
+          </div>
+        </div>
+
+        <div class="auth-sync-summary">
+          <div class="auth-sync-item"><span class="syn-ico">🌿</span> <span class="syn-txt">Daily Habits &amp; Streaks</span> <span class="syn-tag">Synced</span></div>
+          <div class="auth-sync-item"><span class="syn-ico">☑️</span> <span class="syn-txt">Tasks &amp; Checklists</span> <span class="syn-tag">Synced</span></div>
+          <div class="auth-sync-item"><span class="syn-ico">⏳</span> <span class="syn-txt">Target Countdowns</span> <span class="syn-tag">Synced</span></div>
+          <div class="auth-sync-item"><span class="syn-ico">⏱</span> <span class="syn-txt">Pomodoro Sessions &amp; Stats</span> <span class="syn-tag">Synced</span></div>
+          <div class="auth-sync-item"><span class="syn-ico">🎨</span> <span class="syn-txt">Theme &amp; Accent Colors</span> <span class="syn-tag">Synced</span></div>
+        </div>
+
+        <div id="authSyncStatusText" class="auth-sync-status-msg">All items synced with cloud</div>
+
+        <div class="auth-signedin-actions">
+          <button type="button" class="btn b-ai" id="authManualSyncBtn" style="width:100%">🔄 Sync Now</button>
+          <button type="button" class="btn b-gh" id="authOpenAppBtn" style="width:100%">🌐 Open Web App</button>
+          <button type="button" class="btn b-rd" id="authSignOutBtn" style="width:100%">Sign Out</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="popup.js"></script>

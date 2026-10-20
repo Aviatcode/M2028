@@ -187,10 +187,40 @@
           syncObj.customColors = cc;
           syncObj.m_customColors = cc;
         }
+        // Also check if user is logged into Supabase on web app
+        const supaTok = window.localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token');
+        if (supaTok) {
+          try {
+            const sess = JSON.parse(supaTok);
+            if (sess && sess.access_token && sess.user) {
+              syncObj.m_authSession = sess;
+            }
+          } catch (e) {}
+        }
         if (Object.keys(syncObj).length > 0) {
           chrome.storage.local.set(syncObj);
         }
       } catch (e) {}
+    });
+  }
+
+  // 4. Listen for tab auth queries from extension popup
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+      if (request.type === 'GET_M2028_TAB_AUTH') {
+        try {
+          const supaTok = window.localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token');
+          if (supaTok) {
+            const sess = JSON.parse(supaTok);
+            if (sess && sess.access_token && sess.user) {
+              sendResponse({ success: true, session: sess });
+              return true;
+            }
+          }
+        } catch (e) {}
+        sendResponse({ success: false, error: 'No active session found in web tab' });
+        return true;
+      }
     });
   }
 
@@ -200,3 +230,4 @@
     initialSync();
   }
 })();
+

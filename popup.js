@@ -41,6 +41,9 @@
         obj[key] = val;
         chrome.storage.local.set(obj);
       }
+      if (typeof pushCloudData === 'function') {
+        pushCloudData(key, val);
+      }
     }
   };
 
@@ -1079,6 +1082,9 @@
         state: st
       }).catch(() => {});
     }
+    if (typeof pushCloudData === 'function') {
+      pushCloudData('pomLive', st);
+    }
   }
 
   function syncPomoFromStorage() {
@@ -1735,7 +1741,543 @@
   }
 
   // =====================================================================
-  // 10. Real-Time Two-Way Storage Synchronizer
+  // 10. Auth & Cloud Synchronization Controller (Supabase Direct REST API)
+  // Supports Independent Offline/Guest Mode & Full Cloud Sync with Web App
+  // =====================================================================
+  const SUPA_URL = "https://lvzcctsqcpikisdzztot.supabase.co";
+  const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2emNjdHNxY3Bpa2lzZHp6dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4OTQsImV4cCI6MjA5NzI4NTg5NH0.Z1GejKEAkFuJmum-amd5zin8TFEIaeptroRtjFmojdw";
+  const SUPA_AUTH_STORE_KEY = "sb-" + SUPA_URL.replace("https://", "").split(".")[0] + "-auth-token";
+
+  let _authSession = null;
+  const SYNC_KEYS = ['habs', 'hd', 'tasks', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors'];
+  const _pushTimers = {};
+
+  function setAuthAlert(msg, isSuccess) {
+    const el = document.getElementById('authAlertMsg');
+    if (!el) return;
+    if (!msg) {
+      el.style.display = 'none';
+      el.textContent = '';
+      return;
+    }
+    el.className = 'auth-alert ' + (isSuccess ? 'success' : 'error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function updateAuthUI() {
+    const authBtn = document.getElementById('authBtn');
+    const authBtnText = document.getElementById('authBtnText');
+    const quickSignOutBtn = document.getElementById('quickSignOutBtn');
+    const signedOutView = document.getElementById('authSignedOutView');
+    const signedInView = document.getElementById('authSignedInView');
+    const cardEmail = document.getElementById('authCardEmail');
+
+    if (_authSession && _authSession.user) {
+      // User is signed in
+      const email = _authSession.user.email || 'User';
+      const shortEmail = email.length > 18 ? email.slice(0, 15) + '...' : email;
+      if (authBtn) {
+        authBtn.classList.add('logged-in');
+        authBtn.title = 'Account: ' + email + ' (Cloud Sync Active)';
+      }
+      if (authBtnText) {
+        authBtnText.innerHTML = '<span class="auth-dot"></span>' + escapeHtml(shortEmail);
+      }
+      if (quickSignOutBtn) {
+        quickSignOutBtn.style.display = 'inline-flex';
+      }
+      if (signedOutView) signedOutView.style.display = 'none';
+      if (signedInView) signedInView.style.display = 'block';
+      if (cardEmail) cardEmail.textContent = email;
+    } else {
+      // Offline / Guest mode
+      if (authBtn) {
+        authBtn.classList.remove('logged-in');
+        authBtn.title = 'Sign In to sync habits, tasks, countdowns, pomo & theme';
+      }
+      if (authBtnText) {
+        authBtnText.textContent = 'Sign In';
+      }
+      if (quickSignOutBtn) {
+        quickSignOutBtn.style.display = 'none';
+      }
+      if (signedOutView) signedOutView.style.display = 'block';
+      if (signedInView) signedInView.style.display = 'none';
+    }
+  }
+
+  function openAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (!modal) return;
+    modal.classList.add('op');
+    setAuthAlert('');
+  }
+
+  function closeAuthModal() {
+    const modal = document.getElementById('authModal');
+    if (!modal) return;
+    modal.classList.remove('op');
+    setAuthAlert('');
+  }
+
+  function saveAuthSession(session) {
+    _authSession = session;
+    if (session) {
+      try {
+        localStorage.setItem('m_authSession', JSON.stringify(session));
+        localStorage.setItem(SUPA_AUTH_STORE_KEY, JSON.stringify(session));
+      } catch (e) {}
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const obj = { m_authSession: session };
+        obj[SUPA_AUTH_STORE_KEY] = session;
+        chrome.storage.local.set(obj);
+      }
+    } else {
+      try {
+        localStorage.removeItem('m_authSession');
+        localStorage.removeItem(SUPA_AUTH_STORE_KEY);
+      } catch (e) {}
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.remove(['m_authSession', SUPA_AUTH_STORE_KEY]);
+      }
+    }
+    updateAuthUI();
+  }
+
+  function initAuth(callback) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['m_authSession', SUPA_AUTH_STORE_KEY], function (res) {
+        let sess = res.m_authSession || res[SUPA_AUTH_STORE_KEY];
+        if (!sess) {
+          try {
+            const raw = localStorage.getItem('m_authSession') || localStorage.getItem(SUPA_AUTH_STORE_KEY);
+            if (raw) sess = JSON.parse(raw);
+          } catch (e) {}
+        }
+        if (sess && sess.user && sess.access_token) {
+          _authSession = sess;
+          updateAuthUI();
+          pullCloudData(true);
+        } else {
+          // Check if an open web app tab already has an active login session
+          checkOpenTabForAuth();
+        }
+        if (callback) callback();
+      });
+    } else {
+      try {
+        const raw = localStorage.getItem('m_authSession') || localStorage.getItem(SUPA_AUTH_STORE_KEY);
+        if (raw) {
+          const sess = JSON.parse(raw);
+          if (sess && sess.user && sess.access_token) {
+            _authSession = sess;
+          }
+        }
+      } catch (e) {}
+      updateAuthUI();
+      if (_authSession) pullCloudData(true);
+      if (callback) callback();
+    }
+  }
+
+  function checkOpenTabForAuth() {
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query) return;
+    chrome.tabs.query({ url: ['*://localhost/*', '*://127.0.0.1/*', '*://aviatcode.github.io/M2028/*'] }, function (tabs) {
+      if (!tabs || tabs.length === 0) return;
+      for (let t of tabs) {
+        chrome.tabs.sendMessage(t.id, { type: 'GET_M2028_TAB_AUTH' }, function (res) {
+          if (chrome.runtime.lastError || !res || !res.success || !res.session) return;
+          if (!_authSession && res.session.access_token) {
+            saveAuthSession(res.session);
+            pullCloudData(true);
+          }
+        });
+      }
+    });
+  }
+
+  async function apiSignIn(email, password) {
+    setAuthAlert('');
+    const btn = document.getElementById('authSubmitSignIn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
+
+    try {
+      const resp = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email.trim(), password: password })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const err = data.msg || data.error_description || data.message || 'Invalid login credentials';
+        setAuthAlert(err, false);
+        return;
+      }
+      saveAuthSession(data);
+      setAuthAlert('Signed in successfully! Syncing cloud data...', true);
+      await pullCloudData(false);
+      setTimeout(function () {
+        closeAuthModal();
+      }, 1200);
+    } catch (e) {
+      setAuthAlert('Network error: ' + (e.message || 'Could not connect to Supabase'), false);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+    }
+  }
+
+  async function apiSignUp(email, password) {
+    setAuthAlert('');
+    const btn = document.getElementById('authSubmitSignUp');
+    if (btn) { btn.disabled = true; btn.textContent = 'Creating...'; }
+
+    try {
+      const resp = await fetch(`${SUPA_URL}/auth/v1/signup`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email.trim(), password: password })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        const err = data.msg || data.error_description || data.message || 'Could not create account';
+        setAuthAlert(err, false);
+        return;
+      }
+      if (data.access_token && data.user) {
+        saveAuthSession(data);
+        setAuthAlert('Account created & signed in! Syncing cloud data...', true);
+        await pullCloudData(false);
+        setTimeout(closeAuthModal, 1200);
+      } else {
+        setAuthAlert('Account created! Please check your email to confirm before signing in.', true);
+      }
+    } catch (e) {
+      setAuthAlert('Network error: ' + (e.message || 'Could not connect'), false);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
+    }
+  }
+
+  async function doSignOut() {
+    if (_authSession && _authSession.access_token) {
+      try {
+        fetch(`${SUPA_URL}/auth/v1/logout`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPA_KEY,
+            'Authorization': `Bearer ${_authSession.access_token}`
+          }
+        }).catch(() => {});
+      } catch (e) {}
+    }
+    saveAuthSession(null);
+    closeAuthModal();
+    setAuthAlert('');
+  }
+
+  async function pullCloudData(silent) {
+    if (!_authSession || !_authSession.user || !_authSession.access_token) return;
+    const statusEl = document.getElementById('authSyncStatusText');
+    const syncBtn = document.getElementById('authManualSyncBtn');
+    if (!silent && syncBtn) {
+      syncBtn.disabled = true;
+      syncBtn.textContent = '⏳ Syncing...';
+    }
+    if (statusEl) statusEl.textContent = 'Fetching latest data from cloud...';
+
+    try {
+      const resp = await fetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&select=*`, {
+        method: 'GET',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': `Bearer ${_authSession.access_token}`
+        }
+      });
+      if (!resp.ok) throw new Error('Cloud fetch status ' + resp.status);
+      const rows = await resp.json();
+      if (!Array.isArray(rows)) return;
+
+      const dataMap = {};
+      rows.forEach(r => {
+        if (r && r.data_key) dataMap[r.data_key] = r.data_value;
+      });
+
+      // 1. Habits
+      if (dataMap.habs !== undefined) {
+        try { localStorage.setItem('m_habs', JSON.stringify(dataMap.habs)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_habs: dataMap.habs, habs: dataMap.habs });
+        }
+      }
+      if (dataMap.hd !== undefined) {
+        try { localStorage.setItem('m_hd', JSON.stringify(dataMap.hd)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_hd: dataMap.hd, hd: dataMap.hd });
+        }
+      }
+
+      // 2. Tasks
+      if (dataMap.tasks !== undefined) {
+        try { localStorage.setItem('m_tasks', JSON.stringify(dataMap.tasks)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_tasks: dataMap.tasks, tasks: dataMap.tasks });
+        }
+      }
+
+      // 3. Countdowns
+      if (dataMap.customWidgets !== undefined) {
+        try { localStorage.setItem('m_customWidgets', JSON.stringify(dataMap.customWidgets)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_customWidgets: dataMap.customWidgets, customWidgets: dataMap.customWidgets });
+        }
+      }
+      if (dataMap.cd !== undefined) {
+        try { localStorage.setItem('m_cd', JSON.stringify(dataMap.cd)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_cd: dataMap.cd, cd: dataMap.cd });
+        }
+      }
+
+      // 4. Pomodoro
+      if (dataMap.pomSessions !== undefined) {
+        try { localStorage.setItem('m_pomSessions', JSON.stringify(dataMap.pomSessions)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_pomSessions: dataMap.pomSessions, pomSessions: dataMap.pomSessions });
+        }
+      }
+      if (dataMap.pd !== undefined) {
+        try { localStorage.setItem('m_pd', JSON.stringify(dataMap.pd)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_pd: dataMap.pd, pd: dataMap.pd });
+        }
+      }
+      if (dataMap.pomLive !== undefined) {
+        try {
+          localStorage.setItem('pom_state', JSON.stringify(dataMap.pomLive));
+          localStorage.setItem('m_pomLive', JSON.stringify(dataMap.pomLive));
+        } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ pom_state: dataMap.pomLive, m_pomLive: dataMap.pomLive });
+        }
+      }
+
+      // 5. Theme & Colors
+      if (dataMap.theme !== undefined) {
+        try {
+          localStorage.setItem('m_theme', JSON.stringify(dataMap.theme));
+          localStorage.setItem('theme', JSON.stringify(dataMap.theme));
+        } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_theme: dataMap.theme, theme: dataMap.theme });
+        }
+      }
+      if (dataMap.customColors !== undefined) {
+        try {
+          localStorage.setItem('m_customColors', JSON.stringify(dataMap.customColors));
+          localStorage.setItem('customColors', JSON.stringify(dataMap.customColors));
+        } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_customColors: dataMap.customColors, customColors: dataMap.customColors });
+        }
+      }
+
+      // Refresh popup UI views with cloud data
+      initTheme();
+      renderHabits();
+      renderTasks();
+      renderCountdowns();
+      syncPomoFromStorage();
+
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (statusEl) statusEl.textContent = `All items synced with cloud at ${timeStr}`;
+    } catch (e) {
+      console.warn('Cloud sync error:', e);
+      if (statusEl) statusEl.textContent = 'Sync notice: offline or connection issue';
+    } finally {
+      if (!silent && syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.textContent = '🔄 Sync Now';
+      }
+    }
+  }
+
+  function pushCloudData(key, val) {
+    if (!_authSession || !_authSession.user || !_authSession.access_token) return;
+    if (!SYNC_KEYS.includes(key)) return;
+
+    // Debounce rapid bursts
+    clearTimeout(_pushTimers[key]);
+    _pushTimers[key] = setTimeout(async function () {
+      try {
+        await fetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPA_KEY,
+            'Authorization': `Bearer ${_authSession.access_token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            user_id: _authSession.user.id,
+            data_key: key,
+            data_value: val,
+            updated_at: new Date().toISOString()
+          })
+        });
+        const statusEl = document.getElementById('authSyncStatusText');
+        if (statusEl) {
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          statusEl.textContent = `Saved ${key} to cloud at ${timeStr}`;
+        }
+      } catch (e) {
+        console.warn('Push error for ' + key, e);
+      }
+    }, 400);
+  }
+
+  function syncWithOpenWebTab() {
+    setAuthAlert('Searching for open M2028 tab...', true);
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query) {
+      setAuthAlert('Chrome Tabs API unavailable. Please sign in with email directly.', false);
+      return;
+    }
+    chrome.tabs.query({ url: ['*://localhost/*', '*://127.0.0.1/*', '*://aviatcode.github.io/M2028/*'] }, function (tabs) {
+      if (!tabs || tabs.length === 0) {
+        setAuthAlert('No open M2028 tab found. Open M2028 in your browser or sign in with your email & password above.', false);
+        return;
+      }
+      let found = false;
+      let checked = 0;
+      tabs.forEach(t => {
+        chrome.tabs.sendMessage(t.id, { type: 'GET_M2028_TAB_AUTH' }, function (res) {
+          checked++;
+          if (!chrome.runtime.lastError && res && res.success && res.session) {
+            found = true;
+            saveAuthSession(res.session);
+            setAuthAlert('Found active account from web tab! Syncing...', true);
+            pullCloudData(false).then(() => {
+              setTimeout(closeAuthModal, 1000);
+            });
+          }
+          if (checked === tabs.length && !found) {
+            setAuthAlert('Tab found, but no logged-in account was detected. Please log into M2028 in that tab or sign in above.', false);
+          }
+        });
+      });
+    });
+  }
+
+  function initAuthListeners() {
+    const authBtn = document.getElementById('authBtn');
+    if (authBtn) authBtn.addEventListener('click', openAuthModal);
+
+    const quickSignOutBtn = document.getElementById('quickSignOutBtn');
+    if (quickSignOutBtn) {
+      quickSignOutBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (confirm('Sign out of your M2028 account? Extension will continue working in offline mode.')) {
+          doSignOut();
+        }
+      });
+    }
+
+    const authModalClose = document.getElementById('authModalClose');
+    if (authModalClose) authModalClose.addEventListener('click', closeAuthModal);
+
+    const authModal = document.getElementById('authModal');
+    if (authModal) {
+      authModal.addEventListener('click', function (e) {
+        if (e.target === authModal) closeAuthModal();
+      });
+    }
+
+    const authSubmitSignIn = document.getElementById('authSubmitSignIn');
+    if (authSubmitSignIn) {
+      authSubmitSignIn.addEventListener('click', function () {
+        const em = document.getElementById('authEmailInp').value;
+        const pw = document.getElementById('authPwInp').value;
+        if (!em || !pw) {
+          setAuthAlert('Please enter both email and password', false);
+          return;
+        }
+        apiSignIn(em, pw);
+      });
+    }
+
+    const authSubmitSignUp = document.getElementById('authSubmitSignUp');
+    if (authSubmitSignUp) {
+      authSubmitSignUp.addEventListener('click', function () {
+        const em = document.getElementById('authEmailInp').value;
+        const pw = document.getElementById('authPwInp').value;
+        if (!em || !pw) {
+          setAuthAlert('Please enter both email and password', false);
+          return;
+        }
+        apiSignUp(em, pw);
+      });
+    }
+
+    const authPwInp = document.getElementById('authPwInp');
+    if (authPwInp) {
+      authPwInp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          const em = document.getElementById('authEmailInp').value;
+          const pw = authPwInp.value;
+          if (em && pw) apiSignIn(em, pw);
+        }
+      });
+    }
+
+    const authPwToggle = document.getElementById('authPwToggle');
+    if (authPwToggle && authPwInp) {
+      authPwToggle.addEventListener('click', function () {
+        const isPw = authPwInp.type === 'password';
+        authPwInp.type = isPw ? 'text' : 'password';
+        authPwToggle.textContent = isPw ? '🙈' : '👁';
+      });
+    }
+
+    const authSyncWebBtn = document.getElementById('authSyncWebBtn');
+    if (authSyncWebBtn) authSyncWebBtn.addEventListener('click', syncWithOpenWebTab);
+
+    const authContinueGuestBtn = document.getElementById('authContinueGuestBtn');
+    if (authContinueGuestBtn) authContinueGuestBtn.addEventListener('click', closeAuthModal);
+
+    const authManualSyncBtn = document.getElementById('authManualSyncBtn');
+    if (authManualSyncBtn) {
+      authManualSyncBtn.addEventListener('click', function () {
+        pullCloudData(false);
+      });
+    }
+
+    const authOpenAppBtn = document.getElementById('authOpenAppBtn');
+    if (authOpenAppBtn) {
+      authOpenAppBtn.addEventListener('click', function () {
+        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+          chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
+        } else {
+          window.open('index.html', '_blank');
+        }
+      });
+    }
+
+    const authSignOutBtn = document.getElementById('authSignOutBtn');
+    if (authSignOutBtn) {
+      authSignOutBtn.addEventListener('click', function () {
+        doSignOut();
+      });
+    }
+  }
+
+  // =====================================================================
+  // 11. Real-Time Two-Way Storage Synchronizer
   // =====================================================================
   window.addEventListener('storage', function (e) {
     if (e.key === 'm_theme' || e.key === 'm_customColors' || e.key === 'theme') {
@@ -1748,6 +2290,8 @@
       renderCountdowns();
     } else if (e.key === 'pom_state' || e.key === 'm_pom_state') {
       syncPomoFromStorage();
+    } else if (e.key === 'm_authSession' || e.key === SUPA_AUTH_STORE_KEY) {
+      initAuth();
     }
   });
 
@@ -1769,6 +2313,11 @@
         if (changes.pom_state || changes.m_pom_state) {
           syncPomoFromStorage();
         }
+        if (changes.m_authSession) {
+          _authSession = (changes.m_authSession && changes.m_authSession.newValue) || null;
+          updateAuthUI();
+          if (_authSession) pullCloudData(true);
+        }
       }
     });
   }
@@ -1779,6 +2328,8 @@
   document.addEventListener('DOMContentLoaded', function () {
     initTheme();
     initNav();
+    initAuthListeners();
+    initAuth();
     initPomo();
     initTimeTracker();
     renderHabits();

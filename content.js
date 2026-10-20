@@ -171,6 +171,26 @@
       if (res.m_pd && !window.localStorage.getItem('m_pd')) {
         try { window.localStorage.setItem('m_pd', JSON.stringify(res.m_pd)); } catch (e) {}
       }
+
+      // Sync theme & customColors from page to extension storage
+      try {
+        const themeRaw = window.localStorage.getItem('m_theme') || window.localStorage.getItem('theme');
+        const customRaw = window.localStorage.getItem('m_customColors') || window.localStorage.getItem('customColors');
+        const syncObj = {};
+        if (themeRaw) {
+          const t = JSON.parse(themeRaw);
+          syncObj.theme = t;
+          syncObj.m_theme = t;
+        }
+        if (customRaw) {
+          const cc = JSON.parse(customRaw);
+          syncObj.customColors = cc;
+          syncObj.m_customColors = cc;
+        }
+        if (Object.keys(syncObj).length > 0) {
+          chrome.storage.local.set(syncObj);
+        }
+      } catch (e) {}
     });
   }
 

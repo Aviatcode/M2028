@@ -1,29 +1,41 @@
 /* Options Page Styles for M2028 */
 :root {
-  --bg: #0c0f14;
-  --bg-card: #151a21;
-  --bg-input: #1b222b;
-  --border: rgba(140, 165, 195, 0.12);
-  --tx: #e6ecf3;
-  --mt: #8c99a9;
-  --dim: #5a6673;
-  --accent: #35c48f;
-  --accent-light: rgba(53, 196, 143, 0.12);
+  --bg: #0a0000;
+  --bg-card: #150202;
+  --bg-input: #1f0404;
+  --border: rgba(196, 38, 29, 0.20);
+  --tx: #fff1ee;
+  --mt: #a8746f;
+  --dim: #7a4642;
+  --accent: #c42018;
+  --accent-light: rgba(196, 32, 24, 0.16);
   --danger: #d7574f;
   --danger-bg: rgba(215, 87, 79, 0.15);
-  --radius: 12px;
+  --radius: 14px;
 }
 
 [data-theme="light"] {
-  --bg: #f2f4f8;
+  --bg: #faf4f2;
   --bg-card: #ffffff;
-  --bg-input: #e9eef5;
-  --border: rgba(20, 35, 55, 0.1);
-  --tx: #141a22;
-  --mt: #5c6875;
-  --dim: #8d99a6;
-  --accent: #0f9d69;
-  --accent-light: rgba(15, 157, 105, 0.1);
+  --bg-input: #fbe1dc;
+  --border: rgba(200, 30, 22, 0.18);
+  --tx: #2b0b09;
+  --mt: #9a4f49;
+  --dim: #6b2622;
+  --accent: #fd2a1f;
+  --accent-light: rgba(253, 42, 31, 0.14);
+}
+
+[data-theme="pink"] {
+  --bg: #ffb7ce;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-input: rgba(255, 255, 255, 0.65);
+  --border: rgba(255, 105, 180, 0.35);
+  --tx: #4a1230;
+  --mt: #8a4868;
+  --dim: #6a2146;
+  --accent: #ff6eb4;
+  --accent-light: rgba(255, 110, 180, 0.18);
 }
 
 * {
@@ -63,17 +75,13 @@ body {
   gap: 12px;
 }
 
-.opts-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #5b8def);
-  color: #0c0f14;
-  font-weight: 800;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.opts-logo-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  object-fit: contain;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
 }
 
 .opts-header h1 {

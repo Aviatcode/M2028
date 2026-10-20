@@ -98,7 +98,7 @@
       hex = (hex || '').replace('#', '');
       if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
       const n = parseInt(hex, 16);
-      return isNaN(n) ? [0, 0, 0] : [n >> 16 & 255, n >> 8 & 255, 255 & n];
+      return isNaN(n) ? [0, 0, 0] : [(n >> 16) & 255, (n >> 8) & 255, 255 & n];
     };
     const M = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
     const R = a => 'rgb(' + a.join(',') + ')';
@@ -115,6 +115,10 @@
     const s2 = dk ? M(s, d, 0.09) : M(s, d, 0.04);
     const s3 = dk ? M(s, d, 0.15) : M(s, d, 0.11);
     const ac = P(colors.ac || (theme === 'pink' ? '#ff6eb4' : theme === 'light' ? '#fd2a1f' : '#c42018'));
+    const pillTx = L(ac) > 0.4 ? '#0b0f1a' : '#ffffff';
+
+    // Boosted vibrant accent for category breakdown productive bar
+    const segProd = dk ? (L(ac) < 0.25 ? M(ac, [255, 255, 255], 0.35) : ac) : (L(ac) > 0.65 ? M(ac, [0, 0, 0], 0.3) : ac);
 
     let css = `
       :root {
@@ -128,16 +132,65 @@
         --b: ${A(d, 0.12)} !important;
         --b2: ${A(d, 0.24)} !important;
         --ai: ${R(ac)} !important;
-        --a2: ${A(ac, 0.16)} !important;
+        --a2: ${A(ac, 0.18)} !important;
         --dn: ${R(ac)} !important;
         --card-bg: ${dk ? `linear-gradient(135deg, ${A(ac, 0.24)} 0%, ${R(s1)} 38%, ${R(s)} 100%)` : '#ffffff'} !important;
         --card-bd: ${A(ac, 0.35)} !important;
         --card-sh: 0 14px 44px rgba(0,0,0,0.65), 0 0 32px ${A(ac, 0.2)} !important;
         --pill-bg: ${R(ac)} !important;
-        --pill-tx: ${L(ac) > 0.4 ? '#0b0f1a' : '#ffffff'} !important;
+        --pill-tx: ${pillTx} !important;
+        --seg-prod: ${R(segProd)} !important;
       }
       body { background: ${R(s)} !important; color: ${R(d)} !important; }
       .tb { background: ${A(s, 0.95)} !important; }
+      body::before {
+        background-image:
+          radial-gradient(55% 45% at 10% 8%, ${A(ac, dk ? 0.24 : 0.16)}, transparent 70%),
+          radial-gradient(50% 45% at 90% 92%, ${A(ac, dk ? 0.18 : 0.12)}, transparent 70%),
+          linear-gradient(180deg, ${A(s, 0.7)} 0%, ${R(s)} 100%) !important;
+      }
+      .btn.b-ai {
+        background: ${R(ac)} !important;
+        color: ${pillTx} !important;
+        box-shadow: 0 4px 14px ${A(ac, 0.28)} !important;
+      }
+      .nb.on {
+        background: ${R(ac)} !important;
+        color: ${pillTx} !important;
+        border: 1px solid ${R(ac)} !important;
+        box-shadow: 0 0 0 1px ${R(ac)}, 0 4px 18px ${A(ac, 0.35)} !important;
+      }
+      .range-btn.active, .time-sub-btn.active, .pomo-chip.on {
+        background: ${R(ac)} !important;
+        color: ${pillTx} !important;
+        border-color: ${R(ac)} !important;
+      }
+      .pomo-btn.primary, #pomoStartBtn {
+        background: ${R(ac)} !important;
+        color: ${pillTx} !important;
+        box-shadow: 0 4px 16px ${A(ac, 0.3)} !important;
+      }
+      .pf, #habProgressFill, #taskProgressFill, .cd-bar-fill {
+        background: ${R(ac)} !important;
+      }
+      .hc.ck, .rck.on {
+        background: ${R(ac)} !important;
+        border-color: ${R(ac)} !important;
+        color: ${pillTx} !important;
+      }
+      #pomoProgressCircle {
+        stroke: ${R(ac)} !important;
+      }
+      .cat-seg.seg-prod {
+        background: ${R(segProd)} !important;
+      }
+      .dot-prod {
+        background: ${R(segProd)} !important;
+        box-shadow: 0 0 6px ${R(segProd)} !important;
+      }
+      .site-bar-fill.seg-prod {
+        background: ${R(segProd)} !important;
+      }
     `;
 
     const st = document.createElement('style');
@@ -177,12 +230,15 @@
 
     // Check account holder's custom palette
     S.get('customColors', null, function (custom) {
+      if (typeof custom === 'string') {
+        try { custom = JSON.parse(custom); } catch (e) { custom = null; }
+      }
       if (!custom) {
         applyCustomColors(null, validTheme);
         return;
       }
       let cfg = null;
-      if (custom.bg && custom.tx) {
+      if (custom.bg || custom.tx || custom.ac) {
         if (!custom.t || custom.t === validTheme) cfg = custom;
       } else if (custom[validTheme]) {
         cfg = custom[validTheme];
@@ -192,6 +248,7 @@
 
     if (activeTabName === 'habits') renderHabits();
     if (activeTabName === 'tasks') renderTasks();
+    if (activeTabName === 'time') loadTrackerData();
   }
 
   function toggleTheme() {
@@ -224,6 +281,7 @@
 
     const openPlannerBtn = document.getElementById('openPlannerBtn');
     const openHubInsideBtn = document.getElementById('openHubInsideBtn');
+    const extLogoBtn = document.getElementById('extLogoBtn');
     function openFullApp() {
       if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
         chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
@@ -233,6 +291,7 @@
     }
     if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
     if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
+    if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
   }
 
   function switchTab(tab) {
@@ -487,10 +546,15 @@
       const bar = document.getElementById('catProgressBar');
       if (bar && bar.children.length >= 5) {
         bar.children[0].style.width = pPct + '%';
+        bar.children[0].title = `Work/Study: ${pPct}% (${formatDuration(prodSec)})`;
         bar.children[1].style.width = cPct + '%';
+        bar.children[1].title = `Communication: ${cPct}% (${formatDuration(commSec)})`;
         bar.children[2].style.width = sPct + '%';
+        bar.children[2].title = `Social: ${sPct}% (${formatDuration(socSec)})`;
         bar.children[3].style.width = ePct + '%';
+        bar.children[3].title = `Entertainment/Media: ${ePct}% (${formatDuration(entSec)})`;
         bar.children[4].style.width = oPct + '%';
+        bar.children[4].title = `Other: ${oPct}% (${formatDuration(othSec)})`;
       }
 
       // 4. Sites List with Relative Progress Bars & Favicons
@@ -502,10 +566,18 @@
           domainEntries.sort((a, b) => b[1].seconds - a[1].seconds);
           const maxSec = domainEntries[0][1].seconds || 1;
           const topList = domainEntries.slice(0, 10);
+          const catPrefixMap = {
+            productive: 'prod',
+            communication: 'comm',
+            social: 'soc',
+            entertainment: 'ent',
+            other: 'oth'
+          };
 
           listEl.innerHTML = topList.map(([dom, data]) => {
             const pct = Math.round((data.seconds / maxSec) * 100);
             const cat = data.category || 'other';
+            const catPrefix = catPrefixMap[cat] || 'oth';
             const fav = data.favicon || `https://www.google.com/s2/favicons?domain=${dom}&sz=32`;
 
             return `
@@ -517,7 +589,7 @@
                     <span class="site-time">${formatDuration(data.seconds)}</span>
                   </div>
                   <div class="site-bar-track">
-                    <div class="site-bar-fill seg-${cat.slice(0, 4)}" style="width: ${pct}%"></div>
+                    <div class="site-bar-fill seg-${catPrefix}" style="width: ${pct}%"></div>
                   </div>
                 </div>
               </div>

@@ -40,6 +40,20 @@ const Storage = {
 let currentRules = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Sync Theme
+  const themeData = await Storage.get(['m_theme', 'theme', 'm_customColors', 'customColors']);
+  const activeTheme = themeData.m_theme || themeData.theme || 'dark';
+  document.documentElement.setAttribute('data-theme', activeTheme);
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.m_theme || changes.theme) {
+        const t = (changes.m_theme && changes.m_theme.newValue) || (changes.theme && changes.theme.newValue);
+        if (t) document.documentElement.setAttribute('data-theme', t);
+      }
+    });
+  }
+
   // Load settings
   const data = await Storage.get(['m2028_opts', 'm2028_custom_rules']);
   const opts = data.m2028_opts || {

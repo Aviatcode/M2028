@@ -1,5 +1,6 @@
 /* =====================================================================
-   M2028 Chrome Extension Hub — Synchronized UI Theme & Design System
+   M2028 Chrome Extension Hub — Full Native Theme & UI Design System
+   Matches M2028: Dark, Light, Girl Mode (Pink), and Account Custom Colors
    ===================================================================== */
 
 :root {
@@ -29,7 +30,10 @@
   --r-lg: 15px;
 }
 
-[data-theme="light"] {
+/* =====================================================================
+   Theme 1: Light Mode (M2028 Native)
+   ===================================================================== */
+body.light, [data-theme="light"] {
   --bg: #f2f4f7;
   --s1: #ffffff;
   --s2: #eef1f5;
@@ -46,14 +50,48 @@
   --r2: rgba(207, 64, 56, 0.1);
 }
 
-/* Girl Mode / Pink Theme (M2028 Native) */
-[data-theme="pink"] {
+body.light .tb {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+body.light .tnb {
+  background: rgba(242, 244, 247, 0.97) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+body.light .wc {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 3px rgba(30, 30, 60, 0.05);
+}
+body.light .st-stat-box,
+body.light .hr,
+body.light .row,
+body.light .cd-card,
+body.light .tab-item-row,
+body.light .engine-pill {
+  background: #f0f0f3 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+body.light .inp,
+body.light .ta {
+  background: #f0f0f3 !important;
+  color: #1a1a2e !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+body.light .pi {
+  background: #ffffff !important;
+}
+
+/* =====================================================================
+   Theme 2: Girl Mode / Pink Theme (M2028 Native)
+   ===================================================================== */
+body.pink, [data-theme="pink"] {
   --bg: #1a0a14;
   --s1: #240d1a;
   --s2: #2e1220;
   --s3: #3d1829;
-  --b: rgba(255, 150, 200, 0.17);
-  --b2: rgba(255, 150, 200, 0.3);
+  --b: rgba(255, 150, 200, 0.18);
+  --b2: rgba(255, 150, 200, 0.32);
   --tx: #ffe4f0;
   --mt: #7a4060;
   --m2: #c47090;
@@ -75,21 +113,62 @@
   --dn: #ff6eb4;
 }
 
-[data-theme="pink"] .tb {
-  background: rgba(26, 10, 20, 0.96);
+body.pink .tb {
+  background: rgba(26, 10, 20, 0.97) !important;
   border-bottom: 1px solid rgba(255, 110, 180, 0.2);
 }
-
-[data-theme="pink"] body::before {
-  background: radial-gradient(circle at 88% 12%, rgba(240, 107, 189, 0.18), transparent 45%),
-              radial-gradient(circle at 50% 105%, rgba(255, 179, 217, 0.15), transparent 55%);
+body.pink .tnb {
+  background: rgba(26, 10, 20, 0.95) !important;
+  border-bottom: 1px solid rgba(255, 110, 180, 0.15);
+}
+body.pink .logo span {
+  background: linear-gradient(135deg, #ff6eb4, #ffb3d9) !important;
+  color: #2a0a1a !important;
+}
+body.pink .sp {
+  background: rgba(255, 110, 180, 0.12) !important;
+  border-color: rgba(255, 110, 180, 0.25) !important;
+  color: var(--ai) !important;
+}
+body.pink .wc {
+  background: var(--s1) !important;
+  border-color: rgba(255, 110, 180, 0.2) !important;
+}
+body.pink .hr.ck {
+  background: rgba(255, 110, 180, 0.08) !important;
+  border-color: rgba(255, 110, 180, 0.3) !important;
+}
+body.pink .hr.ck::before {
+  background: var(--ai) !important;
+}
+body.pink .hc.ck {
+  background: var(--ai) !important;
+  border-color: var(--ai) !important;
+  color: #000 !important;
+  box-shadow: 0 0 0 3px var(--a2) !important;
+}
+body.pink .hc.ck::after {
+  content: "♥";
+  font-size: 12px;
+  color: #000;
+  display: block;
+}
+body.pink .rck.on {
+  background: var(--ai) !important;
+  border-color: var(--ai) !important;
+}
+body.pink .nb.on::after {
+  background: linear-gradient(90deg, #ff6eb4, #ffb3d9) !important;
+}
+body.pink .inp:focus,
+body.pink .ta:focus {
+  border-color: rgba(255, 110, 180, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(255, 110, 180, 0.15) !important;
 }
 
-[data-theme="pink"] .logo span {
-  background: linear-gradient(135deg, #ff6eb4, #ffb3d9);
-  color: #2a0a1a;
-}
-
+/* =====================================================================
+   Core Reset & Layout
+   ===================================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -108,6 +187,7 @@ body {
   overflow: hidden;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.25s, color 0.25s;
 }
 
 body::before {
@@ -118,6 +198,11 @@ body::before {
   pointer-events: none;
   background: radial-gradient(circle at 88% 12%, rgba(107, 147, 240, 0.12), transparent 45%),
               radial-gradient(circle at 50% 105%, rgba(232, 150, 90, 0.08), transparent 55%);
+}
+
+body.pink::before {
+  background: radial-gradient(circle at 88% 12%, rgba(240, 107, 189, 0.18), transparent 45%),
+              radial-gradient(circle at 50% 105%, rgba(255, 179, 217, 0.15), transparent 55%);
 }
 
 .popup-container {
@@ -141,10 +226,6 @@ body::before {
   padding: 0 14px;
   flex-shrink: 0;
   z-index: 10;
-}
-
-[data-theme="light"] .tb {
-  background: rgba(255, 255, 255, 0.96);
 }
 
 .logo {
@@ -848,6 +929,23 @@ body::before {
   text-decoration: line-through;
   color: var(--m2);
 }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  border: 1px solid var(--b);
+  background: var(--s3);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--m2);
+  flex-shrink: 0;
+}
+.chip.warn { color: var(--wn); border-color: rgba(242, 181, 68, 0.35); background: var(--w2); }
+.chip.bad { color: var(--rd); border-color: rgba(215, 87, 79, 0.35); background: var(--r2); }
+.chip.set { color: var(--ai); border-color: rgba(53, 196, 143, 0.35); background: var(--a2); }
 
 .ract {
   background: transparent;

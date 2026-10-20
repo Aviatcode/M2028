@@ -1,6 +1,6 @@
 /**
  * M2028 Chrome Extension Hub — Synchronized Controller
- * Fully integrated with M2028 Data Models & Aesthetics
+ * Fully synced with M2028 Web App Data Models, Themes & Real-Time Storage
  */
 
 (function () {
@@ -44,13 +44,11 @@
     }
   };
 
-  // Helper: Today's Date Key YYYY-MM-DD
   function getTodayKey() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  // Helper: Format seconds into Xh Ym
   function fmtTime(sec) {
     sec = Math.max(0, Math.floor(sec || 0));
     const h = Math.floor(sec / 3600);
@@ -59,7 +57,6 @@
     return m + 'm';
   }
 
-  // --- Audio Synthesis via Web Audio API ---
   function playAlertChime() {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -84,89 +81,134 @@
   }
 
   // =====================================================================
-  // 1. Navigation & Theme Controller (Dark, Light, Girl/Pink & Custom Colors)
+  // 1. Theme Engine: Dark, Light, Girl Mode (Pink) & Account Custom Palette
   // =====================================================================
-  let activeTabName = 'time';
+  const THEME_NEXT = { dark: 'light', light: 'pink', pink: 'dark' };
+  const THEME_ICON = { dark: '🌙', light: '☀️', pink: '🌸' };
 
-  function applyTheme(themeName) {
-    const doc = document.documentElement;
-    doc.setAttribute('data-theme', themeName);
-    S.set('theme', themeName);
-    updateThemeBtnIcon(themeName);
+  function applyCustomColors(colors, theme) {
+    const existing = document.getElementById('m2028-custom-theme-style');
+    if (existing) existing.remove();
 
-    // Check for Account Holder's Custom Colors
+    if (!colors || !(colors.bg || colors.tx || colors.ac)) {
+      document.documentElement.classList.remove('ucolors');
+      return;
+    }
+
+    const P = hex => {
+      hex = (hex || '').replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const n = parseInt(hex, 16);
+      return isNaN(n) ? [0, 0, 0] : [n >> 16 & 255, n >> 8 & 255, 255 & n];
+    };
+    const M = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
+    const R = a => 'rgb(' + a.join(',') + ')';
+    const A = (a, k) => 'rgba(' + a.join(',') + ',' + k + ')';
+    const L = a => {
+      const f = v => (v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      return 0.2126 * f(a[0]) + 0.7152 * f(a[1]) + 0.0722 * f(a[2]);
+    };
+
+    const s = P(colors.bg || (theme === 'light' ? '#f4f7fe' : '#0d1014'));
+    const d = P(colors.tx || (theme === 'light' ? '#1a1a2e' : '#e6ecf3'));
+    const dk = L(s) < 0.25;
+    const s1 = dk ? M(s, d, 0.06) : M(s, [255, 255, 255], 0.7);
+    const s2 = dk ? M(s, d, 0.09) : M(s, d, 0.04);
+    const s3 = dk ? M(s, d, 0.15) : M(s, d, 0.11);
+    const ac = P(colors.ac || (theme === 'pink' ? '#ff6eb4' : '#35c48f'));
+
+    let css = `
+      :root {
+        --bg: ${R(s)} !important;
+        --s1: ${R(s1)} !important;
+        --s2: ${R(s2)} !important;
+        --s3: ${R(s3)} !important;
+        --tx: ${R(d)} !important;
+        --m2: ${R(M(d, s, 0.28))} !important;
+        --mt: ${R(M(d, s, 0.5))} !important;
+        --b: ${A(d, 0.12)} !important;
+        --b2: ${A(d, 0.24)} !important;
+        --ai: ${R(ac)} !important;
+        --a2: ${A(ac, 0.16)} !important;
+        --dn: ${R(ac)} !important;
+      }
+      body { background: ${R(s)} !important; color: ${R(d)} !important; }
+      .tb { background: ${A(s, 0.95)} !important; }
+    `;
+
+    const st = document.createElement('style');
+    st.id = 'm2028-custom-theme-style';
+    st.textContent = css;
+    document.head.appendChild(st);
+    document.documentElement.classList.add('ucolors');
+  }
+
+  function paintTheme(themeName) {
+    const validTheme = THEME_NEXT[themeName] ? themeName : 'dark';
+    document.documentElement.setAttribute('data-theme', validTheme);
+    document.body.classList.remove('light', 'pink');
+    if (validTheme !== 'dark') {
+      document.body.classList.add(validTheme);
+    }
+
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) {
+      if (validTheme === 'light') {
+        themeBtn.title = 'Current: Light (Click for Girl Mode 🌸)';
+        themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">🌸</span>';
+      } else if (validTheme === 'pink') {
+        themeBtn.title = 'Current: Girl Mode 🌸 (Click for Dark Mode 🌙)';
+        themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">🌙</span>';
+      } else {
+        themeBtn.title = 'Current: Dark 🌙 (Click for Light Mode ☀️)';
+        themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">☀️</span>';
+      }
+    }
+
+    // Check account holder's custom palette
     S.get('customColors', null, function (custom) {
       if (!custom) {
-        // Guest user or default: clear inline color overrides
-        [ '--bg', '--s1', '--s2', '--s3', '--tx', '--ai', '--a2', '--b', '--b2' ].forEach(p => doc.style.removeProperty(p));
+        applyCustomColors(null, validTheme);
         return;
       }
       let cfg = null;
       if (custom.bg && custom.tx) {
-        if (!custom.t || custom.t === themeName) cfg = custom;
-      } else if (custom[themeName]) {
-        cfg = custom[themeName];
+        if (!custom.t || custom.t === validTheme) cfg = custom;
+      } else if (custom[validTheme]) {
+        cfg = custom[validTheme];
       }
-      if (cfg && (cfg.bg || cfg.tx || cfg.ac)) {
-        if (cfg.bg) doc.style.setProperty('--bg', cfg.bg);
-        if (cfg.tx) doc.style.setProperty('--tx', cfg.tx);
-        if (cfg.ac) {
-          doc.style.setProperty('--ai', cfg.ac);
-          doc.style.setProperty('--a2', 'color-mix(in srgb, ' + cfg.ac + ' 16%, transparent)');
-        }
-      } else {
-        [ '--bg', '--s1', '--s2', '--s3', '--tx', '--ai', '--a2', '--b', '--b2' ].forEach(p => doc.style.removeProperty(p));
-      }
+      applyCustomColors(cfg, validTheme);
     });
   }
 
-  function cycleTheme() {
-    const doc = document.documentElement;
-    const current = doc.getAttribute('data-theme') || 'dark';
-    let next = 'dark';
-    if (current === 'dark') next = 'light';
-    else if (current === 'light') next = 'pink';
-    else if (current === 'pink') next = 'dark';
-    applyTheme(next);
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    const next = THEME_NEXT[current] || 'light';
+    S.set('theme', next);
+    paintTheme(next);
   }
 
-  function updateThemeBtnIcon(themeName) {
-    const btn = document.getElementById('themeToggleBtn');
-    if (!btn) return;
-    if (themeName === 'light') {
-      btn.title = 'Theme: Light (Click for Girl Mode 🌸)';
-      btn.innerHTML = `<span style="font-size:14px;line-height:1">🌸</span>`;
-    } else if (themeName === 'pink') {
-      btn.title = 'Theme: Girl Mode 🌸 (Click for Dark Mode 🌙)';
-      btn.innerHTML = `<span style="font-size:14px;line-height:1">🌙</span>`;
-    } else {
-      btn.title = 'Theme: Dark 🌙 (Click for Light Mode ☀️)';
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
-    }
+  function initTheme() {
+    S.get('theme', 'dark', function (t) {
+      paintTheme(t);
+    });
   }
+
+  // =====================================================================
+  // 2. Navigation Tabs
+  // =====================================================================
+  let activeTabName = 'time';
 
   function initNav() {
-    const navButtons = document.querySelectorAll('.tnb .nb');
-    navButtons.forEach(btn => {
+    document.querySelectorAll('.tnb .nb').forEach(btn => {
       btn.addEventListener('click', function () {
-        const tab = this.getAttribute('data-tab');
-        switchTab(tab);
+        switchTab(this.getAttribute('data-tab'));
       });
     });
 
-    // Theme Toggle (Cycles Dark -> Light -> Girl Mode -> Dark)
     const themeBtn = document.getElementById('themeToggleBtn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', cycleTheme);
-    }
+    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
-    // Load saved theme & account holder custom colors
-    S.get('theme', 'dark', function (t) {
-      const validTheme = (t === 'light' || t === 'pink' || t === 'dark') ? t : 'dark';
-      applyTheme(validTheme);
-    });
-
-    // Open Full M2028 Web App
     const openPlannerBtn = document.getElementById('openPlannerBtn');
     if (openPlannerBtn) {
       openPlannerBtn.addEventListener('click', function () {
@@ -194,14 +236,14 @@
     if (tab === 'time') renderScreenTime();
     else if (tab === 'habits') renderHabits();
     else if (tab === 'tasks') renderTasks();
-    else if (tab === 'pomo') updatePomoDisplay();
+    else if (tab === 'pomo') syncPomoFromStorage();
     else if (tab === 'countdown') renderCountdowns();
     else if (tab === 'notes') initNotes();
     else if (tab === 'search') loadOpenTabs();
   }
 
   // =====================================================================
-  // 2. Screen Time Monitor
+  // 3. Screen Time Monitor
   // =====================================================================
   function renderScreenTime() {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
@@ -235,14 +277,12 @@
     if (prodEl) prodEl.textContent = fmtTime(prodSec);
     if (distEl) distEl.textContent = fmtTime(distSec);
 
-    // Productivity Score
     const scoreBadge = document.getElementById('scoreBadge');
     if (scoreBadge) {
       const score = totalSec > 0 ? Math.round((prodSec / totalSec) * 100) : 100;
       scoreBadge.textContent = score + '% Focus';
     }
 
-    // Active Domain Card
     const curDomain = data.currentDomain || 'M2028 Workspace';
     const curSec = data.currentSec || 0;
     const curDomainEl = document.getElementById('activeDomain');
@@ -250,7 +290,6 @@
     if (curDomainEl) curDomainEl.textContent = curDomain;
     if (curTimeEl) curTimeEl.textContent = 'Active now: ' + fmtTime(curSec);
 
-    // Progress Segments
     const catBar = document.getElementById('catProgressBar');
     if (catBar && totalSec > 0) {
       const pProd = Math.round((prodSec / totalSec) * 100);
@@ -263,7 +302,6 @@
       `;
     }
 
-    // Top Sites List
     const sitesList = document.getElementById('topSitesList');
     if (sitesList) {
       const sitesObj = stats.sites || {};
@@ -286,7 +324,6 @@
     }
   }
 
-  // Reset screen time
   const resetTrackerBtn = document.getElementById('resetTrackerBtn');
   if (resetTrackerBtn) {
     resetTrackerBtn.addEventListener('click', function () {
@@ -301,7 +338,7 @@
   }
 
   // =====================================================================
-  // 3. Daily Habits Controller (M2028 Core)
+  // 4. Daily Habits Controller (M2028 Core with Authentic Streak)
   // =====================================================================
   const DEF_HABS = [
     { id: 'hindu', label: '📰 Read The Hindu', days: 'daily' },
@@ -313,13 +350,33 @@
   ];
 
   function getScheduledHabits(allHabits) {
-    const dow = new Date().getDay(); // 0 Sun, 1 Mon ...
+    const dow = new Date().getDay();
     return allHabits.filter(h => {
       if (!h.days || h.days === 'daily') return true;
       if (h.days === 'mwf') return dow === 1 || dow === 3 || dow === 5;
       if (h.days === 'sat') return dow === 6;
       return true;
     });
+  }
+
+  function calcM2028Streak(hdMap) {
+    let count = 0;
+    let n = new Date();
+    n.setHours(0, 0, 0, 0);
+    const todayK = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+    const todayData = hdMap[todayK] || {};
+    // If no habit checked today yet, start checking from yesterday so streak doesn't drop to 0 mid-day
+    if (!(Object.values(todayData).filter(Boolean).length > 0)) {
+      n = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
+    }
+    for (; count < 36000; ) {
+      const k = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+      const dayObj = hdMap[k] || {};
+      if (!(Object.values(dayObj).filter(v => v === true).length > 0)) break;
+      count++;
+      n = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
+    }
+    return count;
   }
 
   function renderHabits() {
@@ -329,7 +386,6 @@
         const todayDone = hdMap[today] || {};
         const scheduled = getScheduledHabits(allHabits);
 
-        // Date subtitle
         const dateSubtitle = document.getElementById('habDateSubtitle');
         if (dateSubtitle) {
           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -356,9 +412,10 @@
         if (fillEl) fillEl.style.width = pct + '%';
 
         // Update streak badge in top header
-        updateStreakHeader(hdMap, allHabits);
+        const streak = calcM2028Streak(hdMap);
+        const streakEl = document.getElementById('streakCount');
+        if (streakEl) streakEl.textContent = streak + 'd';
 
-        // Render Habit Rows
         const listEl = document.getElementById('habListContainer');
         if (listEl) {
           listEl.innerHTML = scheduled.map(h => {
@@ -378,8 +435,7 @@
           listEl.querySelectorAll('.hc').forEach(btn => {
             btn.addEventListener('click', function (e) {
               e.stopPropagation();
-              const hid = this.getAttribute('data-hid');
-              toggleHabit(hid);
+              toggleHabit(this.getAttribute('data-hid'));
             });
           });
         }
@@ -397,7 +453,6 @@
     });
   }
 
-  // Mark all today's habits done
   const habMarkAllBtn = document.getElementById('habMarkAllBtn');
   if (habMarkAllBtn) {
     habMarkAllBtn.addEventListener('click', function () {
@@ -405,8 +460,7 @@
         S.get('hd', {}, function (hdMap) {
           const today = getTodayKey();
           if (!hdMap[today]) hdMap[today] = {};
-          const scheduled = getScheduledHabits(allHabits);
-          scheduled.forEach(h => {
+          getScheduledHabits(allHabits).forEach(h => {
             hdMap[today][h.id] = true;
           });
           S.set('hd', hdMap);
@@ -416,7 +470,6 @@
     });
   }
 
-  // Habit Add Box Toggle
   const habAddBtn = document.getElementById('habAddBtn');
   const habAddForm = document.getElementById('habAddForm');
   const newHabInput = document.getElementById('newHabInput');
@@ -442,8 +495,7 @@
       const label = newHabInput.value.trim();
       if (!label) return;
       S.get('habs', DEF_HABS, function (allHabits) {
-        const id = 'hab_' + Date.now();
-        allHabits.push({ id: id, label: label, days: 'daily' });
+        allHabits.push({ id: 'hab_' + Date.now(), label: label, days: 'daily' });
         S.set('habs', allHabits);
         newHabInput.value = '';
         if (habAddForm) habAddForm.style.display = 'none';
@@ -452,26 +504,8 @@
     });
   }
 
-  function updateStreakHeader(hdMap, allHabits) {
-    const streakEl = document.getElementById('streakCount');
-    if (!streakEl) return;
-    let streak = 0;
-    const now = new Date();
-    for (let i = 0; i < 60; i++) {
-      const checkDate = new Date(now.getTime() - i * 86400000);
-      const k = checkDate.getFullYear() + '-' + String(checkDate.getMonth() + 1).padStart(2, '0') + '-' + String(checkDate.getDate()).padStart(2, '0');
-      const dayData = hdMap[k];
-      if (dayData && Object.values(dayData).some(v => !!v)) {
-        streak++;
-      } else if (i > 0) {
-        break;
-      }
-    }
-    streakEl.textContent = streak + 'd';
-  }
-
   // =====================================================================
-  // 4. Tasks & Checklist Controller (M2028 Core)
+  // 5. Tasks & Checklist Controller (M2028 Core with Due Chips)
   // =====================================================================
   function renderTasks() {
     S.get('tasks', [
@@ -479,6 +513,7 @@
       { id: '2', text: 'Deep Work: 2x Pomodoro sessions', done: false, created: new Date().toISOString() },
       { id: '3', text: 'Review lecture notes & flashcards', done: false, created: new Date().toISOString() }
     ], function (tasks) {
+      const today = getTodayKey();
       const pending = tasks.filter(t => !t.done);
       const completed = tasks.filter(t => t.done);
 
@@ -490,16 +525,23 @@
         if (pending.length === 0) {
           listEl.innerHTML = '<div class="empty-msg">🎉 All tasks done! Add a new item above.</div>';
         } else {
-          listEl.innerHTML = pending.map(t => `
-            <div class="row" data-tid="${t.id}">
-              <button class="rck" data-tid="${t.id}" title="Mark done"></button>
-              <input type="text" class="rtext" data-tid="${t.id}" value="${escapeHtml(t.text)}">
-              <button class="ract del" data-tid="${t.id}" title="Delete task">×</button>
-            </div>
-          `).join('');
+          listEl.innerHTML = pending.map(t => {
+            let dueChip = '';
+            if (t.date) {
+              const cls = t.date < today ? 'chip bad' : t.date === today ? 'chip warn' : 'chip set';
+              dueChip = `<span class="${cls}">📅 ${t.date}</span>`;
+            }
+            return `
+              <div class="row" data-tid="${t.id}">
+                <button class="rck" data-tid="${t.id}" title="Mark done"></button>
+                <input type="text" class="rtext" data-tid="${t.id}" value="${escapeHtml(t.text)}">
+                ${dueChip}
+                <button class="ract del" data-tid="${t.id}" title="Delete task">×</button>
+              </div>
+            `;
+          }).join('');
         }
 
-        // Attach listeners
         listEl.querySelectorAll('.rck').forEach(btn => {
           btn.addEventListener('click', function () {
             toggleTask(this.getAttribute('data-tid'));
@@ -517,7 +559,6 @@
         });
       }
 
-      // Completed section
       const doneTog = document.getElementById('taskDoneToggle');
       const doneLabel = document.getElementById('taskDoneLabel');
       const doneList = document.getElementById('tskDoneList');
@@ -580,7 +621,6 @@
     });
   }
 
-  // Add Task Button
   const tskInp = document.getElementById('tskInp');
   const tskAddBtn = document.getElementById('tskAddBtn');
   function submitNewTask() {
@@ -607,7 +647,6 @@
     });
   }
 
-  // Toggle Completed Accordion
   const taskDoneToggle = document.getElementById('taskDoneToggle');
   if (taskDoneToggle) {
     taskDoneToggle.addEventListener('click', function () {
@@ -621,27 +660,157 @@
   }
 
   // =====================================================================
-  // 5. Pomodoro Timer Controller (M2028 Core)
+  // 6. Pomodoro Timer Controller (Persistent Shared M2028 State)
   // =====================================================================
-  let pomoFocusMin = 50;
-  let pomoBreakMin = 10;
-  let pomoMode = 'focus'; // 'focus', 'break'
-  let pomoRemSec = 50 * 60;
-  let pomoTotSec = 50 * 60;
-  let pomoIsRunning = false;
-  let pomoSession = 1;
-  let pomoSessionTotal = 4;
   let pomoInterval = null;
 
+  function getPomoSavedState() {
+    try {
+      const raw = localStorage.getItem('pom_state') || localStorage.getItem('m_pom_state');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { run: false, mode: 'focus', rem: 50 * 60, phaseLen: 50 * 60, tot: 4, cur: 1 };
+  }
+
+  function savePomoState(st) {
+    try {
+      localStorage.setItem('pom_state', JSON.stringify(st));
+      localStorage.setItem('m_pom_state', JSON.stringify(st));
+    } catch (e) {}
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ pom_state: st, m_pom_state: st });
+    }
+  }
+
+  function syncPomoFromStorage() {
+    clearInterval(pomoInterval);
+    const st = getPomoSavedState();
+    if (st.run && st.endTs) {
+      const now = Date.now();
+      st.rem = Math.max(0, Math.round((st.endTs - now) / 1000));
+      if (st.rem === 0) {
+        handlePomoCompletion(st);
+        return;
+      }
+      pomoInterval = setInterval(pomoTick, 1000);
+    }
+    updatePomoDisplay(st);
+  }
+
+  function togglePomo() {
+    const st = getPomoSavedState();
+    if (!st.run) {
+      st.run = true;
+      st.endTs = Date.now() + st.rem * 1000;
+      savePomoState(st);
+      clearInterval(pomoInterval);
+      pomoInterval = setInterval(pomoTick, 1000);
+      updatePomoDisplay(st);
+    } else {
+      st.run = false;
+      st.endTs = null;
+      savePomoState(st);
+      clearInterval(pomoInterval);
+      updatePomoDisplay(st);
+    }
+  }
+
+  function pomoTick() {
+    const st = getPomoSavedState();
+    if (!st.run || !st.endTs) return;
+    st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
+    if (st.rem <= 0) {
+      clearInterval(pomoInterval);
+      handlePomoCompletion(st);
+    } else {
+      updatePomoDisplay(st);
+    }
+  }
+
+  function handlePomoCompletion(st) {
+    st.run = false;
+    st.endTs = null;
+    playAlertChime();
+    if (st.mode === 'focus') {
+      st.mode = 'break';
+      const bMin = st.phaseLen === 50 * 60 ? 10 : 5;
+      st.phaseLen = bMin * 60;
+      st.rem = st.phaseLen;
+      showChromeNotification('Focus Session Complete! 🎉', 'Enjoy a ' + bMin + ' minute break. Step away and refresh.');
+    } else {
+      st.mode = 'focus';
+      st.cur = (st.cur || 1) + 1;
+      const fMin = 50;
+      st.phaseLen = fMin * 60;
+      st.rem = st.phaseLen;
+      showChromeNotification('Break Over! ⚡', 'Ready for session ' + st.cur + '? Let\'s focus!');
+    }
+    savePomoState(st);
+    updatePomoDisplay(st);
+  }
+
+  function resetPomo() {
+    clearInterval(pomoInterval);
+    const activeChip = document.querySelector('.pomo-presets .pomo-chip.on');
+    const fMin = activeChip ? parseInt(activeChip.getAttribute('data-focus'), 10) : 50;
+    const st = {
+      run: false,
+      mode: 'focus',
+      endTs: null,
+      rem: fMin * 60,
+      phaseLen: fMin * 60,
+      tot: 4,
+      cur: 1
+    };
+    savePomoState(st);
+    updatePomoDisplay(st);
+  }
+
+  function updatePomoDisplay(st) {
+    if (!st) st = getPomoSavedState();
+    const min = Math.floor(st.rem / 60);
+    const sec = st.rem % 60;
+
+    const mEl = document.getElementById('pomoM');
+    const sEl = document.getElementById('pomoS');
+    const sessEl = document.getElementById('pomoSess');
+    const badgeEl = document.getElementById('pomoModeBadge');
+    const startTxt = document.getElementById('pomoStartText');
+    const startIco = document.getElementById('pomoStartIcon');
+    const ring = document.getElementById('pomoRing');
+
+    if (mEl) mEl.textContent = String(min).padStart(2, '0');
+    if (sEl) sEl.textContent = ':' + String(sec).padStart(2, '0');
+    if (sessEl) sessEl.textContent = st.cur || 1;
+    if (badgeEl) badgeEl.textContent = st.mode === 'focus' ? 'FOCUS SESSION' : 'BREAK TIME';
+
+    if (startTxt) startTxt.textContent = st.run ? 'Pause' : 'Start Focus';
+    if (startIco) startIco.textContent = st.run ? '⏸' : '▶';
+
+    if (ring && st.phaseLen > 0) {
+      const elapsed = st.phaseLen - st.rem;
+      const progress = elapsed / st.phaseLen;
+      const deg = Math.round(progress * 360);
+      const color = st.mode === 'focus' ? 'var(--ai)' : 'var(--up)';
+      ring.style.background = `conic-gradient(${color} ${deg}deg, var(--s3) 0deg)`;
+    }
+  }
+
   function initPomo() {
-    // Mode Presets (50/10 vs 25/5)
     document.querySelectorAll('.pomo-presets .pomo-chip').forEach(chip => {
       chip.addEventListener('click', function () {
         document.querySelectorAll('.pomo-presets .pomo-chip').forEach(c => c.classList.remove('on'));
         this.classList.add('on');
-        pomoFocusMin = parseInt(this.getAttribute('data-focus'), 10) || 50;
-        pomoBreakMin = parseInt(this.getAttribute('data-break'), 10) || 10;
-        resetPomo();
+        const fMin = parseInt(this.getAttribute('data-focus'), 10) || 50;
+        const st = getPomoSavedState();
+        st.run = false;
+        st.endTs = null;
+        st.mode = 'focus';
+        st.phaseLen = fMin * 60;
+        st.rem = fMin * 60;
+        savePomoState(st);
+        clearInterval(pomoInterval);
+        updatePomoDisplay(st);
       });
     });
 
@@ -654,9 +823,11 @@
     const stepDown = document.getElementById('pomoStepDown');
     if (stepDown) {
       stepDown.addEventListener('click', function () {
-        if (pomoSession > 1) {
-          pomoSession--;
-          updatePomoDisplay();
+        const st = getPomoSavedState();
+        if (st.cur > 1) {
+          st.cur--;
+          savePomoState(st);
+          updatePomoDisplay(st);
         }
       });
     }
@@ -664,88 +835,14 @@
     const stepUp = document.getElementById('pomoStepUp');
     if (stepUp) {
       stepUp.addEventListener('click', function () {
-        pomoSession++;
-        updatePomoDisplay();
+        const st = getPomoSavedState();
+        st.cur = (st.cur || 1) + 1;
+        savePomoState(st);
+        updatePomoDisplay(st);
       });
     }
 
-    updatePomoDisplay();
-  }
-
-  function togglePomo() {
-    if (!pomoIsRunning) {
-      pomoIsRunning = true;
-      pomoInterval = setInterval(pomoTick, 1000);
-      updatePomoDisplay();
-    } else {
-      pomoIsRunning = false;
-      clearInterval(pomoInterval);
-      updatePomoDisplay();
-    }
-  }
-
-  function pomoTick() {
-    if (pomoRemSec > 0) {
-      pomoRemSec--;
-      updatePomoDisplay();
-    } else {
-      // Completed current phase!
-      clearInterval(pomoInterval);
-      pomoIsRunning = false;
-      playAlertChime();
-
-      if (pomoMode === 'focus') {
-        pomoMode = 'break';
-        pomoTotSec = pomoBreakMin * 60;
-        pomoRemSec = pomoTotSec;
-        showChromeNotification('Pomodoro Focus Complete! 🎉', 'Time for a ' + pomoBreakMin + ' minute break. Step away and refresh.');
-      } else {
-        pomoMode = 'focus';
-        pomoSession++;
-        pomoTotSec = pomoFocusMin * 60;
-        pomoRemSec = pomoTotSec;
-        showChromeNotification('Break Complete! ⚡', 'Ready for session ' + pomoSession + '? Let\'s focus!');
-      }
-      updatePomoDisplay();
-    }
-  }
-
-  function resetPomo() {
-    pomoIsRunning = false;
-    clearInterval(pomoInterval);
-    pomoMode = 'focus';
-    pomoTotSec = pomoFocusMin * 60;
-    pomoRemSec = pomoTotSec;
-    updatePomoDisplay();
-  }
-
-  function updatePomoDisplay() {
-    const min = Math.floor(pomoRemSec / 60);
-    const sec = pomoRemSec % 60;
-
-    const mEl = document.getElementById('pomoM');
-    const sEl = document.getElementById('pomoS');
-    const sessEl = document.getElementById('pomoSess');
-    const badgeEl = document.getElementById('pomoModeBadge');
-    const startTxt = document.getElementById('pomoStartText');
-    const startIco = document.getElementById('pomoStartIcon');
-    const ring = document.getElementById('pomoRing');
-
-    if (mEl) mEl.textContent = String(min).padStart(2, '0');
-    if (sEl) sEl.textContent = ':' + String(sec).padStart(2, '0');
-    if (sessEl) sessEl.textContent = pomoSession;
-    if (badgeEl) badgeEl.textContent = pomoMode === 'focus' ? 'FOCUS SESSION' : 'BREAK TIME';
-
-    if (startTxt) startTxt.textContent = pomoIsRunning ? 'Pause' : 'Start Focus';
-    if (startIco) startIco.textContent = pomoIsRunning ? '⏸' : '▶';
-
-    if (ring && pomoTotSec > 0) {
-      const elapsed = pomoTotSec - pomoRemSec;
-      const progress = elapsed / pomoTotSec;
-      const deg = Math.round(progress * 360);
-      const color = pomoMode === 'focus' ? 'var(--ai)' : 'var(--up)';
-      ring.style.background = `conic-gradient(${color} ${deg}deg, var(--s3) 0deg)`;
-    }
+    syncPomoFromStorage();
   }
 
   function showChromeNotification(title, message) {
@@ -761,8 +858,10 @@
   }
 
   // =====================================================================
-  // 6. Countdown Controller (M2028 Core)
+  // 7. Countdown Controller (Live Ticker)
   // =====================================================================
+  let cdInterval = null;
+
   function renderCountdowns() {
     S.get('customWidgets', [
       { id: 'cw_prelims', type: 'countdown', title: 'Target Milestone 2028', date: '2028-05-28' },
@@ -777,36 +876,47 @@
         return;
       }
 
-      const now = new Date().getTime();
-      listEl.innerHTML = cds.map(c => {
-        const target = new Date(c.date + 'T00:00:00').getTime();
-        const diff = target - now;
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-        const isPast = days < 0;
+      function updateCdCards() {
+        const now = Date.now();
+        listEl.innerHTML = cds.map(c => {
+          const target = new Date(c.date + 'T00:00:00').getTime();
+          const diff = target - now;
+          const isPast = diff <= 0;
 
-        return `
-          <div class="cd-card" data-cdid="${c.id}">
-            <div class="cd-top-row">
-              <span class="cd-title">${escapeHtml(c.title)}</span>
-              <button class="ract del" data-cdid="${c.id}" title="Remove countdown">×</button>
-            </div>
-            <div class="cd-days-row">
-              <span class="cd-big-days">${isPast ? '0' : days}</span>
-              <span class="cd-time-label">${isPast ? 'days passed' : 'days remaining'}</span>
-            </div>
-            <div class="cd-footer-row">
-              <span>📅 Target: ${c.date}</span>
-              <span class="tag t-ai">${isPast ? 'Completed' : 'T-' + days}</span>
-            </div>
-          </div>
-        `;
-      }).join('');
+          const totalSec = Math.max(0, Math.floor(diff / 1000));
+          const days = Math.floor(totalSec / 86400);
+          const hours = Math.floor((totalSec % 86400) / 3600);
+          const mins = Math.floor((totalSec % 3600) / 60);
+          const secs = totalSec % 60;
 
-      listEl.querySelectorAll('.ract.del').forEach(btn => {
-        btn.addEventListener('click', function () {
-          deleteCountdown(this.getAttribute('data-cdid'));
+          return `
+            <div class="cd-card" data-cdid="${c.id}">
+              <div class="cd-top-row">
+                <span class="cd-title">${escapeHtml(c.title)}</span>
+                <button class="ract del" data-cdid="${c.id}" title="Remove countdown">×</button>
+              </div>
+              <div class="cd-days-row">
+                <span class="cd-big-days">${isPast ? '0' : days}d</span>
+                <span class="cd-time-label">${isPast ? 'Goal Reached 🎉' : `${hours}h ${mins}m ${secs}s left`}</span>
+              </div>
+              <div class="cd-footer-row">
+                <span>📅 Target: ${c.date}</span>
+                <span class="tag t-ai">${isPast ? 'Completed' : 'T-' + days}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        listEl.querySelectorAll('.ract.del').forEach(btn => {
+          btn.addEventListener('click', function () {
+            deleteCountdown(this.getAttribute('data-cdid'));
+          });
         });
-      });
+      }
+
+      updateCdCards();
+      clearInterval(cdInterval);
+      cdInterval = setInterval(updateCdCards, 1000);
     });
   }
 
@@ -865,14 +975,13 @@
   }
 
   // =====================================================================
-  // 7. Notes Scratchpad Controller
+  // 8. Notes Scratchpad Controller
   // =====================================================================
   let isNotesPreview = false;
 
   function initNotes() {
     const area = document.getElementById('notesInput');
     const preview = document.getElementById('notesPreview');
-    const stats = document.getElementById('notesStats');
     const copyBtn = document.getElementById('notesCopyBtn');
     const modeBtn = document.getElementById('notesModeBtn');
 
@@ -939,7 +1048,7 @@
   }
 
   // =====================================================================
-  // 8. Quick Search & Open Tabs Controller
+  // 9. Quick Search & Open Tabs Controller
   // =====================================================================
   function loadOpenTabs() {
     const listEl = document.getElementById('searchResultsList');
@@ -994,7 +1103,6 @@
   const refreshTabsBtn = document.getElementById('refreshTabsBtn');
   if (refreshTabsBtn) refreshTabsBtn.addEventListener('click', loadOpenTabs);
 
-  // Search Engine Chips
   document.querySelectorAll('.engine-chips-row .engine-pill').forEach(btn => {
     btn.addEventListener('click', function () {
       const p = this.getAttribute('data-prefix');
@@ -1040,7 +1148,6 @@
     }
   }
 
-  // --- Utility: Escape HTML ---
   function escapeHtml(str) {
     if (!str) return '';
     return String(str)
@@ -1052,9 +1159,49 @@
   }
 
   // =====================================================================
-  // Init on DOM Loaded
+  // 10. Real-Time Two-Way Storage Synchronizer
+  // =====================================================================
+  window.addEventListener('storage', function (e) {
+    if (e.key === 'm_theme' || e.key === 'm_customColors' || e.key === 'theme') {
+      initTheme();
+    } else if (e.key === 'm_habs' || e.key === 'm_hd') {
+      renderHabits();
+    } else if (e.key === 'm_tasks') {
+      renderTasks();
+    } else if (e.key === 'm_customWidgets') {
+      renderCountdowns();
+    } else if (e.key === 'pom_state' || e.key === 'm_pom_state') {
+      syncPomoFromStorage();
+    }
+  });
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (area === 'local') {
+        if (changes.m_theme || changes.theme || changes.m_customColors || changes.customColors) {
+          initTheme();
+        }
+        if (changes.m_habs || changes.m_hd) {
+          renderHabits();
+        }
+        if (changes.m_tasks) {
+          renderTasks();
+        }
+        if (changes.m_customWidgets) {
+          renderCountdowns();
+        }
+        if (changes.pom_state || changes.m_pom_state) {
+          syncPomoFromStorage();
+        }
+      }
+    });
+  }
+
+  // =====================================================================
+  // Initialization
   // =====================================================================
   document.addEventListener('DOMContentLoaded', function () {
+    initTheme();
     initNav();
     initPomo();
     renderScreenTime();

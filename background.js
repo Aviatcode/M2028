@@ -289,6 +289,49 @@ if (chrome.idle) {
   });
 }
 
+// Pomodoro Helper: log session to shared history
+async function logPomoSession(sub, dur) {
+  const d = getTodayKey();
+  const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const res = await chrome.storage.local.get(['m_pomSessions', 'pomSessions', 'm_pd', 'pd']);
+  let sessions = res.m_pomSessions || res.pomSessions || [];
+  if (!Array.isArray(sessions)) sessions = [];
+  sessions.push({
+    d: d,
+    sub: sub || 'General',
+    dur: dur || 3000,
+    t: timeStr
+  });
+
+  let pd = res.m_pd || res.pd || {};
+  if (typeof pd !== 'object' || pd === null) pd = {};
+  pd[d] = (pd[d] || 0) + 1;
+
+  await chrome.storage.local.set({
+    m_pomSessions: sessions,
+    pomSessions: sessions,
+    m_pd: pd,
+    pd: pd
+  });
+}
+
+// Pomodoro Helper: update extension action badge
+function updatePomoBadge(st) {
+  try {
+    if (!chrome.action) return;
+    if (st && st.run && st.endTs) {
+      const remSec = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
+      const min = Math.ceil(remSec / 60);
+      chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : '0m' });
+      chrome.action.setBadgeBackgroundColor({
+        color: st.mode === 'focus' ? '#4fd8a0' : '#e8965a'
+      });
+    } else {
+      chrome.action.setBadgeText({ text: '' });
+    }
+  } catch (e) {}
+}
+
 // Alarms: Heartbeat every 30 seconds to persist time continuously
 chrome.alarms.create('m2028_tracker_flush', { periodInMinutes: 0.5 });
 
@@ -311,6 +354,93 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       });
     } catch (e) {
       console.warn('Notification error:', e);
+    }
+  } else if (alarm.name === 'm2028_pomo_alarm') {
+    // Pomodoro phase reached 0!
+    try {
+      const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
+      let st = res.pom_state || res.m_pomLive;
+      if (!st || !st.run) return;
+
+      const tot = st.tot || 4;
+      if (st.mode === 'focus') {
+        st.cur = (st.cur || 0) + 1;
+        await logPomoSession(st.sub || 'General', st.phaseLen || 3000);
+
+        const isLong = st.cur % tot === 0;
+        const breakLen = isLong ? 1800 : (st.phaseLen === 1500 ? 300 : 600);
+
+        chrome.notifications.create('m2028_pomo_end_' + Date.now(), {
+          type: 'basic',
+          iconUrl: 'icon-192.png',
+          title: isLong ? `🏆 All ${tot} Sessions Complete!` : '✅ Focus Session Done!',
+          message: isLong ? 'Awesome work! Take a 30-min long break.' : `Take a ${breakLen / 60}-min break. Refresh and stretch!`,
+          priority: 2,
+          requireInteraction: true
+        });
+
+        st.mode = 'break';
+        st.phaseLen = breakLen;
+        st.rem = breakLen;
+        st.run = true;
+        st.endTs = Date.now() + breakLen * 1000;
+        st.u = Date.now();
+        st.dev = 'extension';
+
+        await chrome.alarms.clear('m2028_pomo_alarm');
+        chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+        await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
+        updatePomoBadge(st);
+      } else {
+        // Break over
+        if (st.cur >= tot) {
+          chrome.notifications.create('m2028_pomo_cycle_' + Date.now(), {
+            type: 'basic',
+            iconUrl: 'icon-192.png',
+            title: '🎉 Daily Pomodoro Cycle Complete!',
+            message: 'All scheduled sessions finished! Great discipline today.',
+            priority: 2,
+            requireInteraction: true
+          });
+
+          st.run = false;
+          st.mode = 'focus';
+          st.cur = 0;
+          st.phaseLen = 3000;
+          st.rem = 3000;
+          st.endTs = null;
+          st.u = Date.now();
+          st.dev = 'extension';
+
+          await chrome.alarms.clear('m2028_pomo_alarm');
+          await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
+          updatePomoBadge(st);
+        } else {
+          chrome.notifications.create('m2028_pomo_next_' + Date.now(), {
+            type: 'basic',
+            iconUrl: 'icon-192.png',
+            title: '☕ Break Over!',
+            message: `Starting focus session ${(st.cur || 0) + 1} of ${tot}. Let's dive in!`,
+            priority: 2,
+            requireInteraction: true
+          });
+
+          st.mode = 'focus';
+          st.phaseLen = 3000;
+          st.rem = 3000;
+          st.run = true;
+          st.endTs = Date.now() + 3000 * 1000;
+          st.u = Date.now();
+          st.dev = 'extension';
+
+          await chrome.alarms.clear('m2028_pomo_alarm');
+          chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+          await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
+          updatePomoBadge(st);
+        }
+      }
+    } catch (e) {
+      console.warn('Pomo alarm error:', e);
     }
   }
 });
@@ -472,6 +602,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
       }
 
+      case 'START_POMO': {
+        const st = message.state;
+        if (st && st.run && st.endTs) {
+          await chrome.alarms.clear('m2028_pomo_alarm');
+          chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+          updatePomoBadge(st);
+        }
+        sendResponse({ success: true });
+        break;
+      }
+
+      case 'PAUSE_POMO':
+      case 'CLEAR_POMO': {
+        await chrome.alarms.clear('m2028_pomo_alarm');
+        updatePomoBadge(null);
+        sendResponse({ success: true });
+        break;
+      }
+
+      case 'POMO_STATE_CHANGED': {
+        const st = message.state;
+        if (st && st.run && st.endTs) {
+          await chrome.alarms.clear('m2028_pomo_alarm');
+          chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+          updatePomoBadge(st);
+        } else {
+          await chrome.alarms.clear('m2028_pomo_alarm');
+          updatePomoBadge(null);
+        }
+        sendResponse({ success: true });
+        break;
+      }
+
+      case 'GET_POMO_STATE': {
+        const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
+        sendResponse({ success: true, state: res.pom_state || res.m_pomLive || null });
+        break;
+      }
+
       default:
         sendResponse({ success: false, error: 'Unknown message type' });
     }
@@ -481,3 +650,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Initial boot check
 checkCurrentTab();
+
+// Sync storage changes with background alarms and extension badges
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.pom_state || changes.m_pomLive) {
+    const st = (changes.pom_state && changes.pom_state.newValue) ||
+               (changes.m_pomLive && changes.m_pomLive.newValue);
+    if (st && st.run && st.endTs) {
+      chrome.alarms.clear('m2028_pomo_alarm').then(() => {
+        chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+      });
+      updatePomoBadge(st);
+    } else {
+      chrome.alarms.clear('m2028_pomo_alarm');
+      updatePomoBadge(null);
+    }
+  }
+});
+
+// Initial Pomodoro badge restore
+chrome.storage.local.get(['pom_state', 'm_pomLive'], (res) => {
+  const st = res.pom_state || res.m_pomLive;
+  if (st && st.run && st.endTs) {
+    updatePomoBadge(st);
+    chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+  }
+});

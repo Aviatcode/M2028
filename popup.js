@@ -964,25 +964,64 @@
 
   function getPomoSavedState() {
     try {
-      const raw = localStorage.getItem('pom_state') || localStorage.getItem('m_pom_state');
+      const raw = localStorage.getItem('pom_state') ||
+                  localStorage.getItem('m_pomLive') ||
+                  localStorage.getItem('m_pom_state');
       if (raw) return JSON.parse(raw);
     } catch (e) {}
-    return { run: false, mode: 'focus', rem: 50 * 60, phaseLen: 50 * 60, tot: 4, cur: 1 };
+    return {
+      run: false,
+      mode: 'focus',
+      rem: 3000,
+      phaseLen: 3000,
+      tot: 4,
+      cur: 0,
+      sub: 'General',
+      u: Date.now(),
+      dev: 'extension'
+    };
   }
 
   function savePomoState(st) {
+    st.u = Date.now();
+    st.dev = 'extension';
     try {
       localStorage.setItem('pom_state', JSON.stringify(st));
+      localStorage.setItem('m_pomLive', JSON.stringify(st));
       localStorage.setItem('m_pom_state', JSON.stringify(st));
     } catch (e) {}
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ pom_state: st, m_pom_state: st });
+      chrome.storage.local.set({
+        pom_state: st,
+        m_pomLive: st,
+        m_pom_state: st
+      });
+      chrome.runtime.sendMessage({
+        type: st.run ? 'START_POMO' : 'PAUSE_POMO',
+        state: st
+      }).catch(() => {});
     }
   }
 
   function syncPomoFromStorage() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['pom_state', 'm_pomLive'], function (res) {
+        const extSt = res.pom_state || res.m_pomLive;
+        if (extSt) {
+          try {
+            localStorage.setItem('pom_state', JSON.stringify(extSt));
+            localStorage.setItem('m_pomLive', JSON.stringify(extSt));
+          } catch (e) {}
+        }
+        applyPomoSync(extSt || getPomoSavedState());
+      });
+    } else {
+      applyPomoSync(getPomoSavedState());
+    }
+  }
+
+  function applyPomoSync(st) {
     clearInterval(pomoInterval);
-    const st = getPomoSavedState();
     if (st.run && st.endTs) {
       const now = Date.now();
       st.rem = Math.max(0, Math.round((st.endTs - now) / 1000));
@@ -1006,6 +1045,7 @@
       updatePomoDisplay(st);
     } else {
       st.run = false;
+      st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
       st.endTs = null;
       savePomoState(st);
       clearInterval(pomoInterval);
@@ -1015,7 +1055,10 @@
 
   function pomoTick() {
     const st = getPomoSavedState();
-    if (!st.run || !st.endTs) return;
+    if (!st.run || !st.endTs) {
+      clearInterval(pomoInterval);
+      return;
+    }
     st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
     if (st.rem <= 0) {
       clearInterval(pomoInterval);
@@ -1025,40 +1068,98 @@
     }
   }
 
+  function logPomoSessionLocal(sub, dur) {
+    const d = getTodayKey();
+    const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    S.get('pomSessions', [], function (sessions) {
+      if (!Array.isArray(sessions)) sessions = [];
+      sessions.push({
+        d: d,
+        sub: sub || 'General',
+        dur: dur || 3000,
+        t: timeStr
+      });
+      S.set('pomSessions', sessions);
+    });
+    S.get('pd', {}, function (pd) {
+      if (!pd || typeof pd !== 'object') pd = {};
+      pd[d] = (pd[d] || 0) + 1;
+      S.set('pd', pd);
+      const todayEl = document.getElementById('pomoToday');
+      if (todayEl) todayEl.textContent = pd[d] || 0;
+    });
+  }
+
   function handlePomoCompletion(st) {
-    st.run = false;
-    st.endTs = null;
     playAlertChime();
+    const tot = st.tot || 4;
+
     if (st.mode === 'focus') {
+      st.cur = (st.cur || 0) + 1;
+      logPomoSessionLocal(st.sub || 'General', st.phaseLen || 3000);
+
+      const isLong = st.cur % tot === 0;
+      const breakLen = isLong ? 1800 : (st.phaseLen === 1500 ? 300 : 600);
+
       st.mode = 'break';
-      const bMin = st.phaseLen === 50 * 60 ? 10 : 5;
-      st.phaseLen = bMin * 60;
-      st.rem = st.phaseLen;
-      showChromeNotification('Focus Session Complete! 🎉', 'Enjoy a ' + bMin + ' minute break. Step away and refresh.');
+      st.phaseLen = breakLen;
+      st.rem = breakLen;
+      st.run = true;
+      st.endTs = Date.now() + breakLen * 1000;
+
+      showChromeNotification(
+        isLong ? `🏆 All ${tot} Sessions Complete!` : '✅ Focus Session Done!',
+        isLong ? 'Take a 30-min long break.' : `Take a ${breakLen / 60}-min break. Step away and refresh.`
+      );
+      savePomoState(st);
+      clearInterval(pomoInterval);
+      pomoInterval = setInterval(pomoTick, 1000);
+      updatePomoDisplay(st);
     } else {
-      st.mode = 'focus';
-      st.cur = (st.cur || 1) + 1;
-      const fMin = 50;
-      st.phaseLen = fMin * 60;
-      st.rem = st.phaseLen;
-      showChromeNotification('Break Over! ⚡', 'Ready for session ' + st.cur + '? Let\'s focus!');
+      // Break over
+      if (st.cur >= tot) {
+        showChromeNotification('🎉 All sessions complete!', 'Great work today! Starting a fresh focus cycle.');
+        st.run = false;
+        st.mode = 'focus';
+        st.cur = 0;
+        st.phaseLen = 3000;
+        st.rem = 3000;
+        st.endTs = null;
+        savePomoState(st);
+        clearInterval(pomoInterval);
+        updatePomoDisplay(st);
+      } else {
+        showChromeNotification('☕ Break Over!', `Starting focus session ${st.cur + 1} of ${tot}. Let's focus!`);
+        st.mode = 'focus';
+        st.phaseLen = 3000;
+        st.rem = 3000;
+        st.run = true;
+        st.endTs = Date.now() + 3000 * 1000;
+        savePomoState(st);
+        clearInterval(pomoInterval);
+        pomoInterval = setInterval(pomoTick, 1000);
+        updatePomoDisplay(st);
+      }
     }
-    savePomoState(st);
-    updatePomoDisplay(st);
   }
 
   function resetPomo() {
     clearInterval(pomoInterval);
     const activeChip = document.querySelector('.pomo-presets .pomo-chip.on');
     const fMin = activeChip ? parseInt(activeChip.getAttribute('data-focus'), 10) : 50;
+    const durSec = fMin * 60;
+    const prev = getPomoSavedState();
     const st = {
       run: false,
       mode: 'focus',
       endTs: null,
-      rem: fMin * 60,
-      phaseLen: fMin * 60,
-      tot: 4,
-      cur: 1
+      rem: durSec,
+      phaseLen: durSec,
+      tot: prev.tot || 4,
+      cur: 0,
+      sub: prev.sub || 'General',
+      u: Date.now(),
+      dev: 'extension'
     };
     savePomoState(st);
     updatePomoDisplay(st);
@@ -1066,12 +1167,17 @@
 
   function updatePomoDisplay(st) {
     if (!st) st = getPomoSavedState();
+    if (st.run && st.endTs) {
+      st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
+    }
     const min = Math.floor(st.rem / 60);
     const sec = st.rem % 60;
 
     const mEl = document.getElementById('pomoM');
     const sEl = document.getElementById('pomoS');
     const sessEl = document.getElementById('pomoSess');
+    const totEl = document.getElementById('pomoTot');
+    const subEl = document.getElementById('pomoSub');
     const badgeEl = document.getElementById('pomoModeBadge');
     const startTxt = document.getElementById('pomoStartText');
     const startIco = document.getElementById('pomoStartIcon');
@@ -1079,18 +1185,53 @@
 
     if (mEl) mEl.textContent = String(min).padStart(2, '0');
     if (sEl) sEl.textContent = ':' + String(sec).padStart(2, '0');
-    if (sessEl) sessEl.textContent = st.cur || 1;
-    if (badgeEl) badgeEl.textContent = st.mode === 'focus' ? 'FOCUS SESSION' : 'BREAK TIME';
+    if (sessEl) sessEl.textContent = Math.min((st.cur || 0) + 1, st.tot || 4);
+    if (totEl) totEl.textContent = st.tot || 4;
+    if (subEl) subEl.textContent = st.sub || 'General';
+
+    if (badgeEl) {
+      badgeEl.textContent = st.mode === 'focus' ? 'FOCUS SESSION' : 'BREAK TIME';
+      badgeEl.style.color = st.mode === 'focus' ? 'var(--ai)' : 'var(--bd)';
+    }
 
     if (startTxt) startTxt.textContent = st.run ? 'Pause' : 'Start Focus';
     if (startIco) startIco.textContent = st.run ? '⏸' : '▶';
 
+    // Highlight matching preset chip
+    const curFocusMin = Math.round((st.phaseLen || 3000) / 60);
+    document.querySelectorAll('.pomo-presets .pomo-chip').forEach(c => {
+      const chipMin = parseInt(c.getAttribute('data-focus'), 10);
+      c.classList.toggle('on', chipMin === curFocusMin);
+    });
+
+    // Circular Conic Ring
     if (ring && st.phaseLen > 0) {
-      const elapsed = st.phaseLen - st.rem;
-      const progress = elapsed / st.phaseLen;
-      const deg = Math.round(progress * 360);
-      const color = st.mode === 'focus' ? 'var(--ai)' : 'var(--up)';
-      ring.style.background = `conic-gradient(${color} ${deg}deg, var(--s3) 0deg)`;
+      const elapsed = Math.max(0, st.phaseLen - st.rem);
+      const pct = Math.min(100, Math.max(0, (elapsed / st.phaseLen) * 100));
+      const color = st.mode === 'focus' ? 'var(--ai)' : 'var(--bd)';
+      ring.style.background = `conic-gradient(${color} ${pct}%, var(--s3) 0%)`;
+    }
+
+    // Refresh Today count
+    S.get('pd', {}, function (pd) {
+      const todayEl = document.getElementById('pomoToday');
+      if (todayEl) {
+        const d = getTodayKey();
+        todayEl.textContent = (pd && pd[d]) || 0;
+      }
+    });
+
+    // Disable step buttons while running
+    const downBtn = document.getElementById('pomoStepDown');
+    const upBtn = document.getElementById('pomoStepUp');
+    const disabled = st.run || (st.cur && st.cur > 0);
+    if (downBtn) {
+      downBtn.disabled = !!disabled;
+      downBtn.style.opacity = disabled ? '0.35' : '1';
+    }
+    if (upBtn) {
+      upBtn.disabled = !!disabled;
+      upBtn.style.opacity = disabled ? '0.35' : '1';
     }
   }
 
@@ -1122,11 +1263,10 @@
     if (stepDown) {
       stepDown.addEventListener('click', function () {
         const st = getPomoSavedState();
-        if (st.cur > 1) {
-          st.cur--;
-          savePomoState(st);
-          updatePomoDisplay(st);
-        }
+        if (st.run || st.cur > 0) return;
+        st.tot = Math.max(1, (st.tot || 4) - 1);
+        savePomoState(st);
+        updatePomoDisplay(st);
       });
     }
 
@@ -1134,11 +1274,33 @@
     if (stepUp) {
       stepUp.addEventListener('click', function () {
         const st = getPomoSavedState();
-        st.cur = (st.cur || 1) + 1;
+        if (st.run || st.cur > 0) return;
+        st.tot = Math.min(12, (st.tot || 4) + 1);
         savePomoState(st);
         updatePomoDisplay(st);
       });
     }
+
+    // Storage change listener: when web app or background changes pom_state, sync popup immediately
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (changes.pom_state || changes.m_pomLive) {
+          syncPomoFromStorage();
+        }
+        if (changes.m_pd || changes.pd) {
+          const pd = (changes.m_pd && changes.m_pd.newValue) || (changes.pd && changes.pd.newValue) || {};
+          const todayEl = document.getElementById('pomoToday');
+          if (todayEl) todayEl.textContent = pd[getTodayKey()] || 0;
+        }
+      });
+    }
+
+    window.addEventListener('storage', function (e) {
+      if (e.key === 'pom_state' || e.key === 'm_pomLive') {
+        syncPomoFromStorage();
+      }
+    });
 
     syncPomoFromStorage();
   }

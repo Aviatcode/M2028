@@ -142,7 +142,12 @@
         --seg-prod: ${R(segProd)} !important;
       }
       body { background: ${R(s)} !important; color: ${R(d)} !important; }
-      .tb { background: ${A(s, 0.95)} !important; }
+      .tb { background: ${A(s, 0.95)} !important; border-bottom: none !important; }
+      .tnb { background: ${A(s, 0.95)} !important; border-bottom: 1px solid ${A(d, 0.12)} !important; }
+      .tnb-track {
+        background: ${dk ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)'} !important;
+        border: 1px solid ${A(ac, 0.25)} !important;
+      }
       body::before {
         background-image:
           radial-gradient(55% 45% at 10% 8%, ${A(ac, dk ? 0.24 : 0.16)}, transparent 70%),
@@ -155,10 +160,11 @@
         box-shadow: 0 4px 14px ${A(ac, 0.28)} !important;
       }
       .nb.on {
-        background: ${R(ac)} !important;
-        color: ${pillTx} !important;
-        border: 1px solid ${R(ac)} !important;
-        box-shadow: 0 0 0 1px ${R(ac)}, 0 4px 18px ${A(ac, 0.35)} !important;
+        background: ${A(ac, 0.16)} !important;
+        color: ${R(ac)} !important;
+        border: 1px solid ${A(ac, 0.45)} !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 10px ${A(ac, 0.25)} !important;
+        font-weight: 650 !important;
       }
       .range-btn.active, .time-sub-btn.active, .pomo-chip.on {
         background: ${R(ac)} !important;

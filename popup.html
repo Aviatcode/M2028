@@ -29,36 +29,38 @@
       </div>
     </header>
 
-    <!-- Navigation Tabs Bar (Synced with M2028 .tnb) -->
-    <nav class="tnb" role="tablist">
-      <button class="nb on" data-tab="time" role="tab" aria-selected="true">
-        <span class="ic">📊</span>
-        <span class="lbl">Time</span>
-      </button>
-      <button class="nb" data-tab="habits" role="tab" aria-selected="false">
-        <span class="ic">🌿</span>
-        <span class="lbl">Habits</span>
-      </button>
-      <button class="nb" data-tab="tasks" role="tab" aria-selected="false">
-        <span class="ic">☑️</span>
-        <span class="lbl">Tasks</span>
-      </button>
-      <button class="nb" data-tab="pomo" role="tab" aria-selected="false">
-        <span class="ic">⏱</span>
-        <span class="lbl">Pomo</span>
-      </button>
-      <button class="nb" data-tab="countdown" role="tab" aria-selected="false">
-        <span class="ic">⏳</span>
-        <span class="lbl">Countdown</span>
-      </button>
-      <button class="nb" data-tab="notes" role="tab" aria-selected="false">
-        <span class="ic">📝</span>
-        <span class="lbl">Notes</span>
-      </button>
-      <button class="nb" data-tab="search" role="tab" aria-selected="false">
-        <span class="ic">🔍</span>
-        <span class="lbl">Search</span>
-      </button>
+    <!-- Navigation Tabs Bar (Unified Segmented Control Track) -->
+    <nav class="tnb" role="tablist" aria-label="M2028 Hub Tabs">
+      <div class="tnb-track">
+        <button class="nb on" data-tab="time" role="tab" aria-selected="true" title="Screen Time & Hub">
+          <span class="ic">📊</span>
+          <span class="lbl">Time</span>
+        </button>
+        <button class="nb" data-tab="habits" role="tab" aria-selected="false" title="Daily Habits">
+          <span class="ic">🌿</span>
+          <span class="lbl">Habits</span>
+        </button>
+        <button class="nb" data-tab="tasks" role="tab" aria-selected="false" title="Tasks & Todos">
+          <span class="ic">☑️</span>
+          <span class="lbl">Tasks</span>
+        </button>
+        <button class="nb" data-tab="pomo" role="tab" aria-selected="false" title="Pomodoro Focus Timer">
+          <span class="ic">⏱</span>
+          <span class="lbl">Pomo</span>
+        </button>
+        <button class="nb" data-tab="countdown" role="tab" aria-selected="false" title="Target Countdowns">
+          <span class="ic">⏳</span>
+          <span class="lbl">Count</span>
+        </button>
+        <button class="nb" data-tab="notes" role="tab" aria-selected="false" title="Quick Notes">
+          <span class="ic">📝</span>
+          <span class="lbl">Notes</span>
+        </button>
+        <button class="nb" data-tab="search" role="tab" aria-selected="false" title="Universal Search">
+          <span class="ic">🔍</span>
+          <span class="lbl">Search</span>
+        </button>
+      </div>
     </nav>
 
     <!-- Main Tab View Content -->

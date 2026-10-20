@@ -46,6 +46,50 @@
   --r2: rgba(207, 64, 56, 0.1);
 }
 
+/* Girl Mode / Pink Theme (M2028 Native) */
+[data-theme="pink"] {
+  --bg: #1a0a14;
+  --s1: #240d1a;
+  --s2: #2e1220;
+  --s3: #3d1829;
+  --b: rgba(255, 150, 200, 0.17);
+  --b2: rgba(255, 150, 200, 0.3);
+  --tx: #ffe4f0;
+  --mt: #7a4060;
+  --m2: #c47090;
+  --ai: #ff6eb4;
+  --a2: rgba(255, 110, 180, 0.14);
+  --up: #e86bc8;
+  --u2: rgba(232, 107, 200, 0.12);
+  --bd: #ff9de0;
+  --d2: rgba(255, 157, 224, 0.12);
+  --rd: #ff5c8a;
+  --r2: rgba(255, 92, 138, 0.12);
+  --gd: #ffb3d9;
+  --ec: #ff85c8;
+  --e2: rgba(255, 133, 200, 0.12);
+  --geo: #ff6eb4;
+  --go2: rgba(255, 110, 180, 0.12);
+  --wn: #ffc36e;
+  --w2: rgba(255, 195, 110, 0.14);
+  --dn: #ff6eb4;
+}
+
+[data-theme="pink"] .tb {
+  background: rgba(26, 10, 20, 0.96);
+  border-bottom: 1px solid rgba(255, 110, 180, 0.2);
+}
+
+[data-theme="pink"] body::before {
+  background: radial-gradient(circle at 88% 12%, rgba(240, 107, 189, 0.18), transparent 45%),
+              radial-gradient(circle at 50% 105%, rgba(255, 179, 217, 0.15), transparent 55%);
+}
+
+[data-theme="pink"] .logo span {
+  background: linear-gradient(135deg, #ff6eb4, #ffb3d9);
+  color: #2a0a1a;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

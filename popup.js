@@ -84,9 +84,66 @@
   }
 
   // =====================================================================
-  // 1. Navigation & Theme Controller
+  // 1. Navigation & Theme Controller (Dark, Light, Girl/Pink & Custom Colors)
   // =====================================================================
   let activeTabName = 'time';
+
+  function applyTheme(themeName) {
+    const doc = document.documentElement;
+    doc.setAttribute('data-theme', themeName);
+    S.set('theme', themeName);
+    updateThemeBtnIcon(themeName);
+
+    // Check for Account Holder's Custom Colors
+    S.get('customColors', null, function (custom) {
+      if (!custom) {
+        // Guest user or default: clear inline color overrides
+        [ '--bg', '--s1', '--s2', '--s3', '--tx', '--ai', '--a2', '--b', '--b2' ].forEach(p => doc.style.removeProperty(p));
+        return;
+      }
+      let cfg = null;
+      if (custom.bg && custom.tx) {
+        if (!custom.t || custom.t === themeName) cfg = custom;
+      } else if (custom[themeName]) {
+        cfg = custom[themeName];
+      }
+      if (cfg && (cfg.bg || cfg.tx || cfg.ac)) {
+        if (cfg.bg) doc.style.setProperty('--bg', cfg.bg);
+        if (cfg.tx) doc.style.setProperty('--tx', cfg.tx);
+        if (cfg.ac) {
+          doc.style.setProperty('--ai', cfg.ac);
+          doc.style.setProperty('--a2', 'color-mix(in srgb, ' + cfg.ac + ' 16%, transparent)');
+        }
+      } else {
+        [ '--bg', '--s1', '--s2', '--s3', '--tx', '--ai', '--a2', '--b', '--b2' ].forEach(p => doc.style.removeProperty(p));
+      }
+    });
+  }
+
+  function cycleTheme() {
+    const doc = document.documentElement;
+    const current = doc.getAttribute('data-theme') || 'dark';
+    let next = 'dark';
+    if (current === 'dark') next = 'light';
+    else if (current === 'light') next = 'pink';
+    else if (current === 'pink') next = 'dark';
+    applyTheme(next);
+  }
+
+  function updateThemeBtnIcon(themeName) {
+    const btn = document.getElementById('themeToggleBtn');
+    if (!btn) return;
+    if (themeName === 'light') {
+      btn.title = 'Theme: Light (Click for Girl Mode 🌸)';
+      btn.innerHTML = `<span style="font-size:14px;line-height:1">🌸</span>`;
+    } else if (themeName === 'pink') {
+      btn.title = 'Theme: Girl Mode 🌸 (Click for Dark Mode 🌙)';
+      btn.innerHTML = `<span style="font-size:14px;line-height:1">🌙</span>`;
+    } else {
+      btn.title = 'Theme: Dark 🌙 (Click for Light Mode ☀️)';
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`;
+    }
+  }
 
   function initNav() {
     const navButtons = document.querySelectorAll('.tnb .nb');
@@ -97,23 +154,16 @@
       });
     });
 
-    // Theme Toggle
+    // Theme Toggle (Cycles Dark -> Light -> Girl Mode -> Dark)
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) {
-      themeBtn.addEventListener('click', function () {
-        const doc = document.documentElement;
-        const current = doc.getAttribute('data-theme') || 'dark';
-        const next = current === 'dark' ? 'light' : 'dark';
-        doc.setAttribute('data-theme', next);
-        S.set('theme', next);
-      });
+      themeBtn.addEventListener('click', cycleTheme);
     }
 
-    // Load saved theme
+    // Load saved theme & account holder custom colors
     S.get('theme', 'dark', function (t) {
-      if (t === 'light' || t === 'dark') {
-        document.documentElement.setAttribute('data-theme', t);
-      }
+      const validTheme = (t === 'light' || t === 'pink' || t === 'dark') ? t : 'dark';
+      applyTheme(validTheme);
     });
 
     // Open Full M2028 Web App

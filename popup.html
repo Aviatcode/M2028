@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M2028 Productivity Hub</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Top Header -->
+    <header class="hub-header">
+      <div class="brand">
+        <div class="brand-badge">28</div>
+        <div class="brand-info">
+          <div class="brand-title">M2028 <span class="hub-tag">HUB</span></div>
+          <div class="brand-sub" id="headerGreeting">Focus & Productivity</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme" aria-label="Toggle Theme">
+          <svg class="theme-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button id="openPlannerBtn" class="primary-btn sm" title="Open Full M2028 Planner">
+          <span>Full Planner</span>
+          <svg viewBox="0 0 24 24" width="14" height="14"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6m4-3h6v6m-11 5L21 3"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="hub-nav" role="tablist">
+      <button class="nav-tab active" data-tab="tracker" role="tab" aria-selected="true" id="tab-tracker">
+        <span class="tab-icon">📊</span>
+        <span class="tab-label">Tracker</span>
+      </button>
+      <button class="nav-tab" data-tab="clock" role="tab" aria-selected="false" id="tab-clock">
+        <span class="tab-icon">⏰</span>
+        <span class="tab-label">Clock</span>
+      </button>
+      <button class="nav-tab" data-tab="stopwatch" role="tab" aria-selected="false" id="tab-stopwatch">
+        <span class="tab-icon">⏱️</span>
+        <span class="tab-label">Stopwatch</span>
+      </button>
+      <button class="nav-tab" data-tab="timer" data-badge="" role="tab" aria-selected="false" id="tab-timer">
+        <span class="tab-icon">⏳</span>
+        <span class="tab-label">Timer</span>
+      </button>
+      <button class="nav-tab" data-tab="notes" role="tab" aria-selected="false" id="tab-notes">
+        <span class="tab-icon">📝</span>
+        <span class="tab-label">Notes</span>
+      </button>
+      <button class="nav-tab" data-tab="search" role="tab" aria-selected="false" id="tab-search">
+        <span class="tab-icon">🔍</span>
+        <span class="tab-label">Search</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Panels -->
+    <main class="hub-main">
+      
+      <!-- 1. TIME TRACKER PANEL -->
+      <section class="tab-panel active" id="panel-tracker" role="tabpanel">
+        <!-- Live Active Site Banner -->
+        <div class="active-site-card" id="activeSiteCard">
+          <div class="pulse-indicator"></div>
+          <div class="active-site-icon" id="activeSiteFavicon">🌐</div>
+          <div class="active-site-details">
+            <div class="active-site-label">Currently Active</div>
+            <div class="active-site-name" id="activeSiteDomain">Detecting active tab...</div>
+          </div>
+          <div class="active-site-badge" id="activeSiteCategory">Productive</div>
+        </div>
+
+        <!-- Metric Summary Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">Screen Time Today</div>
+            <div class="metric-val" id="todayScreenTime">0m</div>
+            <div class="metric-sub" id="todaySiteCount">0 domains tracked</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Productivity Score</div>
+            <div class="metric-val text-accent" id="prodScore">100%</div>
+            <div class="metric-sub" id="prodBreakdown">Focus high</div>
+          </div>
+        </div>
+
+        <!-- Category Progress Distribution -->
+        <div class="cat-bar-wrapper">
+          <div class="cat-bar-header">
+            <span>Category Breakdown</span>
+            <div class="range-toggle">
+              <button class="range-btn active" id="rangeTodayBtn">Today</button>
+              <button class="range-btn" id="rangeWeekBtn">7 Days</button>
+            </div>
+          </div>
+          <div class="cat-progress-bar" id="catProgressBar">
+            <div class="cat-seg seg-prod" style="width: 0%" title="Productive"></div>
+            <div class="cat-seg seg-comm" style="width: 0%" title="Communication"></div>
+            <div class="cat-seg seg-soc" style="width: 0%" title="Social"></div>
+            <div class="cat-seg seg-ent" style="width: 0%" title="Entertainment"></div>
+            <div class="cat-seg seg-oth" style="width: 0%" title="Other"></div>
+          </div>
+          <div class="cat-legend">
+            <span class="legend-item"><span class="dot dot-prod"></span>Work/Study</span>
+            <span class="legend-item"><span class="dot dot-comm"></span>Comm</span>
+            <span class="legend-item"><span class="dot dot-soc"></span>Social</span>
+            <span class="legend-item"><span class="dot dot-ent"></span>Media</span>
+          </div>
+        </div>
+
+        <!-- Top Sites List -->
+        <div class="section-heading">
+          <span>Top Visited Places</span>
+          <button class="text-btn sm" id="resetTrackerBtn" title="Reset Today's Stats">Reset</button>
+        </div>
+        <div class="sites-list" id="topSitesList">
+          <div class="empty-state">No browsing data recorded yet today. Browse normally to see your time breakdown!</div>
+        </div>
+      </section>
+
+      <!-- 2. CLOCK PANEL -->
+      <section class="tab-panel" id="panel-clock" role="tabpanel">
+        <div class="clock-hero">
+          <div class="clock-display">
+            <span id="clockTime">00:00:00</span>
+            <span class="clock-ampm" id="clockAmPm">AM</span>
+          </div>
+          <div class="clock-date" id="clockDate">Loading date...</div>
+          <div class="clock-tz" id="clockLocalTz">Local Time</div>
+        </div>
+
+        <div class="clock-controls">
+          <button class="toggle-pill active" id="clockFormatBtn">12-Hour</button>
+          <button class="toggle-pill" id="clockSecondsBtn">Show Seconds</button>
+        </div>
+
+        <div class="section-heading">
+          <span>Global Clocks</span>
+        </div>
+        <div class="world-clocks-grid">
+          <div class="world-clock-card" data-tz="UTC">
+            <div class="wc-header">
+              <span class="wc-city">UTC / GMT</span>
+              <span class="wc-diff">Universal</span>
+            </div>
+            <div class="wc-time" id="wc-utc">--:--</div>
+          </div>
+          <div class="world-clock-card" data-tz="America/New_York">
+            <div class="wc-header">
+              <span class="wc-city">New York</span>
+              <span class="wc-diff">EDT/EST</span>
+            </div>
+            <div class="wc-time" id="wc-ny">--:--</div>
+          </div>
+          <div class="world-clock-card" data-tz="Europe/London">
+            <div class="wc-header">
+              <span class="wc-city">London</span>
+              <span class="wc-diff">GMT/BST</span>
+            </div>
+            <div class="wc-time" id="wc-lon">--:--</div>
+          </div>
+          <div class="world-clock-card" data-tz="Asia/Tokyo">
+            <div class="wc-header">
+              <span class="wc-city">Tokyo</span>
+              <span class="wc-diff">JST</span>
+            </div>
+            <div class="wc-time" id="wc-tko">--:--</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. STOPWATCH PANEL -->
+      <section class="tab-panel" id="panel-stopwatch" role="tabpanel">
+        <div class="stopwatch-hero">
+          <div class="stopwatch-display">
+            <span class="sw-time" id="swDisplay">00:00:00</span>
+            <span class="sw-ms" id="swMs">.00</span>
+          </div>
+        </div>
+
+        <div class="sw-actions">
+          <button class="hub-btn primary lg" id="swStartBtn">Start</button>
+          <button class="hub-btn secondary lg" id="swLapBtn" disabled>Lap</button>
+          <button class="hub-btn ghost lg" id="swResetBtn" disabled>Reset</button>
+        </div>
+
+        <div class="section-heading sw-laps-heading">
+          <span>Laps Record</span>
+          <span class="sw-lap-count" id="swLapCount">0 laps</span>
+        </div>
+        <div class="laps-container" id="swLapsList">
+          <div class="empty-state">Press Start and then Lap to log split times.</div>
+        </div>
+      </section>
+
+      <!-- 4. TIMER PANEL -->
+      <section class="tab-panel" id="panel-timer" role="tabpanel">
+        <div class="timer-visual-wrap">
+          <svg class="timer-svg" viewBox="0 0 200 200">
+            <circle class="timer-circle-bg" cx="100" cy="100" r="88"/>
+            <circle class="timer-circle-fg" id="timerCircleFg" cx="100" cy="100" r="88"/>
+          </svg>
+          <div class="timer-center-content">
+            <div class="timer-countdown" id="timerCountdown">25:00</div>
+            <div class="timer-state-label" id="timerStateLabel">Ready to Focus</div>
+          </div>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="timer-presets">
+          <button class="preset-chip" data-min="1">1m</button>
+          <button class="preset-chip" data-min="5">5m</button>
+          <button class="preset-chip" data-min="15">15m</button>
+          <button class="preset-chip active" data-min="25">25m</button>
+          <button class="preset-chip" data-min="50">50m</button>
+        </div>
+
+        <!-- Custom Timer Input -->
+        <div class="custom-timer-row">
+          <span class="custom-timer-label">Custom:</span>
+          <input type="number" id="customTimerMin" class="hub-input sm" min="1" max="180" value="25" placeholder="Min">
+          <span class="custom-timer-unit">mins</span>
+          <button class="hub-btn ghost sm" id="setCustomTimerBtn">Set</button>
+        </div>
+
+        <!-- Timer Controls -->
+        <div class="timer-actions">
+          <button class="hub-btn primary lg" id="timerStartBtn">Start Focus</button>
+          <button class="hub-btn ghost lg" id="timerResetBtn">Reset</button>
+          <button class="icon-btn" id="timerSoundBtn" title="Sound alerts enabled">
+            <svg viewBox="0 0 24 24" width="18" height="18"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- 5. NOTES / SCRATCHPAD PANEL -->
+      <section class="tab-panel" id="panel-notes" role="tabpanel">
+        <div class="notes-header">
+          <div class="notes-stats">
+            <span id="notesWordCount">0 words</span> • <span id="notesCharCount">0 chars</span>
+          </div>
+          <div class="notes-actions">
+            <button class="text-btn sm" id="notesCopyBtn" title="Copy to clipboard">Copy</button>
+            <button class="text-btn sm" id="notesDownloadBtn" title="Save as .txt">Save</button>
+            <button class="text-btn sm text-danger" id="notesClearBtn" title="Clear note">Clear</button>
+          </div>
+        </div>
+
+        <div class="notes-editor-wrap">
+          <textarea id="notesInput" class="notes-textarea" placeholder="Instant scratchpad... Ideas, tasks, quick code snippets, or notes. Auto-saves continuously." spellcheck="false"></textarea>
+          <div id="notesPreview" class="notes-preview hidden"></div>
+        </div>
+
+        <div class="notes-footer">
+          <button class="toggle-pill sm" id="notesModeBtn">Preview Mode</button>
+          <span class="save-status" id="notesSaveStatus">Saved automatically</span>
+        </div>
+      </section>
+
+      <!-- 6. QUICK SEARCH & LAUNCHER PANEL -->
+      <section class="tab-panel" id="panel-search" role="tabpanel">
+        <div class="search-box">
+          <div class="search-icon-box">🔍</div>
+          <input type="text" id="quickSearchInput" class="search-input" placeholder="Search web, tabs, shortcuts (e.g. 'yt lo-fi', 'gh repo')..." autocomplete="off" autofocus>
+          <button class="search-clear-btn hidden" id="searchClearBtn">✕</button>
+        </div>
+
+        <!-- Search Engine Hints / Chips -->
+        <div class="engine-chips">
+          <button class="engine-chip" data-prefix="g"><b>g</b> Google</button>
+          <button class="engine-chip" data-prefix="yt"><b>yt</b> YouTube</button>
+          <button class="engine-chip" data-prefix="gh"><b>gh</b> GitHub</button>
+          <button class="engine-chip" data-prefix="w"><b>w</b> Wiki</button>
+          <button class="engine-chip" data-prefix="r"><b>r</b> Reddit</button>
+        </div>
+
+        <!-- Live Results Container -->
+        <div class="search-results-section">
+          <div class="section-heading">
+            <span id="resultsHeading">Open Tabs & Navigation</span>
+            <button class="text-btn sm" id="refreshTabsBtn">Refresh Tabs</button>
+          </div>
+          <div class="results-list" id="searchResultsList">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer Bar -->
+    <footer class="hub-footer">
+      <div class="footer-hint">Shortcut: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd></div>
+      <div class="footer-links">
+        <button id="quickTasksBtn" class="footer-link">Tasks</button>
+        <span>•</span>
+        <button id="quickHabitsBtn" class="footer-link">Habits</button>
+        <span>•</span>
+        <button id="quickPomoBtn" class="footer-link">Pomodoro</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

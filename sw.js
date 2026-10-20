@@ -36,7 +36,7 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 const VERSION = 'v10';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
-const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'apple-touch-icon.png', 'push.js', 'leaf-icons.css', 'pom-duo.webp'];
+const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'app.webmanifest', 'icon-192.png', 'apple-touch-icon.png', 'push.js', 'leaf-icons.css', 'pom-duo.webp'];
 const LIB_HOSTS = ['cdn.jsdelivr.net'];
 
 self.addEventListener('install', (event) => {

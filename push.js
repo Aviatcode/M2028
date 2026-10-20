@@ -1,6 +1,7 @@
 /* M2028 push reminders: registers this device + its upcoming task/medicine reminders with the push server,
    so notifications arrive on time even when the app is closed. */
 (function(){
+if (typeof location !== "undefined" && location.protocol === "chrome-extension:") return;
 var API="https://lvzcctsqcpikisdzztot.supabase.co/functions/v1/smooth-api";
 var ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2emNjdHNxY3Bpa2lzZHp6dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4OTQsImV4cCI6MjA5NzI4NTg5NH0.Z1GejKEAkFuJmum-amd5zin8TFEIaeptroRtjFmojdw";
 var VAPID="BKXNMDQ70tAt4e-JvpUPI7C4pSd9r2rMdY__2aJqgNKDyiBiPv2SybsoNlgtftqPrNQLzjNLYP6XMBCtpXqOb2k";

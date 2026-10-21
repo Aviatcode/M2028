@@ -2641,49 +2641,6 @@ html.haswp body.pink .pomo-center-card {
   box-shadow: 0 0 6px var(--ai);
 }
 
-.auth-sync-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--s2);
-  border: 1px solid var(--b);
-  border-radius: 10px;
-  padding: 9px 12px;
-  margin-bottom: 10px;
-}
-
-.auth-sync-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--m2);
-}
-
-.auth-sync-item .syn-ico {
-  margin-right: 6px;
-  font-size: 12px;
-}
-
-.auth-sync-item .syn-txt {
-  flex: 1;
-}
-
-.auth-sync-item .syn-tag {
-  font-size: 9.5px;
-  font-weight: 700;
-  color: var(--ai);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.auth-sync-status-msg {
-  font-size: 10.5px;
-  color: var(--mt);
-  text-align: center;
-  margin-bottom: 12px;
-}
-
 .auth-signedin-actions {
   display: flex;
   flex-direction: column;

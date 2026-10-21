@@ -211,7 +211,7 @@
       <!-- 4. POMODORO TIMER TAB (M2028) -->
       <section class="vw" id="tab-pomo">
         <div class="wc pomo-center-card">
-          <div class="pomo-mode-badge" id="pomoModeBadge">FOCUS SESSION</div>
+          <div class="pomo-mode-badge" id="pomoModeBadge" data-mode="focus">FOCUS SESSION</div>
           
           <!-- M2028 Signature Circular Ring -->
           <div class="pr" id="pomoRing">
@@ -223,27 +223,31 @@
 
           <!-- Session Info -->
           <div class="pomo-session-txt">
-            Session <span id="pomoSess" style="color:var(--ai);font-weight:700">1</span> / <span id="pomoTot">4</span>
+            Session <span id="pomoSess">1</span> / <span id="pomoTot">2</span>
           </div>
-          <div style="font-size:11px;color:var(--m2);margin-top:2px;display:flex;align-items:center;justify-content:center;gap:12px">
-            <span>Subject: <strong id="pomoSub" style="color:var(--tx)">General</strong></span>
-            <span>Today: <strong id="pomoToday" style="color:var(--ai)">0</strong></span>
+          
+          <!-- Subject & Today Row -->
+          <div class="pomo-sub-row">
+            <span class="pomo-sub-label">Subject: <button type="button" class="pomo-sub-btn" id="pomoSubBtn" title="Click to choose/sync subject"><strong id="pomoSub">DA/PY</strong><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:3px"><path d="M6 9l6 6 6-6"/></svg></button></span>
+            <span class="pomo-sub-dot">·</span>
+            <span>Today: <strong id="pomoToday">1</strong></span>
           </div>
 
           <!-- Duration Mode Presets -->
           <div class="pomo-presets">
-            <button class="btn b-gh sm pomo-chip on" data-focus="50" data-break="10">50 / 10 Focus</button>
-            <button class="btn b-gh sm pomo-chip" data-focus="25" data-break="5">25 / 5 Classic</button>
+            <button type="button" class="pomo-chip on" data-focus="50" data-break="10">50 / 10 Focus</button>
+            <button type="button" class="pomo-chip" data-focus="25" data-break="5">25 / 5 Classic</button>
           </div>
 
           <!-- Control Actions -->
           <div class="pomo-actions">
-            <button class="btn b-gh sm" id="pomoStepDown" title="Decrease session count">-</button>
-            <button class="btn b-ai" id="pomoStartBtn" style="padding:10px 24px;font-size:14px;font-weight:700">
-              <span id="pomoStartIcon">▶</span> <span id="pomoStartText">Start Focus</span>
+            <button type="button" class="pomo-step-btn" id="pomoStepDown" title="Decrease session count" aria-label="Decrease session count">-</button>
+            <button type="button" class="pomo-main-btn" id="pomoStartBtn" title="Start Focus Session">
+              <span id="pomoStartIcon" class="pomo-play-tri"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-1px"><path d="M8 5v14l11-7z"/></svg></span>
+              <span id="pomoStartText">Start Focus</span>
             </button>
-            <button class="btn b-gh sm" id="pomoStepUp" title="Increase session count">+</button>
-            <button class="btn b-gh sm" id="pomoResetBtn" title="Reset current session">↺</button>
+            <button type="button" class="pomo-step-btn" id="pomoStepUp" title="Increase session count" aria-label="Increase session count">+</button>
+            <button type="button" class="pomo-step-btn" id="pomoResetBtn" title="Reset current session" aria-label="Reset session"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
           </div>
         </div>
       </section>
@@ -396,6 +400,26 @@
           <button type="button" class="btn b-gh" id="authOpenAppBtn" style="width:100%"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Open Web App</button>
           <button type="button" class="btn b-rd" id="authSignOutBtn" style="width:100%">Sign Out</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. POMODORO SUBJECT PICKER MODAL -->
+  <div class="ov" id="pomSubModal">
+    <div class="mo pomo-sub-mo">
+      <div class="pomo-mo-head">
+        <div class="pomo-mo-title">Select Focus Subject</div>
+        <button type="button" class="pomo-mo-close" id="pomSubModalCloseBtn" aria-label="Close modal">✕</button>
+      </div>
+      <div class="pomo-mo-hint">Pick or add a subject to track your Pomodoro hours:</div>
+      
+      <div id="pomSubModalList" class="pomo-sub-chip-list">
+        <!-- Dynamically populated subjects (DA/PY, AI/Python, Polity, History, etc.) -->
+      </div>
+
+      <div class="pomo-mo-add-row">
+        <input type="text" id="pomNewSubInput" class="inp" placeholder="Add custom subject (e.g. Maths)..." maxlength="24" autocomplete="off">
+        <button type="button" class="btn b-ai sm" id="pomAddSubBtn">+ Add</button>
       </div>
     </div>
   </div>

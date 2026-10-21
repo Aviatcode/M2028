@@ -197,6 +197,30 @@
           syncObj.customColors = cc;
           syncObj.m_customColors = cc;
         }
+        // Sync wallpaper & wpDim from page
+        const wp = window.localStorage.getItem('m_wallpaper') || window.localStorage.getItem('wallpaper');
+        if (wp) {
+          syncObj.wallpaper = wp;
+          syncObj.m_wallpaper = wp;
+        }
+        const wpDim = window.localStorage.getItem('m_wpDim') || window.localStorage.getItem('wpDim');
+        if (wpDim) {
+          syncObj.wpDim = wpDim;
+          syncObj.m_wpDim = wpDim;
+        }
+
+        // Sync pomSubjects from page
+        const pSubs = window.localStorage.getItem('m_pomSubjects') || window.localStorage.getItem('pomSubjects');
+        if (pSubs) {
+          try {
+            const parsedSubs = JSON.parse(pSubs);
+            if (Array.isArray(parsedSubs)) {
+              syncObj.pomSubjects = parsedSubs;
+              syncObj.m_pomSubjects = parsedSubs;
+            }
+          } catch (e) {}
+        }
+
         // Also check profile photo / app logo
         const picRaw = window.localStorage.getItem('m_profilePic') || window.localStorage.getItem('profilePic');
         if (picRaw) {

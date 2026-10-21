@@ -174,7 +174,7 @@
         color: ${pillTx} !important;
         border-color: ${R(ac)} !important;
       }
-      .pomo-btn.primary, #pomoStartBtn {
+      .pomo-btn.primary, #pomoStartBtn:not(.is-run) {
         background: ${R(ac)} !important;
         color: ${pillTx} !important;
         box-shadow: 0 4px 16px ${A(ac, 0.3)} !important;
@@ -258,6 +258,9 @@
     if (activeTabName === 'habits') renderHabits();
     if (activeTabName === 'tasks') renderTasks();
     if (activeTabName === 'time') loadTrackerData();
+    if (typeof updatePomoDisplay === 'function') {
+      try { updatePomoDisplay(); } catch (_) {}
+    }
   }
 
   function toggleTheme() {
@@ -1065,9 +1068,9 @@
       mode: 'focus',
       rem: 3000,
       phaseLen: 3000,
-      tot: 4,
+      tot: 2,
       cur: 0,
-      sub: 'General',
+      sub: 'DA/PY',
       u: Date.now(),
       dev: 'extension'
     };
@@ -1237,6 +1240,10 @@
     }
   }
 
+  // Default subjects matching M2028 authentic subjects
+  const DEFAULT_POM_SUBJECTS = ['DA/PY', 'AI/Python', 'Polity', 'History', 'Economics', 'Geography', 'General', 'Other'];
+  let _pomSubjects = [...DEFAULT_POM_SUBJECTS];
+
   function resetPomo() {
     clearInterval(pomoInterval);
     const activeChip = document.querySelector('.pomo-presets .pomo-chip.on');
@@ -1249,9 +1256,9 @@
       endTs: null,
       rem: durSec,
       phaseLen: durSec,
-      tot: prev.tot || 4,
+      tot: prev.tot || 2,
       cur: 0,
-      sub: prev.sub || 'General',
+      sub: prev.sub || 'DA/PY',
       u: Date.now(),
       dev: 'extension'
     };
@@ -1273,23 +1280,31 @@
     const totEl = document.getElementById('pomoTot');
     const subEl = document.getElementById('pomoSub');
     const badgeEl = document.getElementById('pomoModeBadge');
+    const startBtn = document.getElementById('pomoStartBtn');
     const startTxt = document.getElementById('pomoStartText');
     const startIco = document.getElementById('pomoStartIcon');
     const ring = document.getElementById('pomoRing');
 
     if (mEl) mEl.textContent = String(min).padStart(2, '0');
     if (sEl) sEl.textContent = ':' + String(sec).padStart(2, '0');
-    if (sessEl) sessEl.textContent = Math.min((st.cur || 0) + 1, st.tot || 4);
-    if (totEl) totEl.textContent = st.tot || 4;
-    if (subEl) subEl.textContent = st.sub || 'General';
+    if (sessEl) sessEl.textContent = Math.min((st.cur || 0) + 1, st.tot || 2);
+    if (totEl) totEl.textContent = st.tot || 2;
+    if (subEl) subEl.textContent = st.sub || 'DA/PY';
 
     if (badgeEl) {
       badgeEl.textContent = st.mode === 'focus' ? 'FOCUS SESSION' : 'BREAK TIME';
-      badgeEl.style.color = st.mode === 'focus' ? 'var(--ai)' : 'var(--bd)';
+      badgeEl.setAttribute('data-mode', st.mode === 'focus' ? 'focus' : 'break');
     }
 
+    if (startBtn) {
+      startBtn.classList.toggle('is-run', !!st.run);
+    }
     if (startTxt) startTxt.textContent = st.run ? 'Pause' : 'Start Focus';
-    if (startIco) startIco.textContent = st.run ? '⏸' : '▶';
+    if (startIco) {
+      startIco.innerHTML = st.run
+        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-1px"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`
+        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-1px"><path d="M8 5v14l11-7z"/></svg>`;
+    }
 
     // Highlight matching preset chip
     const curFocusMin = Math.round((st.phaseLen || 3000) / 60);
@@ -1298,12 +1313,28 @@
       c.classList.toggle('on', chipMin === curFocusMin);
     });
 
-    // Circular Conic Ring
+    // Circular Conic Ring with 2 separate clock modes: Dark/Light and Girl Mode
     if (ring && st.phaseLen > 0) {
       const elapsed = Math.max(0, st.phaseLen - st.rem);
       const pct = Math.min(100, Math.max(0, (elapsed / st.phaseLen) * 100));
-      const color = st.mode === 'focus' ? 'var(--ai)' : 'var(--bd)';
-      ring.style.background = `conic-gradient(${color} ${pct}%, var(--s3) 0%)`;
+      ring.style.setProperty('--pomo-pct', pct.toFixed(1) + '%');
+
+      const isPink = document.body.classList.contains('pink');
+      const isLight = document.body.classList.contains('light');
+
+      if (isPink) {
+        // Girl Mode Clock
+        const col = st.mode === 'focus' ? '#ff6eb4' : '#ff9de0';
+        ring.style.background = `conic-gradient(${col} ${pct}%, rgba(255, 110, 180, 0.16) 0%)`;
+      } else if (isLight) {
+        // Light Mode Clock
+        const col = st.mode === 'focus' ? 'var(--ai, #0b9a63)' : 'var(--bd, #e8965a)';
+        ring.style.background = `conic-gradient(${col} ${pct}%, rgba(0, 0, 0, 0.08) 0%)`;
+      } else {
+        // Dark Mode Clock
+        const col = st.mode === 'focus' ? 'var(--ai, #8b5cf6)' : 'var(--bd, #e8965a)';
+        ring.style.background = `conic-gradient(${col} ${pct}%, rgba(255, 255, 255, 0.08) 0%)`;
+      }
     }
 
     // Refresh Today count
@@ -1329,7 +1360,188 @@
     }
   }
 
+  // --- Subject Selection Modal Logic ---
+  function renderPomSubList() {
+    const listEl = document.getElementById('pomSubModalList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const st = getPomoSavedState();
+    const cur = st.sub || 'DA/PY';
+
+    _pomSubjects.forEach(s => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'pomo-sub-chip' + (s === cur ? ' selected' : '');
+      chip.textContent = (s === cur ? '✓ ' : '') + s;
+      chip.addEventListener('click', function () {
+        selectPomSubject(s);
+      });
+      listEl.appendChild(chip);
+    });
+  }
+
+  function openPomSubModal() {
+    const m = document.getElementById('pomSubModal');
+    if (m) {
+      renderPomSubList();
+      m.classList.add('op');
+      m.style.display = 'flex';
+      const inp = document.getElementById('pomNewSubInput');
+      if (inp) {
+        inp.value = '';
+        setTimeout(() => inp.focus(), 60);
+      }
+    }
+  }
+
+  function closePomSubModal() {
+    const m = document.getElementById('pomSubModal');
+    if (m) {
+      m.classList.remove('op');
+      m.style.display = 'none';
+    }
+  }
+
+  function selectPomSubject(subName) {
+    const st = getPomoSavedState();
+    st.sub = subName;
+    st.u = Date.now();
+    st.dev = 'extension';
+    savePomoState(st);
+    updatePomoDisplay(st);
+    closePomSubModal();
+
+    // Broadcast update so any open web tabs instantly update
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({}, function (tabs) {
+        if (!tabs) return;
+        tabs.forEach(t => {
+          if (t.id) {
+            chrome.tabs.sendMessage(t.id, {
+              type: 'POMO_STATE_CHANGED',
+              state: st,
+              origin: 'extension_subject_picker'
+            }).catch(() => {});
+          }
+        });
+      });
+    }
+  }
+
+  function addCustomSubject() {
+    const inp = document.getElementById('pomNewSubInput');
+    if (!inp) return;
+    const name = inp.value.trim();
+    if (!name) return;
+    if (!_pomSubjects.includes(name)) {
+      _pomSubjects.push(name);
+      S.set('pomSubjects', _pomSubjects);
+    }
+    inp.value = '';
+    selectPomSubject(name);
+  }
+
+  // --- Wallpaper Synchronization Logic ---
+  function applyWallpaperSync(wp, dim) {
+    const existing = document.getElementById('m2028-ext-wallpaper-style');
+    if (existing) existing.remove();
+
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (wp && typeof wp === 'string' && wp.trim().length > 0) {
+      root.classList.add('haswp');
+      body.classList.add('haswp');
+      const d = parseFloat(dim);
+      root.style.setProperty('--wpdim', isNaN(d) ? '0.3' : String(d));
+
+      const style = document.createElement('style');
+      style.id = 'm2028-ext-wallpaper-style';
+      style.textContent = `
+        html.haswp body::before {
+          background-image: url("${wp}") !important;
+        }
+      `;
+      document.head.appendChild(style);
+    } else {
+      root.classList.remove('haswp');
+      body.classList.remove('haswp');
+      root.style.removeProperty('--wpdim');
+    }
+  }
+
+  function initWallpaperSync() {
+    S.get('wallpaper', null, function (wp) {
+      S.get('wpDim', 0.3, function (dim) {
+        if (!wp) {
+          try {
+            wp = localStorage.getItem('m_wallpaper') || localStorage.getItem('wallpaper');
+            dim = localStorage.getItem('m_wpDim') || localStorage.getItem('wpDim') || 0.3;
+          } catch (e) {}
+        }
+        applyWallpaperSync(wp, dim);
+      });
+    });
+
+    // Also scan open M2028 tabs for active wallpaper
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({}, function (tabs) {
+        if (!tabs || !tabs.length) return;
+        const appTab = tabs.find(t => t.url && (t.url.includes('localhost') || t.url.includes('127.0.0.1') || t.url.includes('m2028') || t.url.includes('index.html')));
+        if (appTab && appTab.id && chrome.scripting && chrome.scripting.executeScript) {
+          chrome.scripting.executeScript({
+            target: { tabId: appTab.id },
+            func: () => {
+              return {
+                wallpaper: localStorage.getItem('m_wallpaper') || localStorage.getItem('wallpaper'),
+                wpDim: localStorage.getItem('m_wpDim') || localStorage.getItem('wpDim'),
+                pomSubjects: localStorage.getItem('m_pomSubjects') || localStorage.getItem('pomSubjects'),
+                pom_state: localStorage.getItem('pom_state') || localStorage.getItem('m_pomLive')
+              };
+            }
+          }).then(results => {
+            if (results && results[0] && results[0].result) {
+              const res = results[0].result;
+              if (res.wallpaper) {
+                applyWallpaperSync(res.wallpaper, res.wpDim || 0.3);
+                S.set('wallpaper', res.wallpaper);
+                S.set('wpDim', res.wpDim || 0.3);
+              }
+              if (res.pomSubjects) {
+                try {
+                  const subs = JSON.parse(res.pomSubjects);
+                  if (Array.isArray(subs)) {
+                    _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
+                    if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
+                    S.set('pomSubjects', _pomSubjects);
+                  }
+                } catch (e) {}
+              }
+              if (res.pom_state) {
+                try {
+                  const st = JSON.parse(res.pom_state);
+                  if (st && st.u && (!getPomoSavedState().u || st.u > getPomoSavedState().u)) {
+                    savePomoState(st);
+                    updatePomoDisplay(st);
+                  }
+                } catch (e) {}
+              }
+            }
+          }).catch(() => {});
+        }
+      });
+    }
+  }
+
   function initPomo() {
+    // Load subjects
+    S.get('pomSubjects', null, function (subs) {
+      if (Array.isArray(subs) && subs.length) {
+        _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
+      }
+      if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
+    });
+
     document.querySelectorAll('.pomo-presets .pomo-chip').forEach(chip => {
       chip.addEventListener('click', function () {
         document.querySelectorAll('.pomo-presets .pomo-chip').forEach(c => c.classList.remove('on'));
@@ -1358,7 +1570,7 @@
       stepDown.addEventListener('click', function () {
         const st = getPomoSavedState();
         if (st.run || st.cur > 0) return;
-        st.tot = Math.max(1, (st.tot || 4) - 1);
+        st.tot = Math.max(1, (st.tot || 2) - 1);
         savePomoState(st);
         updatePomoDisplay(st);
       });
@@ -1369,9 +1581,38 @@
       stepUp.addEventListener('click', function () {
         const st = getPomoSavedState();
         if (st.run || st.cur > 0) return;
-        st.tot = Math.min(12, (st.tot || 4) + 1);
+        st.tot = Math.min(12, (st.tot || 2) + 1);
         savePomoState(st);
         updatePomoDisplay(st);
+      });
+    }
+
+    // Subject button & modal handlers
+    const subBtn = document.getElementById('pomoSubBtn');
+    if (subBtn) subBtn.addEventListener('click', openPomSubModal);
+
+    const subCloseBtn = document.getElementById('pomSubModalCloseBtn');
+    if (subCloseBtn) subCloseBtn.addEventListener('click', closePomSubModal);
+
+    const subModal = document.getElementById('pomSubModal');
+    if (subModal) {
+      subModal.addEventListener('click', function (e) {
+        if (e.target === subModal) closePomSubModal();
+      });
+    }
+
+    const addSubBtn = document.getElementById('pomAddSubBtn');
+    if (addSubBtn) addSubBtn.addEventListener('click', addCustomSubject);
+
+    const newSubInp = document.getElementById('pomNewSubInput');
+    if (newSubInp) {
+      newSubInp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addCustomSubject();
+        } else if (e.key === 'Escape') {
+          closePomSubModal();
+        }
       });
     }
 
@@ -1387,12 +1628,34 @@
           const todayEl = document.getElementById('pomoToday');
           if (todayEl) todayEl.textContent = pd[getTodayKey()] || 0;
         }
+        if (changes.m_pomSubjects || changes.pomSubjects) {
+          const subs = (changes.m_pomSubjects && changes.m_pomSubjects.newValue) || (changes.pomSubjects && changes.pomSubjects.newValue);
+          if (Array.isArray(subs)) {
+            _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
+            if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
+            renderPomSubList();
+          }
+        }
+        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim) {
+          initWallpaperSync();
+        }
       });
     }
 
     window.addEventListener('storage', function (e) {
       if (e.key === 'pom_state' || e.key === 'm_pomLive') {
         syncPomoFromStorage();
+      } else if (e.key === 'm_pomSubjects' || e.key === 'pomSubjects') {
+        try {
+          const subs = JSON.parse(e.newValue);
+          if (Array.isArray(subs)) {
+            _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
+            if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
+            renderPomSubList();
+          }
+        } catch (_) {}
+      } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim') {
+        initWallpaperSync();
       }
     });
 
@@ -2448,6 +2711,8 @@
   window.addEventListener('storage', function (e) {
     if (e.key === 'm_theme' || e.key === 'm_customColors' || e.key === 'theme') {
       initTheme();
+    } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim') {
+      initWallpaperSync();
     } else if (e.key === 'm_habs' || e.key === 'm_hd') {
       renderHabits();
     } else if (e.key === 'm_tasks') {
@@ -2468,6 +2733,9 @@
       if (area === 'local') {
         if (changes.m_theme || changes.theme || changes.m_customColors || changes.customColors) {
           initTheme();
+        }
+        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim) {
+          initWallpaperSync();
         }
         if (changes.m_habs || changes.m_hd) {
           renderHabits();
@@ -2499,6 +2767,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     syncLogoAndAvatar();
     initTheme();
+    initWallpaperSync();
     initNav();
     initAuthListeners();
     initAuth();

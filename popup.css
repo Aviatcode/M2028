@@ -372,70 +372,85 @@ body.pink::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
   flex-shrink: 0;
   z-index: 10;
 }
 
 .logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  gap: 6.5px;
+  height: 30px;
   margin: 0;
-  padding: 0;
-  gap: 0;
-  font-size: 0;
-  line-height: 0;
+  padding: 0 4px 0 0;
   background: none !important;
-  border-radius: 9px;
-  overflow: hidden;
+  border-radius: 8px;
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .logo:hover {
-  opacity: 0.9;
+  opacity: 0.88;
   transform: translateY(-0.5px);
 }
 
 .logo:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .logo .logo-img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 24px;
+  height: 24px;
   margin: 0;
   padding: 0;
   object-fit: contain;
   object-position: center;
-  border-radius: 9px;
-  transform: none;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.logo .logo-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--tx);
+  opacity: 0.85;
+  line-height: 1;
+  text-transform: uppercase;
+  font-family: inherit;
+  flex-shrink: 0;
 }
 
 .tb-actions {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .sp {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  height: 28px;
   background: rgba(10, 0, 0, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 20px;
-  padding: 3px 9px;
-  font-size: 11.5px;
+  border-radius: 9999px;
+  padding: 0 8px;
+  font-size: 11px;
   font-weight: 700;
   color: #ffffff;
   cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
   transition: all 0.15s ease;
 }
 .sp:hover {
@@ -444,8 +459,9 @@ body.pink::after {
 }
 
 .tb-btn {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -454,6 +470,10 @@ body.pink::after {
   background: var(--s2);
   color: var(--m2);
   cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  padding: 0;
+  box-sizing: border-box;
   transition: all 0.15s ease;
 }
 
@@ -467,6 +487,7 @@ body.pink::after {
   background: var(--a2);
   color: var(--ai);
   border-color: var(--card-bd);
+  margin-right: 0;
 }
 
 /* =====================================================================
@@ -1835,54 +1856,48 @@ body:not(.pink) .ct svg, body:not(.pink) .sp svg, body:not(.pink) .auth-icon svg
    Auth Buttons (Header) & Modal Styling
    ===================================================================== */
 .tb-auth-btn {
+  width: 28px;
   height: 28px;
-  padding: 0 9px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 600;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  position: relative;
   border: 1px solid var(--b);
   background: var(--s2);
-  color: var(--tx);
+  color: var(--m2);
   cursor: pointer;
   font-family: inherit;
   transition: all 0.15s ease;
-  white-space: nowrap;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .tb-auth-btn:hover {
   border-color: var(--ai);
-  color: var(--ai);
-  background: var(--a2);
+  color: var(--tx);
+  background: var(--s3);
 }
 
-.tb-auth-btn.on {
+.tb-auth-btn.logged-in {
   border-color: var(--card-bd);
   background: var(--a2);
   color: var(--ai);
 }
 
-.tb-auth-btn.sign-out-quick {
-  border-color: rgba(232, 96, 96, 0.25);
-  background: rgba(232, 96, 96, 0.08);
-  color: var(--rd);
-  font-size: 10.5px;
-}
-
-.tb-auth-btn.sign-out-quick:hover {
-  background: rgba(232, 96, 96, 0.22);
-  border-color: var(--rd);
-}
-
-.auth-dot {
-  width: 6px;
-  height: 6px;
+.auth-live-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5.5px;
+  height: 5.5px;
   border-radius: 50%;
   background: var(--ai);
   box-shadow: 0 0 6px var(--ai);
-  display: inline-block;
+  border: 1px solid var(--s1);
+  pointer-events: none;
 }
 
 /* Modal Overlay & Card */

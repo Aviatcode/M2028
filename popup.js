@@ -506,7 +506,7 @@
         }
         if (activeTimeEl) {
           const domSec = (domains && domains[active.domain]) ? domains[active.domain].seconds : (active.todayTotal || 0);
-          activeTimeEl.textContent = `Active today: ${formatDuration(domSec)}`;
+          activeTimeEl.textContent = `${formatDuration(domSec)} today`;
         }
       } else {
         currentActiveTabDomain = '';
@@ -516,7 +516,7 @@
           activeBadgeEl.className = 'active-site-badge badge-other';
         }
         if (activeFaviconEl) activeFaviconEl.textContent = '⏸️';
-        if (activeTimeEl) activeTimeEl.textContent = 'Browser idle or non-web tab';
+        if (activeTimeEl) activeTimeEl.textContent = 'Browser idle';
       }
 
       // 2. Metrics Cards
@@ -528,7 +528,7 @@
       if (screenTimeEl) screenTimeEl.textContent = formatDuration(totalSec);
 
       const domainEntries = Object.entries(domains || {});
-      if (siteCountEl) siteCountEl.textContent = `${domainEntries.length} ${isToday ? 'visited today' : 'in 7 days'}`;
+      if (siteCountEl) siteCountEl.textContent = `${domainEntries.length} ${isToday ? 'visited' : 'in 7d'}`;
 
       let prodSec = 0, commSec = 0, socSec = 0, entSec = 0, othSec = 0;
       domainEntries.forEach(([_, item]) => {
@@ -546,9 +546,9 @@
       if (prodScoreEl) prodScoreEl.textContent = `${prodScore}%`;
 
       if (prodBreakdownEl) {
-        if (prodScore >= 75) prodBreakdownEl.textContent = 'High focus 🔥';
-        else if (prodScore >= 50) prodBreakdownEl.textContent = 'Moderate focus ⚡';
-        else prodBreakdownEl.textContent = 'Distractions present ⚠️';
+        if (prodScore >= 75) prodBreakdownEl.textContent = 'High focus';
+        else if (prodScore >= 50) prodBreakdownEl.textContent = 'Moderate focus';
+        else prodBreakdownEl.textContent = 'Distractions detected';
       }
 
       // 3. Category Bar Distribution
@@ -1779,6 +1779,7 @@
   function updateAuthUI() {
     const authBtn = document.getElementById('authBtn');
     const authBtnText = document.getElementById('authBtnText');
+    const authLiveDot = document.getElementById('authLiveDot');
     const quickSignOutBtn = document.getElementById('quickSignOutBtn');
     const signedOutView = document.getElementById('authSignedOutView');
     const signedInView = document.getElementById('authSignedInView');
@@ -1787,17 +1788,13 @@
     if (_authSession && _authSession.user) {
       // User is signed in
       const email = _authSession.user.email || 'User';
-      const shortEmail = email.length > 18 ? email.slice(0, 15) + '...' : email;
       if (authBtn) {
         authBtn.classList.add('logged-in');
-        authBtn.title = 'Account: ' + email + ' (Cloud Sync Active)';
+        authBtn.title = 'Account: ' + email + ' (Click to view & sync)';
       }
-      if (authBtnText) {
-        authBtnText.innerHTML = '<span class="auth-dot"></span>' + escapeHtml(shortEmail);
-      }
-      if (quickSignOutBtn) {
-        quickSignOutBtn.style.display = 'inline-flex';
-      }
+      if (authLiveDot) authLiveDot.style.display = 'block';
+      if (authBtnText) authBtnText.textContent = '';
+      if (quickSignOutBtn) quickSignOutBtn.style.display = 'none';
       if (signedOutView) signedOutView.style.display = 'none';
       if (signedInView) signedInView.style.display = 'block';
       if (cardEmail) cardEmail.textContent = email;
@@ -1807,12 +1804,9 @@
         authBtn.classList.remove('logged-in');
         authBtn.title = 'Sign In to sync habits, tasks, countdowns, pomo & theme';
       }
-      if (authBtnText) {
-        authBtnText.textContent = 'Sign In';
-      }
-      if (quickSignOutBtn) {
-        quickSignOutBtn.style.display = 'none';
-      }
+      if (authLiveDot) authLiveDot.style.display = 'none';
+      if (authBtnText) authBtnText.textContent = '';
+      if (quickSignOutBtn) quickSignOutBtn.style.display = 'none';
       if (signedOutView) signedOutView.style.display = 'block';
       if (signedInView) signedInView.style.display = 'none';
     }
@@ -2323,13 +2317,11 @@
   }
 
   function applyAvatarData(p) {
-    const logoImg = document.getElementById('extLogoImg');
     const authIcon = document.getElementById('authBtnIcon');
     const cardAvatar = document.getElementById('authCardAvatar');
     if (p && p.d && typeof p.d === 'string' && p.d.indexOf('data:image/') === 0) {
-      if (logoImg) logoImg.src = p.d;
-      if (authIcon) authIcon.innerHTML = `<img src="${p.d}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" alt="">`;
-      if (cardAvatar) cardAvatar.innerHTML = `<img src="${p.d}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`;
+      if (authIcon) authIcon.innerHTML = `<img src="${p.d}" style="width:16px;height:16px;border-radius:50%;object-fit:cover;display:block" alt="">`;
+      if (cardAvatar) cardAvatar.innerHTML = `<img src="${p.d}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block" alt="">`;
     }
   }
 

@@ -1359,9 +1359,64 @@
     }
   }
 
-  // Default subjects matching M2028 authentic subjects
-  const DEFAULT_POM_SUBJECTS = ['DA/PY', 'AI/Python', 'Polity', 'History', 'Economics', 'Geography', 'General', 'Other'];
-  let _pomSubjects = [...DEFAULT_POM_SUBJECTS];
+  // Default subjects matching M2028 authentic subjects (simple text, no emojis)
+  const POM_SUBJ_DEFAULT = [
+    { id: "s_ai", n: "AI/Python" },
+    { id: "s_pol", n: "Polity" },
+    { id: "s_his", n: "History" },
+    { id: "s_eco", n: "Economics" },
+    { id: "s_geo", n: "Geography" },
+    { id: "s_gen", n: "General" },
+    { id: "s_oth", n: "Other" }
+  ];
+  let _pomEditMode = false;
+  let _cachedSubjects = null;
+
+  function cleanSubName(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|[\u2300-\u23FF]/g, '').trim();
+  }
+
+  function getPomSubjectsList(callback) {
+    if (_cachedSubjects && Array.isArray(_cachedSubjects) && _cachedSubjects.length) {
+      if (callback) callback(_cachedSubjects);
+      return;
+    }
+    S.get('pomSubjects', null, function (raw) {
+      let list = [];
+      if (Array.isArray(raw) && raw.length) {
+        list = raw.map(x => {
+          const rawName = typeof x === 'string' ? x : (x.n || x.name || 'Subject');
+          const clean = cleanSubName(rawName) || rawName;
+          const id = typeof x === 'object' && x.id ? x.id : ('s_' + clean.toLowerCase().replace(/[^a-z0-9]/g, '_'));
+          return { id: id, n: clean };
+        });
+      } else {
+        list = POM_SUBJ_DEFAULT.map(x => ({ ...x }));
+      }
+      _cachedSubjects = list;
+      if (callback) callback(list);
+    });
+  }
+
+  function savePomSubjectsList(list) {
+    _cachedSubjects = list;
+    S.set('pomSubjects', list);
+    // Also broadcast update if web page is open
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({}, function (tabs) {
+        if (!tabs) return;
+        tabs.forEach(t => {
+          if (t.id) {
+            chrome.tabs.sendMessage(t.id, {
+              type: 'POMO_SUBJECTS_CHANGED',
+              subjects: list
+            }).catch(() => {});
+          }
+        });
+      });
+    }
+  }
 
   function resetPomo() {
     clearInterval(pomoInterval);
@@ -1385,6 +1440,101 @@
     updatePomoDisplay(st);
   }
 
+  // --- Signature M2028 Speedometer Gauge Clock Generator ---
+  const GAUGE_A0 = -135;
+  const GAUGE_SW = 270;
+  const GAUGE_CX = 150;
+  const GAUGE_CY = 150;
+  let _lastGaugeDeg = null;
+
+  function ensureGaugeSvg() {
+    const ring = document.getElementById('pomoRing');
+    if (!ring || ring.querySelector('.gz')) return;
+
+    function P(r, d) {
+      const a = (d * Math.PI) / 180;
+      return [GAUGE_CX + r * Math.sin(a), GAUGE_CY - r * Math.cos(a)];
+    }
+    function f(n) { return n.toFixed(2); }
+
+    let h = '<svg class="gz" viewBox="0 0 300 300" aria-hidden="true" focusable="false"><defs>' +
+      '<linearGradient id="gzBez" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3e"/><stop offset=".5" stop-color="#121214"/><stop offset="1" stop-color="#2a2a2d"/></linearGradient>' +
+      '<radialGradient id="gzFace" cx="50%" cy="50%" r="50%"><stop offset="0" style="stop-color:var(--g);stop-opacity:.16"/><stop offset=".45" stop-color="#140a04"/><stop offset="1" stop-color="#050302"/></radialGradient>' +
+      '<radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient></defs>' +
+      '<circle cx="150" cy="150" r="149" fill="url(#gzBez)"/>' +
+      '<circle cx="150" cy="150" r="143" fill="#040302"/>' +
+      '<circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>';
+
+    const s0 = P(135, GAUGE_A0);
+    const s1 = P(135, GAUGE_A0 + GAUGE_SW);
+    h += '<path class="gtrail" d="M' + f(s0[0]) + ' ' + f(s0[1]) + ' A135 135 0 1 1 ' + f(s1[0]) + ' ' + f(s1[1]) + '" pathLength="1"/>';
+
+    for (let i = 0; i <= 10; i++) {
+      const d = GAUGE_A0 + i * 27;
+      const a = P(112, d);
+      const b = P(128, d);
+      const l = P(90, d);
+      const red = i >= 9 ? ' red' : '';
+      h += '<line class="gt' + red + '" x1="' + f(a[0]) + '" y1="' + f(a[1]) + '" x2="' + f(b[0]) + '" y2="' + f(b[1]) + '"/>';
+      h += '<text class="gn' + red + '" x="' + f(l[0]) + '" y="' + f(l[1]) + '">' + (i * 5) + '</text>';
+      if (i < 10) {
+        const m = P(120, d + 13.5);
+        h += '<circle class="gd" cx="' + f(m[0]) + '" cy="' + f(m[1]) + '" r="1.9"/>';
+      }
+    }
+
+    h += '<g class="gneedle"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g>' +
+      '<circle cx="150" cy="150" r="26" fill="url(#gzHub)" stroke="#2c2c30" stroke-width="2"/>' +
+      '<circle cx="150" cy="150" r="8" fill="#0a0605" stroke="var(--g2)" stroke-width="1.5"/>' +
+      '<text class="gunit" x="150" y="252">MIN</text></svg>';
+
+    ring.insertAdjacentHTML('afterbegin', h);
+  }
+
+  function paintGauge(st) {
+    ensureGaugeSvg();
+    const ring = document.getElementById('pomoRing');
+    if (!ring) return;
+
+    const a = st.phaseLen || (st.mode === 'focus' ? 3000 : 600);
+    const rem = Math.max(0, Math.min(a, st.rem !== undefined ? st.rem : a));
+    const t = a > 0 ? (a - rem) / a : 0;
+    const deg = GAUGE_A0 + GAUGE_SW * t;
+
+    ring.setAttribute('data-mode', st.mode || 'focus');
+
+    const needle = ring.querySelector('.gneedle');
+    const trail = ring.querySelector('.gtrail');
+    const labs = ring.querySelectorAll('.gn');
+
+    if (labs && labs.length) {
+      const stMinutes = a / 60 / 10;
+      for (let i = 0; i < labs.length; i++) {
+        labs[i].textContent = String(Math.round(stMinutes * i * 10) / 10);
+      }
+    }
+
+    if (needle) {
+      const big = _lastGaugeDeg !== null && Math.abs(deg - _lastGaugeDeg) > 12;
+      needle.style.transition = big ? 'transform 1.1s cubic-bezier(.2,.8,.2,1)' : 'transform 0.5s linear';
+      needle.style.transform = 'rotate(' + deg + 'deg)';
+    }
+
+    if (trail) {
+      trail.style.strokeDasharray = t.toFixed(4) + ' 2';
+    }
+
+    _lastGaugeDeg = deg;
+
+    // Pink mode conic fallback
+    const pct = Math.min(100, Math.max(0, t * 100));
+    ring.style.setProperty('--pomo-pct', pct.toFixed(1) + '%');
+    if (document.body.classList.contains('pink')) {
+      const col = st.mode === 'focus' ? '#ff6eb4' : '#ff9de0';
+      ring.style.background = `conic-gradient(${col} ${pct}%, rgba(255, 110, 180, 0.16) 0%)`;
+    }
+  }
+
   function updatePomoDisplay(st) {
     if (!st) st = getPomoSavedState();
     if (st.run && st.endTs) {
@@ -1402,7 +1552,6 @@
     const startBtn = document.getElementById('pomoStartBtn');
     const startTxt = document.getElementById('pomoStartText');
     const startIco = document.getElementById('pomoStartIcon');
-    const ring = document.getElementById('pomoRing');
 
     if (mEl) mEl.textContent = String(min).padStart(2, '0');
     if (sEl) sEl.textContent = ':' + String(sec).padStart(2, '0');
@@ -1432,29 +1581,8 @@
       c.classList.toggle('on', chipMin === curFocusMin);
     });
 
-    // Circular Conic Ring with 2 separate clock modes: Dark/Light and Girl Mode
-    if (ring && st.phaseLen > 0) {
-      const elapsed = Math.max(0, st.phaseLen - st.rem);
-      const pct = Math.min(100, Math.max(0, (elapsed / st.phaseLen) * 100));
-      ring.style.setProperty('--pomo-pct', pct.toFixed(1) + '%');
-
-      const isPink = document.body.classList.contains('pink');
-      const isLight = document.body.classList.contains('light');
-
-      if (isPink) {
-        // Girl Mode Clock
-        const col = st.mode === 'focus' ? '#ff6eb4' : '#ff9de0';
-        ring.style.background = `conic-gradient(${col} ${pct}%, rgba(255, 110, 180, 0.16) 0%)`;
-      } else if (isLight) {
-        // Light Mode Clock
-        const col = st.mode === 'focus' ? 'var(--ai, #0b9a63)' : 'var(--bd, #e8965a)';
-        ring.style.background = `conic-gradient(${col} ${pct}%, rgba(0, 0, 0, 0.08) 0%)`;
-      } else {
-        // Dark Mode Clock
-        const col = st.mode === 'focus' ? 'var(--ai, #8b5cf6)' : 'var(--bd, #e8965a)';
-        ring.style.background = `conic-gradient(${col} ${pct}%, rgba(255, 255, 255, 0.08) 0%)`;
-      }
-    }
+    // Paint Speedometer Gauge or Girl Mode clock
+    paintGauge(st);
 
     // Refresh Today count
     S.get('pd', {}, function (pd) {
@@ -1479,37 +1607,135 @@
     }
   }
 
-  // --- Subject Selection Modal Logic ---
+  // --- Authentic M2028 Subject Selection & Management Logic ---
   function renderPomSubList() {
     const listEl = document.getElementById('pomSubModalList');
     if (!listEl) return;
     listEl.innerHTML = '';
     const st = getPomoSavedState();
-    const cur = st.sub || 'DA/PY';
+    const cur = (st.sub || 'DA/PY').trim().toLowerCase();
 
-    _pomSubjects.forEach(s => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'pomo-sub-chip' + (s === cur ? ' selected' : '');
-      chip.textContent = (s === cur ? '✓ ' : '') + s;
-      chip.addEventListener('click', function () {
-        selectPomSubject(s);
+    getPomSubjectsList(function (list) {
+      if (!list.length) {
+        const empty = document.createElement('span');
+        empty.style.cssText = 'font-size:12px;color:var(--m2);padding:4px 0';
+        empty.textContent = 'No subjects yet — click "Edit subjects" to add one.';
+        listEl.appendChild(empty);
+        syncPomSubModalUI();
+        return;
+      }
+
+      list.forEach(sj => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isSel = sj.n.trim().toLowerCase() === cur;
+        btn.className = 'pomo-sub-chip sj' + (isSel ? ' selected sel' : '');
+
+        const lab = document.createElement('span');
+        lab.textContent = cleanSubName(sj.n);
+        btn.appendChild(lab);
+
+        if (_pomEditMode) {
+          const x = document.createElement('span');
+          x.className = 'sj-x';
+          x.textContent = '×';
+          x.setAttribute('role', 'button');
+          x.setAttribute('aria-label', 'Delete ' + sj.n);
+          x.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            delPomSubject(sj.id || sj.n);
+          });
+          btn.appendChild(x);
+        }
+
+        btn.addEventListener('click', function () {
+          if (!_pomEditMode) {
+            selectPomSubject(sj.n);
+          }
+        });
+
+        listEl.appendChild(btn);
       });
-      listEl.appendChild(chip);
+
+      syncPomSubModalUI();
     });
+  }
+
+  function syncPomSubModalUI() {
+    const editBtn = document.getElementById('pomSubEditBtn');
+    const hint = document.getElementById('pomSubHint');
+    const addRow = document.getElementById('pomSubAddRow');
+
+    if (editBtn) editBtn.textContent = _pomEditMode ? 'Done' : 'Edit subjects';
+    if (hint) {
+      hint.textContent = _pomEditMode
+        ? 'Tap × to delete a subject, or add a new one'
+        : 'Tap a subject to pick it';
+    }
+    if (addRow) {
+      addRow.style.display = _pomEditMode ? 'flex' : 'none';
+    }
+  }
+
+  function togglePomSubEdit() {
+    _pomEditMode = !_pomEditMode;
+    renderPomSubList();
+    if (_pomEditMode) {
+      const inp = document.getElementById('pomNewSub');
+      if (inp) setTimeout(() => inp.focus(), 50);
+    }
+  }
+
+  function addPomSubject() {
+    const inp = document.getElementById('pomNewSub');
+    if (!inp) return;
+    const name = inp.value.replace(/\s+/g, ' ').trim().slice(0, 28);
+    if (!name) return;
+
+    getPomSubjectsList(function (list) {
+      if (list.some(x => x.n.toLowerCase() === name.toLowerCase())) {
+        showChromeNotification('Subject exists', 'That subject is already in your list.');
+        return;
+      }
+      const newSub = {
+        id: 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        n: name,
+        e: ''
+      };
+      list.push(newSub);
+      savePomSubjectsList(list);
+      inp.value = '';
+      renderPomSubList();
+      inp.focus();
+    });
+  }
+
+  function delPomSubject(idOrName) {
+    getPomSubjectsList(function (list) {
+      const updated = list.filter(x => x.id !== idOrName && x.n !== idOrName);
+      savePomSubjectsList(updated);
+      renderPomSubList();
+    });
+  }
+
+  function resetPomSubjects() {
+    const fresh = POM_SUBJ_DEFAULT.map(x => ({ ...x }));
+    savePomSubjectsList(fresh);
+    renderPomSubList();
   }
 
   function openPomSubModal() {
     const m = document.getElementById('pomSubModal');
     if (m) {
+      _pomEditMode = false;
+      const customInp = document.getElementById('pomCustomSub');
+      if (customInp) customInp.value = '';
       renderPomSubList();
       m.classList.add('op');
       m.style.display = 'flex';
-      const inp = document.getElementById('pomNewSubInput');
-      if (inp) {
-        inp.value = '';
-        setTimeout(() => inp.focus(), 60);
-      }
+      setTimeout(() => {
+        if (customInp) customInp.focus();
+      }, 80);
     }
   }
 
@@ -1522,6 +1748,7 @@
   }
 
   function selectPomSubject(subName) {
+    if (!subName) return;
     const st = getPomoSavedState();
     st.sub = subName;
     st.u = Date.now();
@@ -1547,17 +1774,23 @@
     }
   }
 
-  function addCustomSubject() {
-    const inp = document.getElementById('pomNewSubInput');
+  function selectCustomSubject() {
+    const inp = document.getElementById('pomCustomSub') || document.getElementById('pomNewSubInput');
     if (!inp) return;
-    const name = inp.value.trim();
+    const name = inp.value.trim().slice(0, 28);
     if (!name) return;
-    if (!_pomSubjects.includes(name)) {
-      _pomSubjects.push(name);
-      S.set('pomSubjects', _pomSubjects);
-    }
-    inp.value = '';
-    selectPomSubject(name);
+    // Also save into subjects list if not yet there
+    getPomSubjectsList(function (list) {
+      if (!list.some(x => x.n.toLowerCase() === name.toLowerCase())) {
+        list.push({
+          id: 's_' + Date.now().toString(36),
+          n: name,
+          e: ''
+        });
+        savePomSubjectsList(list);
+      }
+      selectPomSubject(name);
+    });
   }
 
   // --- Wallpaper Synchronization Logic ---
@@ -1653,13 +1886,8 @@
   }
 
   function initPomo() {
-    // Load subjects
-    S.get('pomSubjects', null, function (subs) {
-      if (Array.isArray(subs) && subs.length) {
-        _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
-      }
-      if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
-    });
+    // Initial subjects cache warm-up
+    getPomSubjectsList();
 
     document.querySelectorAll('.pomo-presets .pomo-chip').forEach(chip => {
       chip.addEventListener('click', function () {
@@ -1720,17 +1948,48 @@
       });
     }
 
-    const addSubBtn = document.getElementById('pomAddSubBtn');
-    if (addSubBtn) addSubBtn.addEventListener('click', addCustomSubject);
+    const editBtn = document.getElementById('pomSubEditBtn');
+    if (editBtn) editBtn.addEventListener('click', togglePomSubEdit);
 
-    const newSubInp = document.getElementById('pomNewSubInput');
+    const addSubBtn = document.getElementById('pomAddSubBtn');
+    if (addSubBtn) addSubBtn.addEventListener('click', addPomSubject);
+
+    const newSubInp = document.getElementById('pomNewSub');
     if (newSubInp) {
       newSubInp.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          addCustomSubject();
+          addPomSubject();
         } else if (e.key === 'Escape') {
           closePomSubModal();
+        }
+      });
+    }
+
+    const resetSubBtn = document.getElementById('pomResetSubBtn');
+    if (resetSubBtn) resetSubBtn.addEventListener('click', resetPomSubjects);
+
+    const customSubBtn = document.getElementById('pomCustomSubBtn');
+    if (customSubBtn) customSubBtn.addEventListener('click', selectCustomSubject);
+
+    const customSubInp = document.getElementById('pomCustomSub');
+    if (customSubInp) {
+      customSubInp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          selectCustomSubject();
+        } else if (e.key === 'Escape') {
+          closePomSubModal();
+        }
+      });
+    }
+
+    const legacyNewSubInp = document.getElementById('pomNewSubInput');
+    if (legacyNewSubInp) {
+      legacyNewSubInp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          selectCustomSubject();
         }
       });
     }
@@ -1750,8 +2009,7 @@
         if (changes.m_pomSubjects || changes.pomSubjects) {
           const subs = (changes.m_pomSubjects && changes.m_pomSubjects.newValue) || (changes.pomSubjects && changes.pomSubjects.newValue);
           if (Array.isArray(subs)) {
-            _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
-            if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
+            _cachedSubjects = subs;
             renderPomSubList();
           }
         }
@@ -1768,8 +2026,7 @@
         try {
           const subs = JSON.parse(e.newValue);
           if (Array.isArray(subs)) {
-            _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
-            if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
+            _cachedSubjects = subs;
             renderPomSubList();
           }
         } catch (_) {}

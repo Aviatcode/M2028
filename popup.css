@@ -359,6 +359,7 @@ body.pink::after {
   flex-direction: column;
   height: 590px;
   overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* =====================================================================
@@ -504,6 +505,7 @@ body.pink::after {
   flex-shrink: 0;
   position: relative;
   z-index: 9;
+  overflow: hidden;
 }
 
 .tnb-track {
@@ -518,6 +520,7 @@ body.pink::after {
   padding: 2px;
   gap: 1.5px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .nb {
@@ -621,6 +624,7 @@ body:not(.pink) .ct svg, body:not(.pink) .sp svg, body:not(.pink) .auth-icon svg
 .main-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 14px 16px 20px;
   scrollbar-width: thin;
   scrollbar-color: var(--b2) transparent;
@@ -1605,92 +1609,228 @@ body.pink .pomo-mode-badge {
   border-color: rgba(255, 110, 180, 0.42);
 }
 
-/* --- CLOCK 1: LIGHT & DARK MODE CLOCK --- */
-.pr#pomoRing {
-  width: 184px;
-  height: 184px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 10px auto 16px;
-  background: conic-gradient(var(--ai, #8b5cf6) var(--pomo-pct, 0%), rgba(255, 255, 255, 0.08) 0%);
-  transition: background 0.25s linear, box-shadow 0.3s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px color-mix(in srgb, var(--ai) 25%, transparent);
+/* =====================================================================
+   M2028 Signature Speedometer Gauge Clock (Dark/Light) & Girl Mode Clock
+   ===================================================================== */
+#pomRing .gz {
+  display: none;
+}
+
+#tab-pomo .pomo-center-card {
+  --pr: 216px;
+}
+
+/* 1. M2028 Speedometer Gauge Clock (for Dark, Light, Ocean, and custom non-pink themes) */
+html body:not(.pink) #pomRing {
   position: relative;
-}
-
-body.light .pr#pomoRing {
-  background: conic-gradient(var(--ai, #0b9a63) var(--pomo-pct, 0%), rgba(0, 0, 0, 0.08) 0%);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-}
-
-.pi {
-  width: 148px;
-  height: 148px;
+  display: block;
+  width: var(--pr, 216px);
+  height: var(--pr, 216px);
+  margin: 4px auto 14px;
   border-radius: 50%;
-  background: #111116;
-  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  background: none !important;
+  --g: #ffb62e;
+  --g2: #ff7a1a;
+  --gr: #ff4a2a;
+  --gd: rgba(255, 160, 40, 0.6);
+  --fl: transparent;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 14px rgba(255, 150, 30, 0.16));
+  transition: filter 0.3s ease;
+  box-shadow: none !important;
 }
 
-body.light .pi {
-  background: #ffffff;
-  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.07);
+html body.light #pomRing {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28)) drop-shadow(0 0 12px rgba(255, 150, 30, 0.14));
 }
 
-.pm {
-  font-size: 52px;
-  font-weight: 800;
-  color: #ffffff;
-  line-height: 1;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
+html body:not(.pink) #pomRing[data-mode="break"] {
+  --g: #7fe8c6;
+  --g2: #3fd6a0;
+  --gr: #ffb62e;
+  --gd: rgba(90, 230, 180, 0.55);
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 14px rgba(80, 220, 170, 0.16));
 }
 
-body.light .pm {
-  color: #1a1a2e;
+html body.light #pomRing[data-mode="break"] {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.25)) drop-shadow(0 0 12px rgba(80, 220, 170, 0.14));
 }
 
-.pse {
-  font-size: 16px;
-  color: #ffffff;
-  opacity: 0.9;
+html body:not(.pink) #pomRing.flash {
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 30px var(--fl));
+}
+
+body:not(.pink) #pomRing .gz {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+body:not(.pink) #pomRing .gz text {
+  font-family: Bahnschrift, "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-top: 2px;
-  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 
-body.light .pse {
-  color: #6e6e80;
-  opacity: 1;
+body:not(.pink) #pomRing .gn {
+  font-size: 15px;
+  fill: var(--g);
+  filter: drop-shadow(0 0 3px var(--gd));
 }
 
-/* --- CLOCK 2: GIRL MODE (PINK) CLOCK --- */
+body:not(.pink) #pomRing .gn.red {
+  fill: var(--gr);
+}
+
+body:not(.pink) #pomRing .gt {
+  stroke: var(--g);
+  stroke-width: 4.5;
+  filter: drop-shadow(0 0 3px var(--gd));
+}
+
+body:not(.pink) #pomRing .gt.red {
+  stroke: var(--gr);
+}
+
+body:not(.pink) #pomRing .gd {
+  fill: var(--g);
+  filter: drop-shadow(0 0 2px var(--gd));
+}
+
+body:not(.pink) #pomRing .gtrail {
+  fill: none;
+  stroke: var(--g2);
+  stroke-width: 3;
+  stroke-dasharray: 0 2;
+  opacity: 0.75;
+  transition: stroke-dasharray 0.5s linear;
+  filter: drop-shadow(0 0 4px var(--g2));
+}
+
+body:not(.pink) #pomRing .gneedle {
+  transform-box: view-box;
+  transform-origin: 150px 150px;
+  transform: rotate(-135deg);
+  transition: transform 0.5s linear;
+  filter: drop-shadow(0 0 4px var(--g2)) drop-shadow(0 0 9px var(--gd));
+}
+
+body:not(.pink) #pomRing .gunit {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  fill: var(--g);
+  opacity: 0.8;
+}
+
+html body:not(.pink) #pomRing .pi {
+  position: absolute;
+  left: 50%;
+  top: 68.5%;
+  transform: translate(-50%, -50%);
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: baseline !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  z-index: 2;
+}
+
+html body:not(.pink) #pomRing .pm,
+html body:not(.pink) #pomRing .pse {
+  font-family: Bahnschrift, "DIN Alternate", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif !important;
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  color: var(--g) !important;
+  text-shadow: 0 0 8px var(--gd), 0 0 18px var(--gd) !important;
+  font-variant-numeric: tabular-nums !important;
+  line-height: 1 !important;
+}
+
+html body:not(.pink) #pomRing .pse {
+  font-size: 20px !important;
+}
+
+/* 2. M2028 Girl Mode (Pink) Pomodoro Clock */
+#pomDuo {
+  display: none;
+}
+
+body.pink #pomDuo {
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  width: 130px;
+  height: auto;
+  margin: -6px auto -8px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(255, 110, 180, 0.35));
+}
+
+body.pink #pomRing .gz {
+  display: none !important;
+}
+
 body.pink .pr#pomoRing {
-  background: conic-gradient(#ff6eb4 var(--pomo-pct, 0%), rgba(255, 110, 180, 0.2) 0%);
-  box-shadow: 0 8px 34px rgba(255, 110, 180, 0.45), 0 0 32px rgba(255, 110, 180, 0.3);
+  width: 172px !important;
+  height: 172px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 8px auto 14px !important;
+  background: conic-gradient(#ff6eb4 var(--pomo-pct, 0%), rgba(255, 110, 180, 0.16) 0%) !important;
+  box-shadow: 0 8px 34px rgba(255, 110, 180, 0.45), 0 0 32px rgba(255, 110, 180, 0.3) !important;
+  filter: none !important;
+  position: relative !important;
+}
+
+body.pink .pr#pomoRing[data-mode="break"] {
+  background: conic-gradient(#ff9de0 var(--pomo-pct, 0%), rgba(255, 157, 224, 0.16) 0%) !important;
 }
 
 body.pink .pi {
+  width: 138px !important;
+  height: 138px !important;
+  border-radius: 50% !important;
   background: #240d1a !important;
   box-shadow: inset 0 2px 16px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(255, 110, 180, 0.25) !important;
   border: 1px solid rgba(255, 110, 180, 0.35) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
 }
 
 body.pink .pm {
+  font-size: 46px !important;
+  font-weight: 800 !important;
   color: #ffe4f0 !important;
   text-shadow: 0 0 18px rgba(255, 110, 180, 0.6) !important;
+  line-height: 1 !important;
+  letter-spacing: -0.04em !important;
+  font-family: inherit !important;
 }
 
 body.pink .pse {
+  font-size: 15px !important;
   color: #ffb3d9 !important;
   text-shadow: 0 0 10px rgba(255, 110, 180, 0.4) !important;
+  margin-top: 2px !important;
+  font-family: inherit !important;
 }
 
 /* Session text */
@@ -2051,7 +2191,10 @@ body.pink .mo {
   margin-bottom: 14px;
 }
 
-.pomo-sub-chip {
+.pomo-sub-chip, .sj {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
@@ -2062,36 +2205,61 @@ body.pink .mo {
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
+  user-select: none;
 }
 
-body.light .pomo-sub-chip {
+body.light .pomo-sub-chip, body.light .sj {
   background: #f0f2f7;
   border-color: rgba(0, 0, 0, 0.1);
   color: #1a1a2e;
 }
 
-.pomo-sub-chip:hover {
+.pomo-sub-chip:hover, .sj:hover {
   border-color: var(--ai, #8b5cf6);
   color: var(--ai, #8b5cf6);
   background: color-mix(in srgb, var(--ai, #8b5cf6) 12%, transparent);
 }
 
-.pomo-sub-chip.selected {
+.pomo-sub-chip.selected, .pomo-sub-chip.sel, .sj.sel {
   background: var(--ai, #8b5cf6) !important;
-  color: #ffffff !important;
+  color: #06120d !important;
   border-color: transparent !important;
+  font-weight: 700 !important;
   box-shadow: 0 2px 10px color-mix(in srgb, var(--ai) 40%, transparent);
 }
 
-body.pink .pomo-sub-chip.selected {
+body.pink .pomo-sub-chip.selected, body.pink .pomo-sub-chip.sel, body.pink .sj.sel {
   background: linear-gradient(135deg, #ff6eb4, #ff85c8) !important;
+  color: #2a0a1a !important;
   box-shadow: 0 2px 10px rgba(255, 110, 180, 0.45);
+}
+
+.sj-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: rgba(232, 96, 96, 0.2);
+  color: var(--rd);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sj-x:hover {
+  background: var(--rd);
+  color: #ffffff;
 }
 
 .pomo-mo-add-row {
   display: flex;
   gap: 6px;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--b);
 }
 

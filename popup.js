@@ -216,11 +216,16 @@
     if (validTheme === 'light') {
       document.documentElement.className = 'ucolors ucac redx';
       document.body.classList.add('light');
+      const layer = document.getElementById('stkLayer');
+      if (layer) layer.innerHTML = '';
     } else if (validTheme === 'pink') {
       document.documentElement.className = 'm-ready';
       document.body.classList.add('pink');
+      if (typeof buildStickersCollage === 'function') buildStickersCollage();
     } else {
       document.documentElement.className = 'ucolors ucac redx m-ready';
+      const layer = document.getElementById('stkLayer');
+      if (layer) layer.innerHTML = '';
     }
 
     const themeBtn = document.getElementById('themeToggleBtn');
@@ -274,6 +279,119 @@
     S.get('theme', 'dark', function (t) {
       paintTheme(t);
     });
+  }
+
+  // =====================================================================
+  // 1b. Girl Mode Stickers Controller (On/Off Toggle & Background Collage)
+  // =====================================================================
+  function updateStickerUi(isOn) {
+    const btn = document.getElementById('stickerToggleBtn');
+    if (btn) {
+      btn.title = isOn ? '🌸 Stickers: On (Click to turn Off)' : '🌸 Stickers: Off (Click to turn On)';
+      btn.classList.toggle('is-off', !isOn);
+      btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    }
+    const mBtn = document.getElementById('modalStickerBtn');
+    if (mBtn) {
+      mBtn.textContent = isOn ? '🌸 Stickers: On' : '🌸 Stickers: Off';
+    }
+    const gBtn = document.getElementById('modalStickerGuestBtn');
+    if (gBtn) {
+      gBtn.textContent = isOn ? '🌸 Stickers: On' : '🌸 Stickers: Off';
+    }
+  }
+
+  function toggleStickers() {
+    const isNowOff = document.body.classList.contains('no-stickers');
+    const nextOn = isNowOff; // if currently no-stickers, next state is On
+    document.body.classList.toggle('no-stickers', !nextOn);
+    S.set('stickers', nextOn);
+    updateStickerUi(nextOn);
+    if (nextOn) {
+      buildStickersCollage();
+    } else {
+      const layer = document.getElementById('stkLayer');
+      if (layer) layer.innerHTML = '';
+    }
+
+    // Broadcast to any open web tabs
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({}, function (tabs) {
+        if (!tabs) return;
+        tabs.forEach(t => {
+          if (t.id) {
+            chrome.tabs.sendMessage(t.id, {
+              type: 'STICKERS_TOGGLED',
+              on: nextOn
+            }).catch(() => {});
+          }
+        });
+      });
+    }
+  }
+
+  function buildStickersCollage() {
+    const layer = document.getElementById('stkLayer');
+    if (!layer) return;
+    const isPink = document.body.classList.contains('pink');
+    const isOff = document.body.classList.contains('no-stickers');
+    if (!isPink || isOff) {
+      layer.innerHTML = '';
+      return;
+    }
+    if (layer.children.length > 0) return; // already populated
+
+    const pool = window.__STK || [];
+    if (!pool.length) {
+      // If stickers.js hasn't finished loading yet, try again
+      setTimeout(buildStickersCollage, 200);
+      return;
+    }
+
+    const W = 440, H = 640;
+    const N = 12;
+    const cell = Math.sqrt(W * H / N);
+    const cols = Math.ceil(W / cell) + 1;
+    const rows = Math.ceil(H / cell) + 1;
+    const frag = document.createDocumentFragment();
+
+    let idx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const item = pool[idx % pool.length];
+        idx++;
+        if (!item) continue;
+        const img = document.createElement('img');
+        img.src = item[0];
+        img.alt = '';
+        img.draggable = false;
+        const cx = c * cell + (Math.random() - 0.5) * cell * 0.7;
+        const cy = r * cell + (Math.random() - 0.5) * cell * 0.7;
+        const rot = ((Math.random() - 0.5) * 30).toFixed(1);
+        const w = Math.round(52 + Math.random() * 24);
+        img.style.cssText = `left:${(cx - w/2).toFixed(1)}px;top:${(cy - w/2).toFixed(1)}px;width:${w}px;--r:${rot}deg;position:absolute;opacity:0.68;transform:rotate(${rot}deg);filter:drop-shadow(0 3px 6px rgba(160,40,95,0.22));pointer-events:none;`;
+        frag.appendChild(img);
+      }
+    }
+    layer.appendChild(frag);
+  }
+
+  function initStickers() {
+    S.get('stickers', true, function (on) {
+      const isOff = on === false;
+      document.body.classList.toggle('no-stickers', isOff);
+      updateStickerUi(!isOff);
+      if (!isOff && document.body.classList.contains('pink')) {
+        buildStickersCollage();
+      }
+    });
+
+    const btn = document.getElementById('stickerToggleBtn');
+    if (btn) btn.addEventListener('click', toggleStickers);
+    const mBtn = document.getElementById('modalStickerBtn');
+    if (mBtn) mBtn.addEventListener('click', toggleStickers);
+    const gBtn = document.getElementById('modalStickerGuestBtn');
+    if (gBtn) gBtn.addEventListener('click', toggleStickers);
   }
 
   // =====================================================================
@@ -2768,6 +2886,7 @@
     syncLogoAndAvatar();
     initTheme();
     initWallpaperSync();
+    initStickers();
     initNav();
     initAuthListeners();
     initAuth();

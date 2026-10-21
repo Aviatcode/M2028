@@ -2689,3 +2689,108 @@ html.haswp body.pink .pomo-center-card {
   flex-direction: column;
   gap: 7px;
 }
+
+/* =====================================================================
+   7. Girl Mode Stickers (Collage Layer, Header Toggle & Modal Settings)
+   ===================================================================== */
+#stickerToggleBtn {
+  display: none;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 8px;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+body.pink #stickerToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 110, 180, 0.16);
+  border: 1px solid rgba(255, 110, 180, 0.4);
+  color: #ff6eb4;
+  box-shadow: 0 0 10px rgba(255, 110, 180, 0.25);
+}
+
+body.pink #stickerToggleBtn:hover {
+  background: rgba(255, 110, 180, 0.28);
+  border-color: #ff6eb4;
+  transform: scale(1.08);
+  box-shadow: 0 0 14px rgba(255, 110, 180, 0.45);
+}
+
+body.pink #stickerToggleBtn.is-off,
+body.pink.no-stickers #stickerToggleBtn {
+  opacity: 0.45;
+  filter: grayscale(1);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+/* Modal Sticker Button in Auth / Settings */
+#modalStickerBtn,
+#modalStickerGuestBtn {
+  display: none !important;
+}
+
+body.pink #modalStickerBtn,
+body.pink #modalStickerGuestBtn {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 650;
+  border-color: rgba(255, 110, 180, 0.35);
+  color: #ff6eb4;
+  background: rgba(255, 110, 180, 0.1);
+}
+
+body.pink #modalStickerBtn:hover,
+body.pink #modalStickerGuestBtn:hover {
+  background: rgba(255, 110, 180, 0.2);
+  border-color: #ff6eb4;
+}
+
+body.pink.no-stickers #modalStickerBtn,
+body.pink.no-stickers #modalStickerGuestBtn {
+  color: var(--m2);
+  border-color: var(--b);
+  background: var(--s2);
+}
+
+/* Background Stickers Layer in Girl Mode */
+#stkLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  contain: strict;
+  --so: 0.72;
+}
+
+body.pink:not(.no-stickers) #stkLayer {
+  display: block;
+  opacity: 1;
+}
+
+body.no-stickers #stkLayer {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+#stkLayer img {
+  position: absolute;
+  height: auto;
+  opacity: var(--so);
+  transform: rotate(var(--r, 0deg));
+  filter: drop-shadow(0 3px 6px rgba(160, 40, 95, 0.22));
+  -webkit-user-drag: none;
+  user-select: none;
+  transition: opacity 0.3s ease;
+}

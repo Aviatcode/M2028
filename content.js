@@ -134,6 +134,16 @@
           window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_PROFILE' }, '*');
         }
       }
+      if (changes.m_stickers || changes.stickers) {
+        const stk = (changes.m_stickers && changes.m_stickers.newValue !== undefined) ? changes.m_stickers.newValue : (changes.stickers && changes.stickers.newValue);
+        if (stk !== undefined) {
+          try {
+            window.localStorage.setItem('m_stickers', JSON.stringify(stk));
+            window.localStorage.setItem('stickers', JSON.stringify(stk));
+            document.body.classList.toggle('no-stickers', stk === false);
+          } catch (e) {}
+        }
+      }
     });
   }
 
@@ -238,6 +248,15 @@
             if (sess && sess.access_token && sess.user) {
               syncObj.m_authSession = sess;
             }
+          } catch (e) {}
+        }
+        // Also check stickers setting
+        const stkRaw = window.localStorage.getItem('m_stickers') || window.localStorage.getItem('stickers');
+        if (stkRaw !== null) {
+          try {
+            const stk = JSON.parse(stkRaw);
+            syncObj.stickers = stk;
+            syncObj.m_stickers = stk;
           } catch (e) {}
         }
         if (Object.keys(syncObj).length > 0) {

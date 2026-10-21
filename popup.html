@@ -214,93 +214,161 @@
 
       <!-- 4. POMODORO TIMER TAB (M2028) -->
       <section class="vw" id="tab-pomo">
-        <div class="wc pomo-center-card">
-          <div class="pomo-mode-badge" id="pomoModeBadge" data-mode="focus">FOCUS SESSION</div>
-          
-          <img id="pomDuo" src="pom-duo.webp" alt="" width="260" height="265" decoding="async" draggable="false">
+        <div class="ph">
+          <div class="ph-t">Pomodoro Timer</div>
+          <div class="ph-s">50 min focus · 10 min break (30 min every full round) · phone away</div>
+        </div>
 
-          <!-- M2028 Signature Circular Ring / Speedometer Gauge Clock -->
-          <div class="pr" id="pomRing">
-            <svg class="gz" viewBox="0 0 300 300" aria-hidden="true" focusable="false">
-              <defs>
-                <linearGradient id="gzBez" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3e"/><stop offset=".5" stop-color="#121214"/><stop offset="1" stop-color="#2a2a2d"/></linearGradient>
-                <radialGradient id="gzFace" cx="50%" cy="50%" r="50%"><stop offset="0" style="stop-color:var(--g);stop-opacity:.16"/><stop offset=".45" stop-color="#140a04"/><stop offset="1" stop-color="#050302"/></radialGradient>
-                <radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient>
-              </defs>
-              <circle cx="150" cy="150" r="149" fill="url(#gzBez)"/>
-              <circle cx="150" cy="150" r="143" fill="#040302"/>
-              <circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>
-              <path class="gtrail" d="M54.55 245.45 A135 135 0 1 1 245.45 245.45" pathLength="1"/>
-              <line class="gt" x1="70.78" y1="229.22" x2="59.47" y2="240.53"/>
-              <text class="gn" x="86.36" y="213.64">0</text>
-              <circle class="gd" cx="64.21" cy="207.21" r="1.9"/>
-              <line class="gt" x1="51.27" y1="184.67" x2="42.84" y2="189.54"/>
-              <text class="gn" x="62.86" y="177.98">5</text>
-              <circle class="gd" cx="44.20" cy="150.00" r="1.9"/>
-              <line class="gt" x1="43.50" y1="137.98" x2="33.97" y2="136.26"/>
-              <text class="gn" x="56.62" y="140.35">10</text>
-              <circle class="gd" cx="48.51" cy="95.14" r="1.9"/>
-              <line class="gt" x1="47.88" y1="91.13" x2="38.99" y2="82.72"/>
-              <text class="gn" x="60.10" y="102.68">15</text>
-              <circle class="gd" cx="74.21" cy="48.26" r="1.9"/>
-              <line class="gt" x1="63.38" y1="48.33" x2="56.97" y2="33.87"/>
-              <text class="gn" x="72.19" y="68.22">20</text>
-              <circle class="gd" cx="116.14" cy="20.73" r="1.9"/>
-              <line class="gt" x1="88.73" y1="16.92" x2="85.78" y2="1.30"/>
-              <text class="gn" x="92.68" y="38.74">25</text>
-              <circle class="gd" cx="166.52" cy="15.82" r="1.9"/>
-              <line class="gt" x1="122.61" y1="2.72" x2="124.45" y2="-13.08"/>
-              <text class="gn" x="120.08" y="24.47">30</text>
-              <circle class="gd" cx="214.39" cy="33.87" r="1.9"/>
-              <line class="gt" x1="160.03" y1="7.76" x2="167.14" y2="-7.11"/>
-              <text class="gn" x="150.00" y="28.00">35</text>
-              <circle class="gd" cx="249.44" cy="70.73" r="1.9"/>
-              <line class="gt" x1="195.17" y1="31.25" x2="206.18" y2="19.46"/>
-              <text class="gn" x="179.90" y="47.32">40</text>
-              <circle class="gd" cx="265.80" cy="120.00" r="1.9"/>
-              <line class="gt red" x1="223.38" y1="70.78" x2="238.92" y2="64.38"/>
-              <text class="gn red" x="203.64" y="79.65">45</text>
-              <circle class="gd" cx="258.46" cy="172.63" r="1.9"/>
-              <line class="gt red" x1="240.53" y1="120.53" x2="258.55" y2="120.53"/>
-              <text class="gn red" x="213.64" y="120.53">50</text>
-              <g class="gneedle"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g>
-              <circle cx="150" cy="150" r="26" fill="url(#gzHub)" stroke="#2c2c30" stroke-width="2"/>
-              <circle cx="150" cy="150" r="8" fill="#0a0605" stroke="var(--g2)" stroke-width="1.5"/>
-              <text class="gunit" x="150" y="252">MIN</text>
-            </svg>
-            <div class="pi">
-              <div class="pm" id="pomoM">50</div>
-              <div class="pse" id="pomoS">:00</div>
+        <div class="pomo-grid">
+          <div class="card pomo-timer">
+            <div class="pomo-left">
+              <div id="pomLbl" data-mode="focus">FOCUS SESSION</div>
+
+              <!-- M2028 Signature Circular Ring / Speedometer Gauge Clock -->
+              <div class="pr" id="pomRing">
+                <svg class="gz" viewBox="0 0 300 300" aria-hidden="true" focusable="false">
+                  <defs>
+                    <linearGradient id="gzBez" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3e"/><stop offset=".5" stop-color="#121214"/><stop offset="1" stop-color="#2a2a2d"/></linearGradient>
+                    <radialGradient id="gzFace" cx="50%" cy="50%" r="50%"><stop offset="0" style="stop-color:var(--g);stop-opacity:.16"/><stop offset=".45" stop-color="#140a04"/><stop offset="1" stop-color="#050302"/></radialGradient>
+                    <radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient>
+                  </defs>
+                  <circle cx="150" cy="150" r="149" fill="url(#gzBez)"/>
+                  <circle cx="150" cy="150" r="143" fill="#040302"/>
+                  <circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>
+                  <path class="gtrail" d="M54.55 245.45 A135 135 0 1 1 245.45 245.45" pathLength="1"/>
+                  <line class="gt" x1="70.78" y1="229.22" x2="59.47" y2="240.53"/>
+                  <text class="gn" x="86.36" y="213.64">0</text>
+                  <circle class="gd" cx="64.21" cy="207.21" r="1.9"/>
+                  <line class="gt" x1="51.27" y1="184.67" x2="42.84" y2="189.54"/>
+                  <text class="gn" x="62.86" y="177.98">5</text>
+                  <circle class="gd" cx="44.20" cy="150.00" r="1.9"/>
+                  <line class="gt" x1="43.50" y1="137.98" x2="33.97" y2="136.26"/>
+                  <text class="gn" x="56.62" y="140.35">10</text>
+                  <circle class="gd" cx="48.51" cy="95.14" r="1.9"/>
+                  <line class="gt" x1="47.88" y1="91.13" x2="38.99" y2="82.72"/>
+                  <text class="gn" x="60.10" y="102.68">15</text>
+                  <circle class="gd" cx="74.21" cy="48.26" r="1.9"/>
+                  <line class="gt" x1="63.38" y1="48.33" x2="56.97" y2="33.87"/>
+                  <text class="gn" x="72.19" y="68.22">20</text>
+                  <circle class="gd" cx="116.14" cy="20.73" r="1.9"/>
+                  <line class="gt" x1="88.73" y1="16.92" x2="85.78" y2="1.30"/>
+                  <text class="gn" x="92.68" y="38.74">25</text>
+                  <circle class="gd" cx="166.52" cy="15.82" r="1.9"/>
+                  <line class="gt" x1="122.61" y1="2.72" x2="124.45" y2="-13.08"/>
+                  <text class="gn" x="120.08" y="24.47">30</text>
+                  <circle class="gd" cx="214.39" cy="33.87" r="1.9"/>
+                  <line class="gt" x1="160.03" y1="7.76" x2="167.14" y2="-7.11"/>
+                  <text class="gn" x="150.00" y="28.00">35</text>
+                  <circle class="gd" cx="249.44" cy="70.73" r="1.9"/>
+                  <line class="gt" x1="195.17" y1="31.25" x2="206.18" y2="19.46"/>
+                  <text class="gn" x="179.90" y="47.32">40</text>
+                  <circle class="gd" cx="265.80" cy="120.00" r="1.9"/>
+                  <line class="gt red" x1="223.38" y1="70.78" x2="238.92" y2="64.38"/>
+                  <text class="gn red" x="203.64" y="79.65">45</text>
+                  <circle class="gd" cx="258.46" cy="172.63" r="1.9"/>
+                  <line class="gt red" x1="240.53" y1="120.53" x2="258.55" y2="120.53"/>
+                  <text class="gn red" x="213.64" y="120.53">50</text>
+                  <g class="gneedle"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g>
+                  <circle cx="150" cy="150" r="26" fill="url(#gzHub)" stroke="#2c2c30" stroke-width="2"/>
+                  <circle cx="150" cy="150" r="8" fill="#0a0605" stroke="var(--g2)" stroke-width="1.5"/>
+                  <text class="gunit" x="150" y="252">MIN</text>
+                </svg>
+                <div class="pi">
+                  <div class="pm" id="pomM">50</div>
+                  <div class="pse" id="pomS">:00</div>
+                </div>
+              </div>
+
+              <div class="pom-txt pom-sess">Session <span id="pomSess">1</span> / <span id="pomTot">4</span></div>
+
+              <div class="pomo-ctrl" id="pomAdjRow">
+                <button class="btn b-gh pomo-step" id="pomoStepDown" type="button" aria-label="Fewer sessions" title="Fewer sessions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                <button class="btn pomo-primary" id="pomBtn" type="button" aria-label="Start timer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.5-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/></svg><span>Start</span></button>
+                <button class="btn b-gh pomo-step" id="pomoStepUp" type="button" aria-label="More sessions" title="More sessions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+              </div>
+
+              <button class="btn pomo-end" id="pomEndBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2.6"/></svg>End session</button>
+
+              <div class="pomo-foot">
+                <div class="pom-txt pomo-today">Today: <b id="pomToday">0</b> sessions</div>
+                <label class="pomo-snd" title="Alert sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg>
+                  <select id="pomSoundStyleSel" aria-label="Alert sound">
+                    <option value="bell">Classic bell</option>
+                    <option value="chime">Soft chime</option>
+                    <option value="digital">Digital beep</option>
+                    <option value="marimba">Marimba</option>
+                    <option value="pulse">Ping pulse</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <img id="pomDuo" src="pom-duo.webp" alt="" width="520" height="530" decoding="async" draggable="false">
+          </div>
+
+          <div class="card pom-study">
+            <div class="ct">Studying now</div>
+            <div class="pom-row">
+              <div><div class="pom-k">Now</div><strong id="subDisp">Not set</strong></div>
+              <button class="btn pomo-change" id="pomoSubBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/></svg>Change</button>
             </div>
           </div>
 
-          <!-- Session Info -->
-          <div class="pomo-session-txt">
-            Session <span id="pomoSess">1</span> / <span id="pomoTot">2</span>
-          </div>
-          
-          <!-- Subject & Today Row -->
-          <div class="pomo-sub-row">
-            <span class="pomo-sub-label">Subject: <button type="button" class="pomo-sub-btn" id="pomoSubBtn" title="Click to choose/sync subject"><strong id="pomoSub">DA/PY</strong><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:3px"><path d="M6 9l6 6 6-6"/></svg></button></span>
-            <span class="pomo-sub-dot">·</span>
-            <span>Today: <strong id="pomoToday">1</strong></span>
+          <div class="ssr" id="ssrCard" data-state="idle">
+            <div class="ssr-stage" id="ssrStage">
+              <svg class="ssr-art" viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="ssrSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--sk0)"/><stop offset="40%" style="stop-color:var(--sk1)"/><stop offset="70%" style="stop-color:var(--sk2)"/><stop offset="100%" style="stop-color:var(--sk3)"/></linearGradient>
+                  <linearGradient id="ssrSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--sea0)"/><stop offset="50%" style="stop-color:var(--sea1)"/><stop offset="100%" style="stop-color:var(--sea2)"/></linearGradient>
+                  <radialGradient id="ssrSun" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:var(--sunA)"/><stop offset="22%" style="stop-color:var(--sunB);stop-opacity:.9"/><stop offset="100%" style="stop-color:var(--sunC);stop-opacity:0"/></radialGradient>
+                  <linearGradient id="ssrPath" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--sunA);stop-opacity:.7"/><stop offset="100%" style="stop-color:var(--sunB);stop-opacity:.05"/></linearGradient>
+                </defs>
+                <rect width="400" height="92" fill="url(#ssrSky)"/>
+                <ellipse cx="200" cy="90" rx="120" ry="70" fill="url(#ssrSun)" opacity=".85"/>
+                <ellipse cx="200" cy="90" rx="13" ry="7" style="fill:var(--sunA)"/>
+                <ellipse cx="200" cy="92" rx="13" ry="5" style="fill:var(--sunB)"/>
+                <ellipse cx="60" cy="55" rx="45" ry="14" style="fill:var(--cl1)" opacity=".4"/>
+                <ellipse cx="100" cy="47" rx="35" ry="10" style="fill:var(--cl2)" opacity=".3"/>
+                <ellipse cx="310" cy="53" rx="50" ry="13" style="fill:var(--cl3)" opacity=".35"/>
+                <ellipse cx="350" cy="43" rx="30" ry="9" style="fill:var(--cl4)" opacity=".25"/>
+                <rect y="90" width="400" height="90" fill="url(#ssrSea)"/>
+                <polygon points="170,90 230,90 252,180 148,180" fill="url(#ssrPath)" opacity=".5"/>
+                <line x1="0" y1="100" x2="400" y2="100" style="stroke:var(--wv1)" stroke-width="1" opacity=".4"/>
+                <line x1="0" y1="110" x2="400" y2="110" style="stroke:var(--wv1)" stroke-width=".7" opacity=".3"/>
+                <line x1="0" y1="122" x2="400" y2="122" style="stroke:var(--wv2)" stroke-width=".7" opacity=".25"/>
+                <line x1="0" y1="136" x2="400" y2="136" style="stroke:var(--wv3)" stroke-width=".5" opacity=".2"/>
+                <line x1="0" y1="152" x2="400" y2="152" style="stroke:var(--wv4)" stroke-width=".5" opacity=".15"/>
+                <circle cx="30" cy="16" r="1.2" fill="#fff" opacity=".8"/><circle cx="80" cy="8" r=".8" fill="#fff" opacity=".6"/><circle cx="140" cy="15" r="1" fill="#fff" opacity=".7"/>
+                <circle cx="260" cy="10" r="1.2" fill="#fff" opacity=".8"/><circle cx="320" cy="20" r=".8" fill="#fff" opacity=".5"/><circle cx="370" cy="7" r="1" fill="#fff" opacity=".7"/><circle cx="55" cy="30" r=".6" fill="#fff" opacity=".5"/>
+              </svg>
+              <div class="ssr-scrim"></div>
+              <span class="ssr-chip"><i></i>Non-sleep deep rest</span>
+              <button type="button" class="ssr-play" id="ssrPlay" aria-label="Play Susurrus" aria-pressed="false">
+                <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.2v13.6L19 12z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.2" y="5" width="4.1" height="14" rx="1.2"/><rect x="13.7" y="5" width="4.1" height="14" rx="1.2"/></svg>
+              </button>
+              <div class="ssr-meta">
+                <div class="ssr-title">Susurrus</div>
+                <div class="ssr-sub">10-minute NSDR with Dr. Andrew Huberman</div>
+              </div>
+            </div>
+            <audio id="nsdraudio" preload="none" style="display:none"><source src="sussurus1.mp3" type="audio/mpeg"></audio>
+            <div class="ssr-bar">
+              <button type="button" class="ssr-rs" id="ssrRestart" title="Restart" aria-label="Restart"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5v4.6h4.6"/></svg></button>
+              <span class="ssr-t" id="ssrCur">0:00</span>
+              <input type="range" class="ssr-seek" id="ssrSeek" value="0" min="0" max="100" step="0.1" aria-label="Seek">
+              <span class="ssr-t" id="ssrDur">10:42</span>
+            </div>
+            <div class="ssr-hint">Best during Pomodoro break · eyes closed · breathe slowly</div>
           </div>
 
-          <!-- Duration Mode Presets -->
-          <div class="pomo-presets">
-            <button type="button" class="pomo-chip on" data-focus="50" data-break="10">50 / 10 Focus</button>
-            <button type="button" class="pomo-chip" data-focus="25" data-break="5">25 / 5 Classic</button>
+          <div class="card pom-subject-card" id="pomSubCard">
+            <div class="ct">Study time by subject</div>
+            <div id="pomSubBody"></div>
           </div>
 
-          <!-- Control Actions -->
-          <div class="pomo-actions">
-            <button type="button" class="pomo-step-btn" id="pomoStepDown" title="Decrease session count" aria-label="Decrease session count">-</button>
-            <button type="button" class="pomo-main-btn" id="pomoStartBtn" title="Start Focus Session">
-              <span id="pomoStartIcon" class="pomo-play-tri"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-1px"><path d="M8 5v14l11-7z"/></svg></span>
-              <span id="pomoStartText">Start Focus</span>
-            </button>
-            <button type="button" class="pomo-step-btn" id="pomoStepUp" title="Increase session count" aria-label="Increase session count">+</button>
-            <button type="button" class="pomo-step-btn" id="pomoResetBtn" title="Reset current session" aria-label="Reset session"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+          <div class="card pom-logc">
+            <div class="ct">Session log</div>
+            <div id="pomLog">No sessions yet.</div>
           </div>
         </div>
       </section>
@@ -441,6 +509,7 @@
             <span class="auth-dot-live"></span>
             <span>Cloud Sync Active</span>
           </div>
+        </div>
         <div class="auth-signedin-actions" style="margin-top:14px">
           <button type="button" class="btn b-gh auth-tabs-btn" id="authManageTabsBtn" style="width:100%"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="3"/><path d="M18 16.5v3M16.5 18h3"/></svg>Customize Navigation Tabs</button>
           <button type="button" class="btn b-gh" id="modalStickerBtn" style="display:none;width:100%"><span class="leafico sk9" role="img" aria-label="Stickers"></span> Stickers: On</button>
@@ -484,28 +553,24 @@
         <div class="pomo-mo-title" id="pomSubModalTitle">What are you studying?</div>
         <button type="button" class="pomo-mo-close" id="pomSubModalCloseBtn" aria-label="Close modal">✕</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
         <span class="pomo-mo-hint" id="pomSubHint" style="font-size:11px;color:var(--m2);margin:0">Tap a subject to pick it</span>
         <button type="button" class="btn b-gh sm" id="pomSubEditBtn" style="font-size:11px;padding:3px 8px">Edit subjects</button>
       </div>
-      
-      <div id="pomSubModalList" class="pomo-sub-chip-list">
-        <!-- Dynamically populated subjects: AI/Python, Polity, History, etc. -->
+
+      <div id="pomSubList" class="pomo-sub-chip-list">
+        <!-- Dynamically populated subjects -->
       </div>
 
-      <div id="pomSubAddRow" class="pomo-mo-add-row" style="display:none;align-items:center;gap:6px;margin-bottom:12px;padding-top:0;border-top:none">
+      <div id="pomSubAddRow" style="display:none;align-items:center;gap:6px;margin-bottom:14px">
         <input type="text" id="pomNewSub" class="inp" maxlength="28" placeholder="New subject, e.g. Maths" style="flex:1;min-width:130px;margin:0">
-        <button type="button" class="btn b-ai sm" id="pomAddSubBtn">Add</button>
-        <button type="button" class="btn b-gh sm" id="pomResetSubBtn" style="font-size:11px;padding:4px 8px">Reset list</button>
+        <button type="button" class="btn b-ai" id="pomAddSubBtn">Add</button>
+        <button type="button" class="btn b-gh sm" id="pomResetSubBtn" style="font-size:11px">Reset list</button>
       </div>
 
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--b)">
-        <label style="font-size:11px;color:var(--m2);display:block;margin-bottom:4px">Or type your own subject</label>
-        <div style="display:flex;gap:6px">
-          <input type="text" id="pomCustomSub" class="inp" placeholder="e.g. Newspaper reading" maxlength="28">
-          <button type="button" class="btn b-ai" id="pomCustomSubBtn" style="white-space:nowrap;padding:7px 12px">Select</button>
-        </div>
-      </div>
+      <label style="font-size:11px;color:var(--m2)">Or type your own subject</label>
+      <input type="text" id="pomCustomSub" class="inp" style="margin-top:4px;margin-bottom:14px" placeholder="e.g. Newspaper reading" maxlength="28">
+      <button type="button" class="btn b-ai" id="pomBeginBtn" style="width:100%">Begin Focus Session</button>
     </div>
   </div>
 

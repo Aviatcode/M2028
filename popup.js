@@ -1,4 +1,4 @@
-/**
+﻿/**
  * M2028 Chrome Extension Hub — Synchronized Controller
  * Fully synced with M2028 Web App Data Models, Themes & Real-Time Storage
  */
@@ -1349,28 +1349,89 @@
   }
 
   // =====================================================================
-  // 6. Pomodoro Timer Controller (Persistent Shared M2028 State)
+  // 6. Pomodoro Timer Controller (Index.html parity, persistent shared state)
   // =====================================================================
+  const PF = 3000;
+  const PB = 600;
+  const PLB = 1800;
+  const POM_KEY = 'pom_state';
+  const POM_ICO = {
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.5-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.4"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.4"/></svg>'
+  };
   let pomoInterval = null;
+  let _pomCompleting = false;
+  let _pomEditMode = false;
+  let _pomPickedSub = null;
+  let _pomWk = 0;
+  let _lastLogSig = '';
+  let _cachedSubjects = null;
+  let _sharedAudioCtx = null;
+
+  function readLocalStore(key, defVal) {
+    try {
+      const raw = localStorage.getItem('m_' + key);
+      if (raw !== null) return JSON.parse(raw);
+    } catch (e) {}
+    return defVal;
+  }
+
+  function dayKeyFor(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function hydratePomCaches(callback) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+      if (callback) callback();
+      return;
+    }
+    chrome.storage.local.get(
+      ['m_pomSessions', 'pomSessions', 'm_pd', 'pd', 'm_pomSubjects', 'pomSubjects'],
+      function (res) {
+        try {
+          const sess = res.m_pomSessions !== undefined ? res.m_pomSessions : res.pomSessions;
+          if (Array.isArray(sess)) localStorage.setItem('m_pomSessions', JSON.stringify(sess));
+          const pd = res.m_pd !== undefined ? res.m_pd : res.pd;
+          if (pd && typeof pd === 'object') localStorage.setItem('m_pd', JSON.stringify(pd));
+          const subs = res.m_pomSubjects !== undefined ? res.m_pomSubjects : res.pomSubjects;
+          if (Array.isArray(subs) && subs.length) _cachedSubjects = normalizePomSubjects(subs);
+        } catch (e) {}
+        _lastLogSig = '';
+        if (callback) callback();
+      }
+    );
+  }
 
   function getPomoSavedState() {
+    let st = null;
     try {
       const raw = localStorage.getItem('pom_state') ||
                   localStorage.getItem('m_pomLive') ||
                   localStorage.getItem('m_pom_state');
-      if (raw) return JSON.parse(raw);
+      if (raw) st = JSON.parse(raw);
     } catch (e) {}
-    return {
-      run: false,
-      mode: 'focus',
-      rem: 3000,
-      phaseLen: 3000,
-      tot: 2,
-      cur: 0,
-      sub: 'DA/PY',
-      u: Date.now(),
-      dev: 'extension'
-    };
+    if (!st || typeof st !== 'object') st = {};
+
+    st.run = !!st.run;
+    st.mode = st.mode === 'break' ? 'break' : 'focus';
+    st.tot = Math.max(1, Math.min(12, parseInt(st.tot, 10) || 4));
+    st.cur = Math.max(0, parseInt(st.cur, 10) || 0);
+    st.sub = st.sub || '';
+    st.u = st.u || Date.now();
+    st.dev = 'extension';
+
+    if (st.mode === 'focus') {
+      if (st.phaseLen !== PF && !st.run) {
+        st.phaseLen = PF;
+        st.rem = PF;
+      }
+      st.phaseLen = st.phaseLen || PF;
+      st.rem = st.rem === undefined ? PF : st.rem;
+    } else {
+      if (st.phaseLen !== PB && st.phaseLen !== PLB) st.phaseLen = PB;
+      st.rem = st.rem === undefined ? st.phaseLen : st.rem;
+    }
+    return st;
   }
 
   function savePomoState(st) {
@@ -1387,20 +1448,23 @@
         m_pomLive: st,
         m_pom_state: st
       });
-      chrome.runtime.sendMessage({
-        type: st.run ? 'START_POMO' : 'PAUSE_POMO',
-        state: st
-      }).catch(() => {});
+      try {
+        const p = chrome.runtime.sendMessage({
+          type: st.run ? 'START_POMO' : 'PAUSE_POMO',
+          state: st
+        });
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
     }
     if (typeof pushCloudData === 'function') {
-      pushCloudData('pomLive', st);
+      try { pushCloudData('pomLive', st); } catch (e) {}
     }
   }
 
   function syncPomoFromStorage() {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['pom_state', 'm_pomLive'], function (res) {
-        const extSt = res.pom_state || res.m_pomLive;
+      chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pom_state'], function (res) {
+        const extSt = res.pom_state || res.m_pomLive || res.m_pom_state;
         if (extSt) {
           try {
             localStorage.setItem('pom_state', JSON.stringify(extSt));
@@ -1414,40 +1478,144 @@
     }
   }
 
+  function startPomoInterval() {
+    clearInterval(pomoInterval);
+    pomoInterval = setInterval(pomoTick, 500);
+  }
+
   function applyPomoSync(st) {
     clearInterval(pomoInterval);
     if (st.run && st.endTs) {
-      const now = Date.now();
-      st.rem = Math.max(0, Math.round((st.endTs - now) / 1000));
+      st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
       if (st.rem === 0) {
         handlePomoCompletion(st);
         return;
       }
-      pomoInterval = setInterval(pomoTick, 1000);
+      startPomoInterval();
     }
     updatePomoDisplay(st);
   }
 
-  function togglePomo() {
-    const st = getPomoSavedState();
-    if (!st.run) {
-      st.run = true;
-      st.endTs = Date.now() + st.rem * 1000;
-      savePomoState(st);
-      clearInterval(pomoInterval);
-      pomoInterval = setInterval(pomoTick, 1000);
-      updatePomoDisplay(st);
-    } else {
-      st.run = false;
-      st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
-      st.endTs = null;
-      savePomoState(st);
-      clearInterval(pomoInterval);
-      updatePomoDisplay(st);
+  function warmAudio() {
+    const ctx = getAudioCtx();
+    try {
+      if (ctx && ctx.state === 'suspended') ctx.resume();
+    } catch (e) {}
+  }
+
+  function getAudioCtx() {
+    try {
+      if (!_sharedAudioCtx || _sharedAudioCtx.state === 'closed') {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        _sharedAudioCtx = new AudioCtx();
+      }
+      return _sharedAudioCtx;
+    } catch (e) {
+      return null;
     }
   }
 
+  function getPomSoundStyle() {
+    return readLocalStore('pomSoundStyle', 'bell');
+  }
+
+  function setPomSoundStyle(value) {
+    S.set('pomSoundStyle', value);
+  }
+
+  function pomSound(kind) {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const style = getPomSoundStyle();
+    const note = function (freq, delay, dur, type, vol) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = type;
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + delay + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + dur + 0.05);
+    };
+    const play = function () {
+      try {
+        const rounds = kind === 'session' ? 3 : 4;
+        if (style === 'bell') {
+          const notes = [523, 659, 784];
+          for (let r = 0; r < rounds; r++) {
+            notes.forEach(function (f, i) { note(f, 0.85 * r + 0.18 * i, 0.75, 'sine', 0.4); });
+          }
+        } else if (style === 'chime') {
+          const pairs = [[880, 660], [800, 600], [720, 540], [660, 500]];
+          for (let r = 0; r < rounds; r++) {
+            const pair = pairs[r % pairs.length];
+            note(pair[0], 0.75 * r, 0.65, 'triangle', 0.32);
+            note(pair[1], 0.75 * r + 0.25, 0.6, 'triangle', 0.3);
+          }
+        } else if (style === 'digital') {
+          for (let r = 0; r < rounds; r++) {
+            note(1046, 0.55 * r, 0.12, 'square', 0.22);
+            note(1046, 0.55 * r + 0.18, 0.12, 'square', 0.22);
+          }
+        } else if (style === 'marimba') {
+          const notes = [392, 494, 587, 494];
+          for (let r = 0; r < rounds; r++) {
+            note(notes[r % notes.length], 0.5 * r, 0.55, 'sine', 0.38);
+          }
+        } else {
+          for (let r = 0; r < rounds; r++) {
+            note(660 + 60 * r, 0.6 * r, 0.4, 'sine', 0.35);
+          }
+        }
+      } catch (e) {}
+    };
+    try {
+      if (ctx.state === 'suspended') ctx.resume().then(play).catch(play);
+      else play();
+    } catch (e) {
+      play();
+    }
+  }
+
+  function pomFlash(color) {
+    const ring = document.getElementById('pomRing');
+    if (!ring) return;
+    ring.style.setProperty('--fl', color);
+    ring.classList.add('flash');
+    setTimeout(function () { ring.classList.remove('flash'); }, 900);
+  }
+
+  function togglePomo() {
+    warmAudio();
+    const st = getPomoSavedState();
+    if (st.run) {
+      st.rem = st.endTs ? Math.max(0, Math.round((st.endTs - Date.now()) / 1000)) : st.rem;
+      st.run = false;
+      st.endTs = null;
+      st.pausedAt = Date.now();
+      savePomoState(st);
+      clearInterval(pomoInterval);
+      updatePomoDisplay(st);
+      return;
+    }
+    if ((st.cur || 0) === 0 && st.mode === 'focus' && st.rem >= PF) {
+      openPomSubjectModal();
+      return;
+    }
+    st.run = true;
+    st.endTs = Date.now() + st.rem * 1000;
+    st.pausedAt = null;
+    savePomoState(st);
+    startPomoInterval();
+    updatePomoDisplay(st);
+  }
+
   function pomoTick() {
+    if (_pomCompleting) return;
     const st = getPomoSavedState();
     if (!st.run || !st.endTs) {
       clearInterval(pomoInterval);
@@ -1455,122 +1623,188 @@
     }
     st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
     if (st.rem <= 0) {
+      _pomCompleting = true;
       clearInterval(pomoInterval);
-      handlePomoCompletion(st);
+      try {
+        handlePomoCompletion(st);
+      } finally {
+        _pomCompleting = false;
+      }
     } else {
       updatePomoDisplay(st);
     }
   }
 
-  function logPomoSessionLocal(sub, dur) {
-    const d = getTodayKey();
-    const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    S.get('pomSessions', [], function (sessions) {
-      if (!Array.isArray(sessions)) sessions = [];
-      sessions.push({
-        d: d,
-        sub: sub || 'General',
-        dur: dur || 3000,
-        t: timeStr
-      });
-      S.set('pomSessions', sessions);
-    });
-    S.get('pd', {}, function (pd) {
-      if (!pd || typeof pd !== 'object') pd = {};
-      pd[d] = (pd[d] || 0) + 1;
-      S.set('pd', pd);
-      const todayEl = document.getElementById('pomoToday');
-      if (todayEl) todayEl.textContent = pd[d] || 0;
-    });
+  function updatePomToday() {
+    const el = document.getElementById('pomToday');
+    if (!el) return;
+    const pd = readLocalStore('pd', {});
+    el.textContent = (pd && pd[getTodayKey()]) || 0;
+  }
+
+  function logPomoSessionLocal(sub, dur, partial, stopMs) {
+    const sessions = readLocalStore('pomSessions', []);
+    const list = Array.isArray(sessions) ? sessions : [];
+    const stamp = stopMs || Date.now();
+    const dt = new Date(stamp);
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const entry = {
+      id: 'p' + stamp + Math.random().toString(36).slice(2, 6),
+      d: dayKeyFor(dt),
+      sub: sub || 'General',
+      dur: Math.max(0, Math.round(dur || 0)),
+      t: timeStr,
+      ms: stamp
+    };
+    if (partial) entry.part = 1;
+    list.push(entry);
+    S.set('pomSessions', list);
+
+    if (!partial) {
+      const pd = readLocalStore('pd', {});
+      const key = dayKeyFor(dt);
+      const map = pd && typeof pd === 'object' ? pd : {};
+      map[key] = (map[key] || 0) + 1;
+      S.set('pd', map);
+      updatePomToday();
+    }
+    _lastLogSig = '';
+    renderPomLog();
   }
 
   function handlePomoCompletion(st) {
-    playAlertChime();
-    const tot = st.tot || 4;
+    pomSound('session');
+    st.tot = st.tot || 4;
 
     if (st.mode === 'focus') {
       st.cur = (st.cur || 0) + 1;
-      logPomoSessionLocal(st.sub || 'General', st.phaseLen || 3000);
+      logPomoSessionLocal(st.sub || 'General', PF, false, st.endTs || Date.now());
+      pomFlash('#4fd8a0');
 
-      const isLong = st.cur % tot === 0;
-      const breakLen = isLong ? 1800 : (st.phaseLen === 1500 ? 300 : 600);
+      const isLong = st.cur % st.tot === 0;
+      const breakLen = isLong ? PLB : PB;
+      showChromeNotification(
+        '✅ Session done!',
+        isLong
+          ? `All ${st.tot} sessions complete — take a ${breakLen / 60}-min break.`
+          : `Take a ${breakLen / 60}-min break.`
+      );
 
       st.mode = 'break';
       st.phaseLen = breakLen;
       st.rem = breakLen;
       st.run = true;
       st.endTs = Date.now() + breakLen * 1000;
+      st.pausedAt = null;
+      savePomoState(st);
+      startPomoInterval();
+      updatePomoDisplay(st);
+      return;
+    }
 
-      showChromeNotification(
-        isLong ? `🏆 All ${tot} Sessions Complete!` : '✅ Focus Session Done!',
-        isLong ? 'Take a 30-min long break.' : `Take a ${breakLen / 60}-min break. Step away and refresh.`
-      );
+    pomFlash('#e8965a');
+    if ((st.cur || 0) >= st.tot) {
+      showChromeNotification('🎉 All sessions complete!', 'Great work today.');
+      st.run = false;
+      st.mode = 'focus';
+      st.phaseLen = PF;
+      st.rem = PF;
+      st.cur = 0;
+      st.endTs = null;
+      st.pausedAt = null;
       savePomoState(st);
       clearInterval(pomoInterval);
-      pomoInterval = setInterval(pomoTick, 1000);
       updatePomoDisplay(st);
     } else {
-      // Break over
-      if (st.cur >= tot) {
-        showChromeNotification('🎉 All sessions complete!', 'Great work today! Starting a fresh focus cycle.');
-        st.run = false;
-        st.mode = 'focus';
-        st.cur = 0;
-        st.phaseLen = 3000;
-        st.rem = 3000;
-        st.endTs = null;
-        savePomoState(st);
-        clearInterval(pomoInterval);
-        updatePomoDisplay(st);
-      } else {
-        showChromeNotification('☕ Break Over!', `Starting focus session ${st.cur + 1} of ${tot}. Let's focus!`);
-        st.mode = 'focus';
-        st.phaseLen = 3000;
-        st.rem = 3000;
-        st.run = true;
-        st.endTs = Date.now() + 3000 * 1000;
-        savePomoState(st);
-        clearInterval(pomoInterval);
-        pomoInterval = setInterval(pomoTick, 1000);
-        updatePomoDisplay(st);
-      }
+      showChromeNotification('☕ Break over!', 'Starting your next focus session.');
+      st.mode = 'focus';
+      st.phaseLen = PF;
+      st.rem = PF;
+      st.run = true;
+      st.endTs = Date.now() + PF * 1000;
+      st.pausedAt = null;
+      savePomoState(st);
+      startPomoInterval();
+      updatePomoDisplay(st);
     }
+    _lastLogSig = '';
+    renderPomLog();
   }
 
-  // Default subjects matching M2028 authentic subjects (simple text, no emojis)
-  const POM_SUBJ_DEFAULT = [
-    { id: "s_ai", n: "AI/Python" },
-    { id: "s_pol", n: "Polity" },
-    { id: "s_his", n: "History" },
-    { id: "s_eco", n: "Economics" },
-    { id: "s_geo", n: "Geography" },
-    { id: "s_gen", n: "General" },
-    { id: "s_oth", n: "Other" }
-  ];
-  let _pomEditMode = false;
-  let _cachedSubjects = null;
+  function adjS(delta) {
+    const st = getPomoSavedState();
+    if (st.run || st.cur > 0) return;
+    st.tot = Math.max(1, Math.min(12, (st.tot || 4) + delta));
+    savePomoState(st);
+    updatePomoDisplay(st);
+  }
 
-  function cleanSubName(str) {
-    if (!str || typeof str !== 'string') return '';
-    return str.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|[\u2300-\u23FF]/g, '').trim();
+  function pomEndSession() {
+    const st = getPomoSavedState();
+    let partial = null;
+    if (st.mode === 'focus') {
+      const rem = st.run && st.endTs
+        ? Math.max(0, Math.round((st.endTs - Date.now()) / 1000))
+        : st.rem;
+      const elapsed = Math.round((st.phaseLen || PF) - rem);
+      if (elapsed >= 60) {
+        const stop = st.run ? Date.now() : (st.pausedAt || Date.now());
+        logPomoSessionLocal(st.sub || 'General', elapsed, true, stop);
+        partial = { el: elapsed, t: new Date(stop).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) };
+      }
+    }
+    st.run = false;
+    st.endTs = null;
+    st.mode = 'focus';
+    st.phaseLen = PF;
+    st.rem = PF;
+    st.cur = 0;
+    st.pausedAt = null;
+    savePomoState(st);
+    clearInterval(pomoInterval);
+    updatePomoDisplay(st);
+    _lastLogSig = '';
+    renderPomLog();
+    showChromeNotification(
+      'Session ended.',
+      partial
+        ? `Saved ${fmtTime(partial.el)} of ${st.sub || 'General'} — stopped at ${partial.t}.`
+        : 'Focus timer reset to 50 minutes.'
+    );
+  }
+
+  function resetPomo() {
+    pomEndSession();
+  }
+
+  const POM_SUBJ_DEFAULT = [
+    { id: 's_ai', n: 'AI/Python', e: '🤖' },
+    { id: 's_pol', n: 'Polity', e: '🏛' },
+    { id: 's_his', n: 'History', e: '📜' },
+    { id: 's_eco', n: 'Economics', e: '📈' },
+    { id: 's_geo', n: 'Geography', e: '🌍' },
+    { id: 's_oth', n: 'Other', e: '' }
+  ];
+
+  function normalizePomSubjects(raw) {
+    return raw.map(function (x) {
+      const name = String(typeof x === 'string' ? x : (x.n || x.name || 'Subject')).trim();
+      const id = (x && x.id) ? x.id : 's_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      return { id: id, n: name, e: (x && x.e) || '' };
+    });
   }
 
   function getPomSubjectsList(callback) {
-    if (_cachedSubjects && Array.isArray(_cachedSubjects) && _cachedSubjects.length) {
+    if (_cachedSubjects && Array.isArray(_cachedSubjects)) {
       if (callback) callback(_cachedSubjects);
       return;
     }
     S.get('pomSubjects', null, function (raw) {
-      let list = [];
-      if (Array.isArray(raw) && raw.length) {
-        list = raw.map(x => {
-          const rawName = typeof x === 'string' ? x : (x.n || x.name || 'Subject');
-          const clean = cleanSubName(rawName) || rawName;
-          const id = typeof x === 'object' && x.id ? x.id : ('s_' + clean.toLowerCase().replace(/[^a-z0-9]/g, '_'));
-          return { id: id, n: clean };
-        });
+      let list;
+      if (Array.isArray(raw)) {
+        list = normalizePomSubjects(raw);
       } else {
-        list = POM_SUBJ_DEFAULT.map(x => ({ ...x }));
+        list = POM_SUBJ_DEFAULT.map(function (x) { return { id: x.id, n: x.n, e: x.e }; });
       }
       _cachedSubjects = list;
       if (callback) callback(list);
@@ -1580,41 +1814,173 @@
   function savePomSubjectsList(list) {
     _cachedSubjects = list;
     S.set('pomSubjects', list);
-    // Also broadcast update if web page is open
     if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
       chrome.tabs.query({}, function (tabs) {
         if (!tabs) return;
-        tabs.forEach(t => {
+        tabs.forEach(function (t) {
           if (t.id) {
-            chrome.tabs.sendMessage(t.id, {
-              type: 'POMO_SUBJECTS_CHANGED',
-              subjects: list
-            }).catch(() => {});
+            try {
+              const p = chrome.tabs.sendMessage(t.id, {
+                type: 'POMO_SUBJECTS_CHANGED',
+                subjects: list
+              });
+              if (p && p.catch) p.catch(function () {});
+            } catch (e) {}
           }
         });
       });
     }
   }
 
-  function resetPomo() {
-    clearInterval(pomoInterval);
-    const activeChip = document.querySelector('.pomo-presets .pomo-chip.on');
-    const fMin = activeChip ? parseInt(activeChip.getAttribute('data-focus'), 10) : 50;
-    const durSec = fMin * 60;
-    const prev = getPomoSavedState();
-    const st = {
-      run: false,
-      mode: 'focus',
-      endTs: null,
-      rem: durSec,
-      phaseLen: durSec,
-      tot: prev.tot || 2,
-      cur: 0,
-      sub: prev.sub || 'DA/PY',
-      u: Date.now(),
-      dev: 'extension'
-    };
+  function renderPomSubList() {
+    const listEl = document.getElementById('pomSubList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    getPomSubjectsList(function (list) {
+      if (!list.length) {
+        const empty = document.createElement('span');
+        empty.style.cssText = 'font-size:12px;color:var(--m2);padding:4px 0';
+        empty.textContent = 'No subjects yet — click "Edit subjects" to add one.';
+        listEl.appendChild(empty);
+        syncPomSubModalUI();
+        return;
+      }
+      list.forEach(function (sj) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const isSel = _pomPickedSub && sj.n === _pomPickedSub;
+        btn.className = 'pomo-sub-chip sj' + (isSel ? ' sel' : '');
+
+        const lab = document.createElement('span');
+        lab.textContent = (sj.e ? sj.e + ' ' : '') + sj.n;
+        btn.appendChild(lab);
+
+        if (_pomEditMode) {
+          const x = document.createElement('span');
+          x.className = 'sj-x';
+          x.textContent = '×';
+          x.setAttribute('role', 'button');
+          x.setAttribute('aria-label', 'Delete ' + sj.n);
+          x.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            delPomSubject(sj.id || sj.n);
+          });
+          btn.appendChild(x);
+        }
+
+        btn.addEventListener('click', function () {
+          if (_pomEditMode) return;
+          _pomPickedSub = sj.n;
+          const custom = document.getElementById('pomCustomSub');
+          if (custom) custom.value = '';
+          listEl.querySelectorAll('.sj').forEach(function (el) { el.classList.remove('sel'); });
+          btn.classList.add('sel');
+        });
+
+        listEl.appendChild(btn);
+      });
+      syncPomSubModalUI();
+    });
+  }
+
+  function syncPomSubModalUI() {
+    const editBtn = document.getElementById('pomSubEditBtn');
+    const hint = document.getElementById('pomSubHint');
+    const addRow = document.getElementById('pomSubAddRow');
+    if (editBtn) editBtn.textContent = _pomEditMode ? 'Done' : 'Edit subjects';
+    if (hint) {
+      hint.textContent = _pomEditMode
+        ? 'Tap × to delete a subject, or add a new one'
+        : 'Tap a subject to pick it';
+    }
+    if (addRow) addRow.style.display = _pomEditMode ? 'flex' : 'none';
+  }
+
+  function togglePomSubEdit() {
+    _pomEditMode = !_pomEditMode;
+    renderPomSubList();
+    if (_pomEditMode) {
+      const inp = document.getElementById('pomNewSub');
+      if (inp) setTimeout(function () { inp.focus(); }, 30);
+    }
+  }
+
+  function addPomSubject() {
+    const inp = document.getElementById('pomNewSub');
+    if (!inp) return;
+    const name = (inp.value || '').replace(/\s+/g, ' ').trim().slice(0, 28);
+    if (!name) return;
+    getPomSubjectsList(function (list) {
+      if (list.some(function (x) { return x.n.toLowerCase() === name.toLowerCase(); })) {
+        showChromeNotification('Subject exists', 'That subject is already in your list.');
+        return;
+      }
+      list.push({
+        id: 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+        n: name,
+        e: ''
+      });
+      savePomSubjectsList(list);
+      inp.value = '';
+      renderPomSubList();
+      inp.focus();
+    });
+  }
+
+  function delPomSubject(idOrName) {
+    getPomSubjectsList(function (list) {
+      const item = list.find(function (x) { return x.id === idOrName || x.n === idOrName; });
+      const updated = list.filter(function (x) { return x.id !== idOrName && x.n !== idOrName; });
+      if (item && _pomPickedSub === item.n) _pomPickedSub = null;
+      savePomSubjectsList(updated);
+      renderPomSubList();
+    });
+  }
+
+  function resetPomSubjects() {
+    if (!window.confirm('Restore the original subject list? Your added subjects will be removed from this list (past sessions stay in your log).')) return;
+    const fresh = POM_SUBJ_DEFAULT.map(function (x) { return { id: x.id, n: x.n, e: x.e }; });
+    savePomSubjectsList(fresh);
+    renderPomSubList();
+  }
+
+  function openPomSubjectModal() {
+    const m = document.getElementById('pomSubModal');
+    if (!m) return;
+    const st = getPomoSavedState();
+    _pomPickedSub = st.sub || null;
+    _pomEditMode = false;
+    const customInp = document.getElementById('pomCustomSub');
+    if (customInp) customInp.value = '';
+    renderPomSubList();
+    m.classList.add('op');
+    m.style.display = 'flex';
+  }
+
+  function closePomSubModal() {
+    const m = document.getElementById('pomSubModal');
+    if (m) {
+      m.classList.remove('op');
+      m.style.display = 'none';
+    }
+  }
+
+  function beginPomSession() {
+    const customInp = document.getElementById('pomCustomSub');
+    const custom = customInp ? customInp.value.trim().slice(0, 28) : '';
+    const st = getPomoSavedState();
+    const sub = custom || _pomPickedSub || 'General';
+    st.sub = sub;
+    st.run = true;
+    st.mode = 'focus';
+    st.phaseLen = PF;
+    st.rem = PF;
+    st.endTs = Date.now() + PF * 1000;
+    st.pausedAt = null;
+    closePomSubModal();
+    warmAudio();
     savePomoState(st);
+    startPomoInterval();
     updatePomoDisplay(st);
   }
 
@@ -1626,7 +1992,7 @@
   let _lastGaugeDeg = null;
 
   function ensureGaugeSvg() {
-    const ring = document.getElementById('pomRing') || document.getElementById('pomoRing');
+    const ring = document.getElementById('pomRing');
     if (!ring || ring.querySelector('.gz')) return;
 
     function P(r, d) {
@@ -1671,10 +2037,10 @@
 
   function paintGauge(st) {
     ensureGaugeSvg();
-    const ring = document.getElementById('pomRing') || document.getElementById('pomoRing');
+    const ring = document.getElementById('pomRing');
     if (!ring) return;
 
-    const a = st.phaseLen || (st.mode === 'focus' ? 3000 : 600);
+    const a = st.phaseLen || (st.mode === 'focus' ? PF : PB);
     const rem = Math.max(0, Math.min(a, st.rem !== undefined ? st.rem : a));
     const t = a > 0 ? (a - rem) / a : 0;
     const deg = GAUGE_A0 + GAUGE_SW * t;
@@ -1698,18 +2064,14 @@
       needle.style.transform = 'rotate(' + deg + 'deg)';
     }
 
-    if (trail) {
-      trail.style.strokeDasharray = t.toFixed(4) + ' 2';
-    }
-
+    if (trail) trail.style.strokeDasharray = t.toFixed(4) + ' 2';
     _lastGaugeDeg = deg;
 
-    // Pink mode conic fallback
     const pct = Math.min(100, Math.max(0, t * 100));
     ring.style.setProperty('--pomo-pct', pct.toFixed(1) + '%');
     if (document.body.classList.contains('pink')) {
       const col = st.mode === 'focus' ? '#ff6eb4' : '#ff9de0';
-      ring.style.background = `conic-gradient(${col} ${pct}%, rgba(255, 110, 180, 0.16) 0%)`;
+      ring.style.background = 'conic-gradient(' + col + ' ' + pct + '%, rgba(255, 110, 180, 0.16) 0%)';
     }
   }
 
@@ -1718,257 +2080,282 @@
     if (st.run && st.endTs) {
       st.rem = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
     }
+    const phaseLen = st.phaseLen || (st.mode === 'focus' ? PF : PB);
     const min = Math.floor(st.rem / 60);
-    const sec = st.rem % 60;
+    const sec = Math.floor(st.rem % 60);
 
-    const mEl = document.getElementById('pomoM');
-    const sEl = document.getElementById('pomoS');
-    const sessEl = document.getElementById('pomoSess');
-    const totEl = document.getElementById('pomoTot');
-    const subEl = document.getElementById('pomoSub');
-    const badgeEl = document.getElementById('pomoModeBadge');
-    const startBtn = document.getElementById('pomoStartBtn');
-    const startTxt = document.getElementById('pomoStartText');
-    const startIco = document.getElementById('pomoStartIcon');
+    const mEl = document.getElementById('pomM');
+    const sEl = document.getElementById('pomS');
+    const sessEl = document.getElementById('pomSess');
+    const totEl = document.getElementById('pomTot');
+    const subEl = document.getElementById('subDisp');
+    const labelEl = document.getElementById('pomLbl');
+    const soundEl = document.getElementById('pomSoundStyleSel');
 
     if (mEl) mEl.textContent = String(min).padStart(2, '0');
     if (sEl) sEl.textContent = ':' + String(sec).padStart(2, '0');
-    if (sessEl) sessEl.textContent = Math.min((st.cur || 0) + 1, st.tot || 2);
-    if (totEl) totEl.textContent = st.tot || 2;
-    if (subEl) subEl.textContent = st.sub || 'DA/PY';
+    if (sessEl) sessEl.textContent = Math.min((st.cur || 0) + 1, st.tot || 4);
+    if (totEl) totEl.textContent = st.tot || 4;
+    if (subEl) subEl.textContent = st.sub || 'Not set';
+    if (soundEl) soundEl.value = getPomSoundStyle();
 
-    if (badgeEl) {
-      badgeEl.textContent = st.mode === 'focus' ? 'FOCUS SESSION' : 'BREAK TIME';
-      badgeEl.setAttribute('data-mode', st.mode === 'focus' ? 'focus' : 'break');
+    if (labelEl) {
+      labelEl.textContent = st.mode === 'focus'
+        ? 'FOCUS SESSION'
+        : (phaseLen === PLB ? 'LONG BREAK' : 'BREAK TIME');
+      labelEl.setAttribute('data-mode', st.mode || 'focus');
     }
 
-    if (startBtn) {
-      startBtn.classList.toggle('is-run', !!st.run);
-    }
-    if (startTxt) startTxt.textContent = st.run ? 'Pause' : 'Start Focus';
-    if (startIco) {
-      startIco.innerHTML = st.run
-        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-1px"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`
-        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block;vertical-align:-1px"><path d="M8 5v14l11-7z"/></svg>`;
+    const btn = document.getElementById('pomBtn');
+    if (btn) {
+      const k = st.run ? 'pause' : (st.rem < phaseLen ? 'resume' : 'start');
+      if (btn.dataset.k !== k) {
+        btn.dataset.k = k;
+        btn.innerHTML = (st.run ? POM_ICO.pause : POM_ICO.play) +
+          '<span>' + (st.run ? 'Pause' : (k === 'resume' ? 'Resume' : 'Start')) + '</span>';
+        btn.setAttribute('aria-label', st.run ? 'Pause timer' : (k === 'resume' ? 'Resume timer' : 'Start timer'));
+      }
+      btn.classList.toggle('is-run', !!st.run);
     }
 
-    // Highlight matching preset chip
-    const curFocusMin = Math.round((st.phaseLen || 3000) / 60);
-    document.querySelectorAll('.pomo-presets .pomo-chip').forEach(c => {
-      const chipMin = parseInt(c.getAttribute('data-focus'), 10);
-      c.classList.toggle('on', chipMin === curFocusMin);
-    });
+    const adj = document.getElementById('pomAdjRow');
+    if (adj) {
+      adj.querySelectorAll('button.b-gh').forEach(function (b) {
+        b.disabled = !!st.run || (st.cur || 0) > 0;
+        b.style.opacity = (st.run || (st.cur || 0) > 0) ? '0.35' : '1';
+      });
+    }
 
-    // Paint Speedometer Gauge or Girl Mode clock
+    updatePomToday();
     paintGauge(st);
-
-    // Refresh Today count
-    S.get('pd', {}, function (pd) {
-      const todayEl = document.getElementById('pomoToday');
-      if (todayEl) {
-        const d = getTodayKey();
-        todayEl.textContent = (pd && pd[d]) || 0;
-      }
-    });
-
-    // Disable step buttons while running
-    const downBtn = document.getElementById('pomoStepDown');
-    const upBtn = document.getElementById('pomoStepUp');
-    const disabled = st.run || (st.cur && st.cur > 0);
-    if (downBtn) {
-      downBtn.disabled = !!disabled;
-      downBtn.style.opacity = disabled ? '0.35' : '1';
-    }
-    if (upBtn) {
-      upBtn.disabled = !!disabled;
-      upBtn.style.opacity = disabled ? '0.35' : '1';
-    }
+    renderPomLog();
   }
 
-  // --- Authentic M2028 Subject Selection & Management Logic ---
-  function renderPomSubList() {
-    const listEl = document.getElementById('pomSubModalList');
-    if (!listEl) return;
-    listEl.innerHTML = '';
-    const st = getPomoSavedState();
-    const cur = (st.sub || 'DA/PY').trim().toLowerCase();
+  function pomWeekStart(offset) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - 7 * offset);
+    return d;
+  }
 
-    getPomSubjectsList(function (list) {
-      if (!list.length) {
-        const empty = document.createElement('span');
-        empty.style.cssText = 'font-size:12px;color:var(--m2);padding:4px 0';
-        empty.textContent = 'No subjects yet — click "Edit subjects" to add one.';
-        listEl.appendChild(empty);
-        syncPomSubModalUI();
-        return;
-      }
+  function renderPomSubjectTable(sessions) {
+    const box = document.getElementById('pomSubBody');
+    if (!box) return;
+    const ws = pomWeekStart(_pomWk);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(ws);
+      d.setDate(d.getDate() + i);
+      days.push(d);
+    }
+    const keys = days.map(dayKeyFor);
+    const totals = {};
+    sessions.forEach(function (x) {
+      const idx = keys.indexOf(x.d);
+      if (idx < 0) return;
+      const s = x.sub || 'General';
+      if (!totals[s]) totals[s] = [0, 0, 0, 0, 0, 0, 0];
+      totals[s][idx] += x.dur || 0;
+    });
+    const subs = Object.keys(totals).sort(function (a, b) {
+      return totals[b].reduce(function (x, y) { return x + y; }, 0) -
+             totals[a].reduce(function (x, y) { return x + y; }, 0);
+    });
+    const col = [0, 0, 0, 0, 0, 0, 0];
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const we = days[6];
+    const label = days[0].getDate() + ' ' + MONTHS[days[0].getMonth()] + ' – ' + we.getDate() + ' ' + MONTHS[we.getMonth()];
+    const monthPrefix = we.getFullYear() + '-' + String(we.getMonth() + 1).padStart(2, '0');
+    const monthTotal = sessions
+      .filter(function (x) { return x.d && x.d.indexOf(monthPrefix) === 0; })
+      .reduce(function (a, x) { return a + (x.dur || 0); }, 0);
 
-      list.forEach(sj => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        const isSel = sj.n.trim().toLowerCase() === cur;
-        btn.className = 'pomo-sub-chip sj' + (isSel ? ' selected sel' : '');
+    const td = 'padding:4px 3px;text-align:center;font-size:10px;border-bottom:1px solid var(--b)';
+    let h = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">' +
+      '<button type="button" class="pom-wk-nav" data-pomwk="1" aria-label="Previous week" title="Previous week">&#8249;</button>' +
+      '<div style="font-size:11px;color:var(--m2);text-align:center">' + (_pomWk ? label : 'This week · ' + label) + '</div>' +
+      '<button type="button" class="pom-wk-nav" data-pomwk="-1" aria-label="Next week" title="Next week"' + (_pomWk ? '' : ' disabled') + '>&#8250;</button>' +
+      '</div>';
 
-        const lab = document.createElement('span');
-        lab.textContent = cleanSubName(sj.n);
-        btn.appendChild(lab);
+    if (!subs.length) {
+      h += '<div style="font-size:11px;color:var(--m2)">No study time this week.</div>';
+      box.innerHTML = h;
+      attachPomWeekNav(box);
+      return;
+    }
 
-        if (_pomEditMode) {
-          const x = document.createElement('span');
-          x.className = 'sj-x';
-          x.textContent = '×';
-          x.setAttribute('role', 'button');
-          x.setAttribute('aria-label', 'Delete ' + sj.n);
-          x.addEventListener('click', function (ev) {
-            ev.stopPropagation();
-            delPomSubject(sj.id || sj.n);
-          });
-          btn.appendChild(x);
-        }
+    h += '<div style="overflow-x:auto"><table><tr><th style="' + td + ';text-align:left">Subject</th>' +
+      ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (x) {
+        return '<th style="' + td + ';color:var(--m2)">' + x + '</th>';
+      }).join('') +
+      '<th style="' + td + ';color:var(--ai)">Week</th></tr>';
 
-        btn.addEventListener('click', function () {
-          if (!_pomEditMode) {
-            selectPomSubject(sj.n);
-          }
-        });
+    subs.forEach(function (s) {
+      totals[s].forEach(function (v, i) { col[i] += v; });
+      h += '<tr><td style="' + td + ';text-align:left">' + escapeHtml(s) + '</td>' +
+        totals[s].map(function (v) {
+          return '<td style="' + td + ';color:' + (v ? 'var(--tx)' : 'var(--mt)') + '">' + fmtTime(v) + '</td>';
+        }).join('') +
+        '<td style="' + td + ';font-weight:700;color:var(--ai)">' + fmtTime(totals[s].reduce(function (x, y) { return x + y; }, 0)) + '</td></tr>';
+    });
 
-        listEl.appendChild(btn);
+    h += '<tr><td style="' + td + ';text-align:left;font-weight:700">Total</td>' +
+      col.map(function (v) { return '<td style="' + td + ';font-weight:700">' + fmtTime(v) + '</td>'; }).join('') +
+      '<td style="' + td + ';font-weight:700;color:var(--ai)">' + fmtTime(col.reduce(function (x, y) { return x + y; }, 0)) + '</td></tr></table></div>' +
+      '<div style="font-size:11px;color:var(--m2);margin-top:8px">' + MONTHS[we.getMonth()] + ' total so far: <b style="color:var(--tx)">' + fmtTime(monthTotal) + '</b></div>';
+
+    box.innerHTML = h;
+    attachPomWeekNav(box);
+  }
+
+  function attachPomWeekNav(box) {
+    box.querySelectorAll('[data-pomwk]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        _pomWk = Math.max(0, _pomWk + parseInt(b.getAttribute('data-pomwk'), 10));
+        _lastLogSig = '';
+        renderPomLog();
       });
-
-      syncPomSubModalUI();
     });
   }
 
-  function syncPomSubModalUI() {
-    const editBtn = document.getElementById('pomSubEditBtn');
-    const hint = document.getElementById('pomSubHint');
-    const addRow = document.getElementById('pomSubAddRow');
+  function renderPomLog() {
+    const logEl = document.getElementById('pomLog');
+    if (!logEl) return;
+    const sessions = readLocalStore('pomSessions', []);
+    const list = Array.isArray(sessions) ? sessions : [];
+    const pd = readLocalStore('pd', {});
+    const today = (pd && pd[getTodayKey()]) || 0;
+    const last = list.length ? (list[list.length - 1].id || list[list.length - 1].ms || '') : '';
+    const sig = _pomWk + '|' + getTodayKey() + '|' + list.length + '|' + today + '|' + last;
+    if (sig === _lastLogSig) return;
+    _lastLogSig = sig;
 
-    if (editBtn) editBtn.textContent = _pomEditMode ? 'Done' : 'Edit subjects';
-    if (hint) {
-      hint.textContent = _pomEditMode
-        ? 'Tap × to delete a subject, or add a new one'
-        : 'Tap a subject to pick it';
+    renderPomSubjectTable(list);
+
+    const lim = new Date();
+    lim.setDate(lim.getDate() - 6);
+    const from = dayKeyFor(lim);
+    const recent = list.filter(function (x) { return x.d && x.d >= from; });
+    if (!recent.length) {
+      logEl.innerHTML = 'No sessions yet.';
+      return;
     }
-    if (addRow) {
-      addRow.style.display = _pomEditMode ? 'flex' : 'none';
-    }
-  }
 
-  function togglePomSubEdit() {
-    _pomEditMode = !_pomEditMode;
-    renderPomSubList();
-    if (_pomEditMode) {
-      const inp = document.getElementById('pomNewSub');
-      if (inp) setTimeout(() => inp.focus(), 50);
-    }
-  }
-
-  function addPomSubject() {
-    const inp = document.getElementById('pomNewSub');
-    if (!inp) return;
-    const name = inp.value.replace(/\s+/g, ' ').trim().slice(0, 28);
-    if (!name) return;
-
-    getPomSubjectsList(function (list) {
-      if (list.some(x => x.n.toLowerCase() === name.toLowerCase())) {
-        showChromeNotification('Subject exists', 'That subject is already in your list.');
-        return;
-      }
-      const newSub = {
-        id: 's_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-        n: name,
-        e: ''
-      };
-      list.push(newSub);
-      savePomSubjectsList(list);
-      inp.value = '';
-      renderPomSubList();
-      inp.focus();
+    const groups = {};
+    recent.forEach(function (x) {
+      if (!groups[x.d]) groups[x.d] = [];
+      groups[x.d].push(x);
     });
-  }
 
-  function delPomSubject(idOrName) {
-    getPomSubjectsList(function (list) {
-      const updated = list.filter(x => x.id !== idOrName && x.n !== idOrName);
-      savePomSubjectsList(updated);
-      renderPomSubList();
-    });
-  }
-
-  function resetPomSubjects() {
-    const fresh = POM_SUBJ_DEFAULT.map(x => ({ ...x }));
-    savePomSubjectsList(fresh);
-    renderPomSubList();
-  }
-
-  function openPomSubModal() {
-    const m = document.getElementById('pomSubModal');
-    if (m) {
-      _pomEditMode = false;
-      const customInp = document.getElementById('pomCustomSub');
-      if (customInp) customInp.value = '';
-      renderPomSubList();
-      m.classList.add('op');
-      m.style.display = 'flex';
-      setTimeout(() => {
-        if (customInp) customInp.focus();
-      }, 80);
-    }
-  }
-
-  function closePomSubModal() {
-    const m = document.getElementById('pomSubModal');
-    if (m) {
-      m.classList.remove('op');
-      m.style.display = 'none';
-    }
-  }
-
-  function selectPomSubject(subName) {
-    if (!subName) return;
-    const st = getPomoSavedState();
-    st.sub = subName;
-    st.u = Date.now();
-    st.dev = 'extension';
-    savePomoState(st);
-    updatePomoDisplay(st);
-    closePomSubModal();
-
-    // Broadcast update so any open web tabs instantly update
-    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-      chrome.tabs.query({}, function (tabs) {
-        if (!tabs) return;
-        tabs.forEach(t => {
-          if (t.id) {
-            chrome.tabs.sendMessage(t.id, {
-              type: 'POMO_STATE_CHANGED',
-              state: st,
-              origin: 'extension_subject_picker'
-            }).catch(() => {});
-          }
-        });
+    logEl.innerHTML = Object.keys(groups).sort().reverse().map(function (d) {
+      const rows = groups[d].slice().sort(function (a, b) {
+        const am = a.ms || 0;
+        const bm = b.ms || 0;
+        if (am !== bm) return bm - am;
+        return String(b.t || '').localeCompare(String(a.t || ''));
       });
+      const total = rows.reduce(function (a, x) { return a + (x.dur || 0); }, 0);
+      const rowHtml = rows.map(function (x) {
+        const paused = x.part
+          ? ' <span style="color:var(--bd)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:1em;height:1em;vertical-align:-.15em;fill:currentColor"><rect x="6" y="4.5" width="4.2" height="15" rx="1.4"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.4"/></svg> Paused at ' + escapeHtml(x.t || '') + ' · ' + fmtTime(x.dur) + '</span>'
+          : '';
+        return '<div style="padding:3px 0 3px 10px;border-bottom:1px solid var(--b);font-size:11px"><span style="color:var(--m2)">' +
+          escapeHtml(x.t || '') + '</span> · ' + escapeHtml(x.sub || 'General') + paused + '</div>';
+      }).join('');
+      return '<div style="margin-bottom:6px"><div style="padding:4px 0;font-size:11px;font-weight:700;color:var(--ai)">' +
+        d + ' — ' + fmtTime(total) + ' studied</div>' + rowHtml + '</div>';
+    }).join('');
+  }
+
+  // --- Susurrus NSDR player ---
+  function nsdrUI(on) {
+    const card = document.getElementById('ssrCard');
+    const btn = document.getElementById('ssrPlay');
+    if (card) card.setAttribute('data-state', on ? 'playing' : 'idle');
+    if (btn) {
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? 'Pause Susurrus' : 'Play Susurrus');
     }
   }
 
-  function selectCustomSubject() {
-    const inp = document.getElementById('pomCustomSub') || document.getElementById('pomNewSubInput');
-    if (!inp) return;
-    const name = inp.value.trim().slice(0, 28);
-    if (!name) return;
-    // Also save into subjects list if not yet there
-    getPomSubjectsList(function (list) {
-      if (!list.some(x => x.n.toLowerCase() === name.toLowerCase())) {
-        list.push({
-          id: 's_' + Date.now().toString(36),
-          n: name,
-          e: ''
+  function nsdrPaint(v) {
+    const seek = document.getElementById('ssrSeek');
+    if (seek) {
+      seek.value = v;
+      seek.style.setProperty('--p', v + '%');
+    }
+  }
+
+  function toggleNSDR() {
+    const audio = document.getElementById('nsdraudio');
+    if (!audio) return;
+    if (audio.paused) {
+      const p = audio.play();
+      if (p && p.catch) {
+        p.catch(function () {
+          showChromeNotification('Audio', 'Tap play again to start Susurrus.');
+          nsdrUI(false);
         });
-        savePomSubjectsList(list);
       }
-      selectPomSubject(name);
+      nsdrUI(true);
+    } else {
+      audio.pause();
+      nsdrUI(false);
+    }
+  }
+
+  function nsdrSeek(v) {
+    const audio = document.getElementById('nsdraudio');
+    if (audio && audio.duration) audio.currentTime = v / 100 * audio.duration;
+    const seek = document.getElementById('ssrSeek');
+    if (seek) seek.style.setProperty('--p', v + '%');
+  }
+
+  function nsdrRestart() {
+    const audio = document.getElementById('nsdraudio');
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+    nsdrUI(false);
+    nsdrPaint(0);
+    const cur = document.getElementById('ssrCur');
+    if (cur) cur.textContent = '0:00';
+  }
+
+  function nsdrFmt(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function initNSDR() {
+    const audio = document.getElementById('nsdraudio');
+    if (!audio) return;
+    audio.addEventListener('timeupdate', function () {
+      const cur = document.getElementById('ssrCur');
+      if (audio.duration) {
+        nsdrPaint(audio.currentTime / audio.duration * 100);
+        if (cur) cur.textContent = nsdrFmt(audio.currentTime);
+      }
     });
+    audio.addEventListener('play', function () { nsdrUI(true); });
+    audio.addEventListener('pause', function () { nsdrUI(false); });
+    audio.addEventListener('ended', function () {
+      nsdrUI(false);
+      nsdrPaint(0);
+      const cur = document.getElementById('ssrCur');
+      if (cur) cur.textContent = '0:00';
+    });
+    audio.addEventListener('loadedmetadata', function () {
+      const dur = document.getElementById('ssrDur');
+      if (dur) dur.textContent = nsdrFmt(audio.duration);
+    });
+    const stage = document.getElementById('ssrStage');
+    if (stage) stage.addEventListener('click', toggleNSDR);
+    const seek = document.getElementById('ssrSeek');
+    if (seek) seek.addEventListener('input', function () { nsdrSeek(this.value); });
+    const restart = document.getElementById('ssrRestart');
+    if (restart) restart.addEventListener('click', nsdrRestart);
   }
 
   // --- Wallpaper Synchronization Logic ---
@@ -2065,60 +2452,40 @@
 
   function initPomo() {
     ensureGaugeSvg();
-    const initSt = getPomoSavedState();
-    updatePomoDisplay(initSt);
+    updatePomoDisplay(getPomoSavedState());
+    hydratePomCaches(function () {
+      updatePomToday();
+      renderPomLog();
+    });
 
     // Initial subjects cache warm-up
     getPomSubjectsList();
 
-    document.querySelectorAll('.pomo-presets .pomo-chip').forEach(chip => {
-      chip.addEventListener('click', function () {
-        document.querySelectorAll('.pomo-presets .pomo-chip').forEach(c => c.classList.remove('on'));
-        this.classList.add('on');
-        const fMin = parseInt(this.getAttribute('data-focus'), 10) || 50;
-        const st = getPomoSavedState();
-        st.run = false;
-        st.endTs = null;
-        st.mode = 'focus';
-        st.phaseLen = fMin * 60;
-        st.rem = fMin * 60;
-        savePomoState(st);
-        clearInterval(pomoInterval);
-        updatePomoDisplay(st);
-      });
-    });
+    const btn = document.getElementById('pomBtn');
+    if (btn) btn.addEventListener('click', togglePomo);
 
-    const startBtn = document.getElementById('pomoStartBtn');
-    if (startBtn) startBtn.addEventListener('click', togglePomo);
-
-    const resetBtn = document.getElementById('pomoResetBtn');
-    if (resetBtn) resetBtn.addEventListener('click', resetPomo);
+    const endBtn = document.getElementById('pomEndBtn');
+    if (endBtn) endBtn.addEventListener('click', pomEndSession);
 
     const stepDown = document.getElementById('pomoStepDown');
-    if (stepDown) {
-      stepDown.addEventListener('click', function () {
-        const st = getPomoSavedState();
-        if (st.run || st.cur > 0) return;
-        st.tot = Math.max(1, (st.tot || 2) - 1);
-        savePomoState(st);
-        updatePomoDisplay(st);
-      });
-    }
+    if (stepDown) stepDown.addEventListener('click', function () { adjS(-1); });
 
     const stepUp = document.getElementById('pomoStepUp');
-    if (stepUp) {
-      stepUp.addEventListener('click', function () {
-        const st = getPomoSavedState();
-        if (st.run || st.cur > 0) return;
-        st.tot = Math.min(12, (st.tot || 2) + 1);
-        savePomoState(st);
-        updatePomoDisplay(st);
+    if (stepUp) stepUp.addEventListener('click', function () { adjS(1); });
+
+    const soundSel = document.getElementById('pomSoundStyleSel');
+    if (soundSel) {
+      soundSel.value = getPomSoundStyle();
+      soundSel.addEventListener('change', function () {
+        setPomSoundStyle(this.value);
+        warmAudio();
+        pomSound('session');
       });
     }
 
     // Subject button & modal handlers
     const subBtn = document.getElementById('pomoSubBtn');
-    if (subBtn) subBtn.addEventListener('click', openPomSubModal);
+    if (subBtn) subBtn.addEventListener('click', openPomSubjectModal);
 
     const subCloseBtn = document.getElementById('pomSubModalCloseBtn');
     if (subCloseBtn) subCloseBtn.addEventListener('click', closePomSubModal);
@@ -2151,47 +2518,40 @@
     const resetSubBtn = document.getElementById('pomResetSubBtn');
     if (resetSubBtn) resetSubBtn.addEventListener('click', resetPomSubjects);
 
-    const customSubBtn = document.getElementById('pomCustomSubBtn');
-    if (customSubBtn) customSubBtn.addEventListener('click', selectCustomSubject);
-
     const customSubInp = document.getElementById('pomCustomSub');
     if (customSubInp) {
       customSubInp.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          selectCustomSubject();
+          beginPomSession();
         } else if (e.key === 'Escape') {
           closePomSubModal();
         }
       });
     }
 
-    const legacyNewSubInp = document.getElementById('pomNewSubInput');
-    if (legacyNewSubInp) {
-      legacyNewSubInp.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          selectCustomSubject();
-        }
-      });
-    }
+    const beginBtn = document.getElementById('pomBeginBtn');
+    if (beginBtn) beginBtn.addEventListener('click', beginPomSession);
 
-    // Storage change listener: when web app or background changes pom_state, sync popup immediately
+    initNSDR();
+
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
       chrome.storage.onChanged.addListener(function (changes, area) {
         if (area !== 'local') return;
         if (changes.pom_state || changes.m_pomLive) {
           syncPomoFromStorage();
         }
-        if (changes.m_pd || changes.pd) {
-          const pd = (changes.m_pd && changes.m_pd.newValue) || (changes.pd && changes.pd.newValue) || {};
-          const todayEl = document.getElementById('pomoToday');
-          if (todayEl) todayEl.textContent = pd[getTodayKey()] || 0;
+        if (changes.m_pomSessions || changes.pomSessions || changes.m_pd || changes.pd) {
+          hydratePomCaches(function () {
+            updatePomToday();
+            renderPomLog();
+          });
         }
         if (changes.m_pomSubjects || changes.pomSubjects) {
-          const subs = (changes.m_pomSubjects && changes.m_pomSubjects.newValue) || (changes.pomSubjects && changes.pomSubjects.newValue);
+          const subs = (changes.m_pomSubjects && changes.m_pomSubjects.newValue) ||
+                       (changes.pomSubjects && changes.pomSubjects.newValue);
           if (Array.isArray(subs)) {
-            _cachedSubjects = subs;
+            _cachedSubjects = normalizePomSubjects(subs);
             renderPomSubList();
           }
         }
@@ -2204,11 +2564,16 @@
     window.addEventListener('storage', function (e) {
       if (e.key === 'pom_state' || e.key === 'm_pomLive') {
         syncPomoFromStorage();
+      } else if (e.key === 'm_pomSessions' || e.key === 'm_pd' || e.key === 'pomSessions' || e.key === 'pd') {
+        hydratePomCaches(function () {
+          updatePomToday();
+          renderPomLog();
+        });
       } else if (e.key === 'm_pomSubjects' || e.key === 'pomSubjects') {
         try {
           const subs = JSON.parse(e.newValue);
           if (Array.isArray(subs)) {
-            _cachedSubjects = subs;
+            _cachedSubjects = normalizePomSubjects(subs);
             renderPomSubList();
           }
         } catch (_) {}
@@ -2217,7 +2582,10 @@
       }
     });
 
+    document.addEventListener('pointerdown', warmAudio, { once: true, passive: true });
+
     syncPomoFromStorage();
+    renderPomLog();
   }
 
   function showChromeNotification(title, message) {

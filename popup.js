@@ -424,6 +424,8 @@
     if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
     if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
 
+    initNavTabsManagement();
+
     try {
       const p = new URLSearchParams(window.location.search);
       const t = p.get('tab') || window.location.hash.replace('#', '');
@@ -450,6 +452,182 @@
     else if (tab === 'countdown') renderCountdowns();
     else if (tab === 'notes') initNotes();
     else if (tab === 'search') loadOpenTabs();
+  }
+
+  // --- Navigation Tabs Visibility Management (Customizable via DP button) ---
+  const ALL_TABS = [
+    { id: 'time', name: 'Time', desc: 'Screen Time & Hub', icon: '<rect x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect x="13" y="3.5" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="15" width="7.5" height="5.5" rx="2"/>' },
+    { id: 'habits', name: 'Habits', desc: 'Daily Habits & Streaks', icon: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/>' },
+    { id: 'tasks', name: 'Tasks', desc: 'Tasks & Checklists', icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/>' },
+    { id: 'pomo', name: 'Pomo', desc: 'Pomodoro Focus Timer', icon: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/>' },
+    { id: 'countdown', name: 'Count', desc: 'Target Countdowns', icon: '<path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/>' },
+    { id: 'notes', name: 'Notes', desc: 'Quick Scratchpad', icon: '<path d="M6 3.5h9l3.5 3.5v13.5H6zM14.5 3.5V7.5h4M9 12h6M9 16h6"/>' },
+    { id: 'search', name: 'Search', desc: 'Universal Search', icon: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>' }
+  ];
+
+  function getHiddenNavTabs() {
+    let list = [];
+    try {
+      const stored = localStorage.getItem('m_navHidden') || localStorage.getItem('navHidden');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) list = parsed;
+      }
+    } catch (_) {}
+    return list;
+  }
+
+  function saveHiddenNavTabs(list) {
+    if (!Array.isArray(list)) list = [];
+    try {
+      localStorage.setItem('m_navHidden', JSON.stringify(list));
+      localStorage.setItem('navHidden', JSON.stringify(list));
+    } catch (_) {}
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ m_navHidden: list, navHidden: list }, () => {});
+    }
+    if (typeof push === 'function' && typeof _user !== 'undefined' && _user) {
+      try { push('navHidden', true); } catch (_) {}
+    }
+  }
+
+  function applyNavTabsVisibility() {
+    const hidden = getHiddenNavTabs();
+    const tabBtns = document.querySelectorAll('.tnb .nb');
+    let firstVisibleTab = null;
+    let currentIsVisible = false;
+
+    tabBtns.forEach(btn => {
+      const t = btn.getAttribute('data-tab');
+      const isHidden = hidden.includes(t);
+      btn.style.display = isHidden ? 'none' : '';
+      if (!isHidden) {
+        if (!firstVisibleTab) firstVisibleTab = t;
+        if (t === activeTabName) currentIsVisible = true;
+      }
+    });
+
+    if (!currentIsVisible && firstVisibleTab) {
+      switchTab(firstVisibleTab);
+    }
+  }
+
+  function openNavTabsModal() {
+    renderNavTabsToggleList();
+    const modal = document.getElementById('navTabsModal');
+    if (modal) modal.classList.add('op');
+  }
+
+  function closeNavTabsModal() {
+    const modal = document.getElementById('navTabsModal');
+    if (modal) modal.classList.remove('op');
+  }
+
+  function renderNavTabsToggleList() {
+    const container = document.getElementById('navTabsToggleList');
+    if (!container) return;
+    const hidden = getHiddenNavTabs();
+
+    let html = '';
+    ALL_TABS.forEach(t => {
+      const isChecked = !hidden.includes(t.id);
+      html += `
+        <div class="nav-tab-toggle-row">
+          <div class="nav-tab-toggle-info">
+            <div class="nav-tab-toggle-icon">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${t.icon}</svg>
+            </div>
+            <div class="nav-tab-toggle-texts">
+              <div class="nav-tab-toggle-name">${t.name}</div>
+              <div class="nav-tab-toggle-desc">${t.desc}</div>
+            </div>
+          </div>
+          <label class="tab-switch" title="Toggle ${t.name} tab">
+            <input type="checkbox" class="nav-tab-toggle-input" data-tab-id="${t.id}" ${isChecked ? 'checked' : ''}>
+            <span class="tab-switch-slider"></span>
+          </label>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.nav-tab-toggle-input').forEach(inp => {
+      inp.addEventListener('change', function () {
+        const tabId = this.getAttribute('data-tab-id');
+        let currentHidden = getHiddenNavTabs();
+        
+        let newHidden = currentHidden.filter(id => id !== tabId);
+        if (!this.checked) {
+          newHidden.push(tabId);
+        }
+
+        const remainingVisible = ALL_TABS.filter(t => !newHidden.includes(t.id)).length;
+        if (remainingVisible < 1) {
+          this.checked = true;
+          alert('At least one tab must remain active.');
+          return;
+        }
+
+        saveHiddenNavTabs(newHidden);
+        applyNavTabsVisibility();
+      });
+    });
+  }
+
+  function initNavTabsManagement() {
+    applyNavTabsVisibility();
+
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['m_navHidden', 'navHidden'], function (res) {
+        const val = res.m_navHidden || res.navHidden;
+        if (Array.isArray(val)) {
+          try {
+            localStorage.setItem('m_navHidden', JSON.stringify(val));
+            localStorage.setItem('navHidden', JSON.stringify(val));
+          } catch (_) {}
+          applyNavTabsVisibility();
+        }
+      });
+    }
+
+    const btnGuest = document.getElementById('authManageTabsBtnGuest');
+    if (btnGuest) btnGuest.addEventListener('click', openNavTabsModal);
+
+    const btnUser = document.getElementById('authManageTabsBtn');
+    if (btnUser) btnUser.addEventListener('click', openNavTabsModal);
+
+    const closeBtn = document.getElementById('navTabsModalClose');
+    if (closeBtn) closeBtn.addEventListener('click', closeNavTabsModal);
+
+    const doneBtn = document.getElementById('navTabsDoneBtn');
+    if (doneBtn) doneBtn.addEventListener('click', closeNavTabsModal);
+
+    const modal = document.getElementById('navTabsModal');
+    if (modal) {
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) closeNavTabsModal();
+      });
+    }
+
+    const resetBtn = document.getElementById('navTabsResetAllBtn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function () {
+        saveHiddenNavTabs([]);
+        applyNavTabsVisibility();
+        renderNavTabsToggleList();
+      });
+    }
+
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener(function (changes, area) {
+        if (area !== 'local') return;
+        if (changes.m_navHidden || changes.navHidden) {
+          applyNavTabsVisibility();
+          renderNavTabsToggleList();
+        }
+      });
+    }
   }
 
   // =====================================================================
@@ -1448,7 +1626,7 @@
   let _lastGaugeDeg = null;
 
   function ensureGaugeSvg() {
-    const ring = document.getElementById('pomoRing');
+    const ring = document.getElementById('pomRing') || document.getElementById('pomoRing');
     if (!ring || ring.querySelector('.gz')) return;
 
     function P(r, d) {
@@ -1493,7 +1671,7 @@
 
   function paintGauge(st) {
     ensureGaugeSvg();
-    const ring = document.getElementById('pomoRing');
+    const ring = document.getElementById('pomRing') || document.getElementById('pomoRing');
     if (!ring) return;
 
     const a = st.phaseLen || (st.mode === 'focus' ? 3000 : 600);
@@ -1886,6 +2064,10 @@
   }
 
   function initPomo() {
+    ensureGaugeSvg();
+    const initSt = getPomoSavedState();
+    updatePomoDisplay(initSt);
+
     // Initial subjects cache warm-up
     getPomSubjectsList();
 

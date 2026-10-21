@@ -380,11 +380,18 @@ body.pink::after {
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--tx);
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  font-size: 0;
+  line-height: 0;
+  background: none !important;
+  border-radius: 9px;
+  overflow: hidden;
   cursor: pointer;
   user-select: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -396,24 +403,19 @@ body.pink::after {
 }
 
 .logo:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .logo .logo-img {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   object-fit: contain;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  flex-shrink: 0;
-}
-
-.logo .logo-title {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--tx);
-  line-height: 1;
+  object-position: center;
+  border-radius: 9px;
+  transform: none;
 }
 
 .tb-actions {
@@ -539,14 +541,25 @@ body.pink::after {
 }
 
 .nb .ic {
-  width: 14px;
-  height: 14px;
-  font-size: 11px;
-  line-height: 1;
+  width: 16px;
+  height: 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  line-height: 1;
+}
+
+.nb .ic svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.8;
+  vertical-align: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
 }
 
 .nb .lbl {
@@ -555,6 +568,30 @@ body.pink::after {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* =====================================================================
+   M2028 Minimal Icon System (Exact Replica from index.html)
+   ===================================================================== */
+.ei, .eiw { display: inline; }
+.ei > svg { display: none; }
+body:not(.pink) .ei > .ec { display: none !important; }
+body:not(.pink) .ei > svg {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+body:not(.pink) .ei > svg.sm { width: 0.9em; height: 0.9em; vertical-align: -0.1em; }
+body:not(.pink) .ct svg, body:not(.pink) .sp svg, body:not(.pink) .auth-icon svg {
+  vertical-align: -0.15em;
+  stroke-width: 1.8;
 }
 
 /* =====================================================================

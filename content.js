@@ -124,6 +124,16 @@
           window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_SECTION', section: 'tasks' }, '*');
         }
       }
+      if (changes.m_profilePic || changes.profilePic) {
+        const pic = (changes.m_profilePic && changes.m_profilePic.newValue) || (changes.profilePic && changes.profilePic.newValue);
+        if (pic) {
+          try {
+            window.localStorage.setItem('m_profilePic', JSON.stringify(pic));
+            window.localStorage.setItem('profilePic', JSON.stringify(pic));
+          } catch (e) {}
+          window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_PROFILE' }, '*');
+        }
+      }
     });
   }
 
@@ -186,6 +196,15 @@
           const cc = JSON.parse(customRaw);
           syncObj.customColors = cc;
           syncObj.m_customColors = cc;
+        }
+        // Also check profile photo / app logo
+        const picRaw = window.localStorage.getItem('m_profilePic') || window.localStorage.getItem('profilePic');
+        if (picRaw) {
+          try {
+            const p = JSON.parse(picRaw);
+            syncObj.profilePic = p;
+            syncObj.m_profilePic = p;
+          } catch (e) {}
         }
         // Also check if user is logged into Supabase on web app
         const supaTok = window.localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token');

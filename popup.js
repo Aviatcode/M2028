@@ -226,14 +226,14 @@
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) {
       if (validTheme === 'light') {
-        themeBtn.title = 'Current: Light ☀️ (Click for Girl Mode 🌸)';
-        themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">🌸</span>';
+        themeBtn.title = 'Current: Light (Click for Girl Mode)';
+        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5c-2-3-1-5.5 0-6.5 1 1 2 3.5 0 6.5zM14.5 12c3-2 5.5-1 6.5 0-1 1-3.5 2-6.5 0zM12 14.5c2 3 1 5.5 0 6.5-1-1-2-3.5 0-6.5zM9.5 12c-3 2-5.5 1-6.5 0 1-1 3.5-2 6.5 0z"/></svg>';
       } else if (validTheme === 'pink') {
-        themeBtn.title = 'Current: Girl Mode 🌸 (Click for Dark Mode 🌙)';
-        themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">🌙</span>';
+        themeBtn.title = 'Current: Girl Mode (Click for Dark Mode)';
+        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
       } else {
-        themeBtn.title = 'Current: Dark 🌙 (Click for Light Mode ☀️)';
-        themeBtn.innerHTML = '<span style="font-size:14px;line-height:1">☀️</span>';
+        themeBtn.title = 'Current: Dark (Click for Light Mode)';
+        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>';
       }
     }
 
@@ -301,6 +301,12 @@
     if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
     if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
     if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
+
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const t = p.get('tab') || window.location.hash.replace('#', '');
+      if (t) switchTab(t);
+    } catch (e) {}
   }
 
   function switchTab(tab) {
@@ -797,11 +803,13 @@
                 <div class="hr-label">
                   <span class="hr-text">${escapeHtml(h.label)}</span>
                 </div>
-                ${r > 0 ? `<span class="hr-streak">🔥 ${r}</span>` : ''}
+                ${r > 0 ? `<span class="hr-streak"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:2px"><path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1-.4-1.8-1-2.5 3 1 5 3.5 5 6.5a6.5 6.5 0 0 1-13 0c0-4 3-6 6.5-12z"/></svg>${r}</span>` : ''}
                 <button class="ract del-hab" data-delhid="${h.id}" title="Delete Habit">✕</button>
               </div>
             `;
           }).join('');
+
+          procEmojiNodes(listEl);
 
           listEl.querySelectorAll('.hc').forEach(btn => {
             btn.addEventListener('click', function (e) {
@@ -902,13 +910,13 @@
       const listEl = document.getElementById('tskList');
       if (listEl) {
         if (pending.length === 0) {
-          listEl.innerHTML = '<div class="empty-msg">🎉 All tasks done! Add a new item above.</div>';
+          listEl.innerHTML = '<div class="empty-msg">All tasks done! Add a new item above.</div>';
         } else {
           listEl.innerHTML = pending.map(t => {
             let dueChip = '';
             if (t.date) {
               const cls = t.date < today ? 'chip bad' : t.date === today ? 'chip warn' : 'chip set';
-              dueChip = `<span class="${cls}">📅 ${t.date}</span>`;
+              dueChip = `<span class="${cls}">${t.date}</span>`;
             }
             return `
               <div class="row" data-tid="${t.id}">
@@ -919,6 +927,7 @@
               </div>
             `;
           }).join('');
+          procEmojiNodes(listEl);
         }
 
         listEl.querySelectorAll('.rck').forEach(btn => {
@@ -952,6 +961,7 @@
               <button class="ract del" data-tid="${t.id}" title="Delete task">✕</button>
             </div>
           `).join('');
+          procEmojiNodes(doneList);
 
           doneList.querySelectorAll('.rck').forEach(btn => {
             btn.addEventListener('click', function () {
@@ -1441,15 +1451,16 @@
               </div>
               <div class="cd-days-row">
                 <span class="cd-big-days">${isPast ? '0' : days}d</span>
-                <span class="cd-time-label">${isPast ? 'Goal Reached 🎉' : `${hours}h ${mins}m ${secs}s left`}</span>
+                <span class="cd-time-label">${isPast ? 'Goal Reached' : `${hours}h ${mins}m ${secs}s left`}</span>
               </div>
               <div class="cd-footer-row">
-                <span>📅 Target: ${c.date}</span>
+                <span>Target: ${c.date}</span>
                 <span class="tag t-ai">${isPast ? 'Completed' : 'T-' + days}</span>
               </div>
             </div>
           `;
         }).join('');
+        procEmojiNodes(listEl);
 
         listEl.querySelectorAll('.ract.del').forEach(btn => {
           btn.addEventListener('click', function () {
@@ -1749,7 +1760,7 @@
   const SUPA_AUTH_STORE_KEY = "sb-" + SUPA_URL.replace("https://", "").split(".")[0] + "-auth-token";
 
   let _authSession = null;
-  const SYNC_KEYS = ['habs', 'hd', 'tasks', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors'];
+  const SYNC_KEYS = ['habs', 'hd', 'tasks', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
   const _pushTimers = {};
 
   function setAuthAlert(msg, isSuccess) {
@@ -2088,12 +2099,25 @@
         }
       }
 
+      // 6. Profile Photo & Logo Sync
+      if (dataMap.profilePic !== undefined) {
+        try {
+          localStorage.setItem('m_profilePic', JSON.stringify(dataMap.profilePic));
+          localStorage.setItem('profilePic', JSON.stringify(dataMap.profilePic));
+        } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_profilePic: dataMap.profilePic, profilePic: dataMap.profilePic });
+        }
+        syncLogoAndAvatar();
+      }
+
       // Refresh popup UI views with cloud data
       initTheme();
       renderHabits();
       renderTasks();
       renderCountdowns();
       syncPomoFromStorage();
+      syncLogoAndAvatar();
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       if (statusEl) statusEl.textContent = `All items synced with cloud at ${timeStr}`;
@@ -2240,7 +2264,9 @@
       authPwToggle.addEventListener('click', function () {
         const isPw = authPwInp.type === 'password';
         authPwInp.type = isPw ? 'text' : 'password';
-        authPwToggle.textContent = isPw ? '🙈' : '👁';
+        authPwToggle.innerHTML = isPw 
+          ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+          : '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>';
       });
     }
 
@@ -2277,7 +2303,155 @@
   }
 
   // =====================================================================
-  // 11. Real-Time Two-Way Storage Synchronizer
+  // 11. App Logo & User Avatar Sync Controller
+  // =====================================================================
+  function syncLogoAndAvatar() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['m_profilePic', 'profilePic'], function (res) {
+        const p = res.m_profilePic || res.profilePic;
+        applyAvatarData(p);
+      });
+    } else {
+      try {
+        const raw = localStorage.getItem('m_profilePic') || localStorage.getItem('profilePic');
+        if (raw) {
+          const p = JSON.parse(raw);
+          applyAvatarData(p);
+        }
+      } catch (e) {}
+    }
+  }
+
+  function applyAvatarData(p) {
+    const logoImg = document.getElementById('extLogoImg');
+    const authIcon = document.getElementById('authBtnIcon');
+    const cardAvatar = document.getElementById('authCardAvatar');
+    if (p && p.d && typeof p.d === 'string' && p.d.indexOf('data:image/') === 0) {
+      if (logoImg) logoImg.src = p.d;
+      if (authIcon) authIcon.innerHTML = `<img src="${p.d}" style="width:14px;height:14px;border-radius:50%;object-fit:cover" alt="">`;
+      if (cardAvatar) cardAvatar.innerHTML = `<img src="${p.d}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" alt="">`;
+    }
+  }
+
+  // =====================================================================
+  // 12. Minimal Vector Icon Engine & Emoji Converter (Copied from index.html)
+  // Replaces all raw emojis with minimal 1.8-stroke SVG vector icons
+  // =====================================================================
+  const IC = {
+    "pen":"<path d='M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z'/><path d='M14.5 6.5l3 3'/>",
+    "flame":"<path d='M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1-.4-1.8-1-2.5 3 1 5 3.5 5 6.5a6.5 6.5 0 0 1-13 0c0-4 3-6 6.5-12z'/>",
+    "dumbbell":"<path d='M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11'/>",
+    "check":"<path d='M5 12.5l4.5 4.5L19 7.5'/>",
+    "checkc":"<circle cx='12' cy='12' r='9'/><path d='M8 12.5l2.8 2.8L16 9.5'/>",
+    "checksq":"<rect x='3.5' y='3.5' width='17' height='17' rx='4'/><path d='M8 12.5l2.8 2.8L16 9.5'/>",
+    "chart":"<path d='M4 20V10M10 20V4M16 20v-7M21 20H3'/>",
+    "book":"<path d='M12 6.5C10.3 5.2 8 4.5 4 4.5v13c4 0 6.3.7 8 2 1.7-1.3 4-2 8-2v-13c-4 0-6.3.7-8 2z'/><path d='M12 6.5v13'/>",
+    "cpu":"<rect x='6' y='6' width='12' height='12' rx='2.5'/><rect x='9.5' y='9.5' width='5' height='5' rx='1'/><path d='M9 2.5v3M15 2.5v3M9 18.5v3M15 18.5v3M2.5 9h3M2.5 15h3M18.5 9h3M18.5 15h3'/>",
+    "refresh":"<path d='M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4'/>",
+    "bell":"<path d='M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z'/><path d='M10 21h4'/>",
+    "trash":"<path d='M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3'/>",
+    "trophy":"<path d='M8 4h8v5a4 4 0 0 1-8 0zM8 6H4.5a2.5 2.5 0 0 0 3 3.5M16 6h3.5a2.5 2.5 0 0 1-3 3.5M12 13v4M8.5 20h7M9.5 17h5'/>",
+    "image":"<rect x='3.5' y='4.5' width='17' height='15' rx='3'/><circle cx='9' cy='10' r='1.5'/><path d='M4 17l5-4.5 3.5 3L16 12l4 4'/>",
+    "clock":"<circle cx='12' cy='13' r='7.5'/><path d='M12 9.5V13l2.5 1.5M9.5 3h5'/>",
+    "alarm":"<circle cx='12' cy='13' r='7.5'/><path d='M12 9.5V13l2.5 1.5M4.5 5.5l3-2M19.5 5.5l-3-2'/>",
+    "sparkle":"<path d='M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z'/>",
+    "flower":"<circle cx='12' cy='12' r='2.5'/><path d='M12 9.5c-2-3-1-5.5 0-6.5 1 1 2 3.5 0 6.5zM14.5 12c3-2 5.5-1 6.5 0-1 1-3.5 2-6.5 0zM12 14.5c2 3 1 5.5 0 6.5-1-1-2-3.5 0-6.5zM9.5 12c-3 2-5.5 1-6.5 0 1-1 3.5-2 6.5 0z'/>",
+    "cal":"<rect x='3.5' y='5' width='17' height='15.5' rx='3'/><path d='M8 3v4M16 3v4M3.5 10h17'/>",
+    "calg":"<rect x='3.5' y='5' width='17' height='15.5' rx='3'/><path d='M8 3v4M16 3v4M3.5 10h17M8 14h2M14 14h2M8 17.5h2'/>",
+    "timer":"<circle cx='12' cy='13.5' r='7.5'/><path d='M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2'/>",
+    "heart":"<path d='M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.5 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z'/>",
+    "moon":"<path d='M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z'/>",
+    "gear":"<circle cx='12' cy='12' r='3'/><path d='M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8'/>",
+    "news":"<rect x='4' y='4.5' width='16' height='15' rx='3'/><path d='M8 9h8M8 12.5h8M8 16h5'/>",
+    "rocket":"<path d='M12 3c3.5 2 5 5.5 4.5 10l-2 2h-5l-2-2C7 8.5 8.5 5 12 3zM9.5 15l-3 1.5.5-3.5M14.5 15l3 1.5-.5-3.5M12 18v3'/><circle cx='12' cy='10' r='1.5'/>",
+    "coffee":"<path d='M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5v2M11.5 3.5v2'/>",
+    "play":"<path d='M8 5.5v13l11-6.5z'/>",
+    "hourglass":"<path d='M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5'/>",
+    "link":"<path d='M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1'/>",
+    "map":"<path d='M9 4.5L3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5zM9 4.5v13M15 6.5v13'/>",
+    "x":"<path d='M6 6l12 12M18 6L6 18'/>",
+    "eye":"<path d='M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z'/><circle cx='12' cy='12' r='3'/>",
+    "user":"<circle cx='12' cy='8' r='3.8'/><path d='M4.5 20c.7-3.8 3.7-6 7.5-6s6.8 2.2 7.5 6'/>",
+    "home":"<path d='M4 11l8-7 8 7v8.5a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 19.5zM10 21v-6h4v6'/>",
+    "warn":"<path d='M12 4l9 16H3zM12 10v4.5M12 17.5v.5'/>",
+    "palette":"<path d='M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.5-2.2-.5-1.2.2-2.3 1.5-2.3H17a3.5 3.5 0 0 0 3.5-3.5C20.5 7 16.7 3.5 12 3.5z'/><circle cx='8' cy='11' r='1'/><circle cx='11.5' cy='7.5' r='1'/><circle cx='16' cy='9' r='1'/>",
+    "bolt":"<path d='M13 3L5 13.5h6L10 21l8-10.5h-6z'/>",
+    "star":"<path d='M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8L3.6 9.6l5.8-.8z'/>",
+    "gem":"<path d='M6 4h12l3.5 5L12 20.5 2.5 9zM2.5 9h19M9 4l-1.5 5L12 20.5 16.5 9 15 4'/>",
+    "crown":"<path d='M3.5 8l4.5 4 4-6.5 4 6.5 4.5-4-1.5 11h-14z'/>",
+    "target":"<circle cx='12' cy='12' r='8.5'/><circle cx='12' cy='12' r='4.5'/><circle cx='12' cy='12' r='1'/>",
+    "note":"<path d='M6 3.5h9l3.5 3.5v13.5H6zM14.5 3.5V7.5h4M9 12h6M9 16h6'/>",
+    "film":"<rect x='3.5' y='4.5' width='17' height='15' rx='2.5'/><path d='M8 4.5v15M16 4.5v15M3.5 9.5H8M3.5 14.5H8M16 9.5h4.5M16 14.5h4.5'/>",
+    "medal":"<circle cx='12' cy='15' r='5'/><path d='M8.5 3.5L10.5 10.5M15.5 3.5L13.5 10.5'/>",
+    "sun":"<circle cx='12' cy='12' r='4'/><path d='M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4'/>",
+    "globe":"<circle cx='12' cy='12' r='8.5'/><path d='M3.5 12h17M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.5-3.5-8.5s1-6 3.5-8.5z'/>",
+    "search":"<circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/>"
+  };
+
+  const EM = {
+    "✓":"check","✗":"x","✕":"x","✏":"pen","🔥":"flame","💪":"dumbbell","✅":"checkc","📊":"chart","📚":"book",
+    "🤖":"cpu","🔄":"refresh","🔔":"bell","🗑":"trash","🏆":"trophy","🖼":"image","⏰":"alarm","✨":"sparkle",
+    "🌺":"flower","🌸":"flower","☑":"checksq","☑️":"checksq","📅":"cal","🗓":"calg","⏱":"timer","⏱️":"timer","💗":"heart","💕":"heart",
+    "💖":"heart","🌙":"moon","⚙":"gear","📰":"news","🚀":"rocket","☕":"coffee","▶":"play","⏳":"hourglass",
+    "🔗":"link","🗺":"map","🎉":"sparkle","👁":"eye","👤":"user","🏠":"home","⚠":"warn","⚠️":"warn","🎨":"palette",
+    "⚡":"bolt","🌟":"star","💎":"gem","👑":"crown","⭐":"star","❌":"x","📖":"book","🎯":"target","📝":"note",
+    "🎬":"film","☀":"sun","☀️":"sun","🌷":"flower","🌻":"flower","💐":"flower","🌼":"flower","🌐":"globe","🔍":"search","⏸️":"play","⏸":"play"
+  };
+
+  const KEYS = Object.keys(EM).sort(function(a,b){return b.length-a.length});
+  const RX = new RegExp("(?:"+KEYS.map(function(k){return k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}).join("|")+")\\uFE0F?|[\\uD83C-\\uD83E][\\uDC00-\\uDFFF]\\uFE0F?|[\\u2600-\\u27BF\\u2B00-\\u2BFF\\u23E9-\\u23FA]\\uFE0F?","g");
+  const SKIP_TAGS = {SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,SELECT:1,OPTION:1,SVG:1,svg:1,NOSCRIPT:1,TITLE:1,CODE:1};
+
+  function svgIcon(k){
+    const b = IC[k];
+    return b ? '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">'+b+'</svg>' : '';
+  }
+
+  function convEmojiToSvg(txt){
+    return txt.replace(RX, function(m){
+      const base = m.replace(/\uFE0F/g,"");
+      const k = EM[base] || EM[m];
+      return '\u0001' + escapeHtml(m) + '\u0002' + (k !== undefined ? k : "") + '\u0003';
+    });
+  }
+
+  function procEmojiNodes(root){
+    if (!root) return;
+    const isPink = document.body && document.body.classList.contains('pink');
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function(n){
+        const p = n.parentNode;
+        if (!p) return NodeFilter.FILTER_REJECT;
+        if (SKIP_TAGS[p.nodeName]) return NodeFilter.FILTER_REJECT;
+        if (p.closest && p.closest('.ei,[contenteditable="true"],select')) return NodeFilter.FILTER_REJECT;
+        RX.lastIndex = 0;
+        return RX.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    const list = [];
+    let n;
+    while ((n = w.nextNode())) list.push(n);
+    list.forEach(function(t){
+      const out = convEmojiToSvg(t.nodeValue);
+      const frag = document.createElement("span");
+      const parts = out.split("\u0001");
+      frag.className = "eiw";
+      if (parts[0]) frag.appendChild(document.createTextNode(parts[0]));
+      for (let i = 1; i < parts.length; i++) {
+        const a = parts[i].split("\u0002");
+        const b = a[1].split("\u0003");
+        const sp = document.createElement("span");
+        sp.className = "ei";
+        sp.innerHTML = '<span class="ec">' + a[0] + '</span>' + svgIcon(b[0]);
+        frag.appendChild(sp);
+        if (b[1]) frag.appendChild(document.createTextNode(b[1]));
+      }
+      if (t.parentNode) t.parentNode.replaceChild(frag, t);
+    });
+  }
+
+  // =====================================================================
+  // 13. Real-Time Two-Way Storage Synchronizer
   // =====================================================================
   window.addEventListener('storage', function (e) {
     if (e.key === 'm_theme' || e.key === 'm_customColors' || e.key === 'theme') {
@@ -2292,6 +2466,8 @@
       syncPomoFromStorage();
     } else if (e.key === 'm_authSession' || e.key === SUPA_AUTH_STORE_KEY) {
       initAuth();
+    } else if (e.key === 'm_profilePic' || e.key === 'profilePic') {
+      syncLogoAndAvatar();
     }
   });
 
@@ -2313,6 +2489,9 @@
         if (changes.pom_state || changes.m_pom_state) {
           syncPomoFromStorage();
         }
+        if (changes.m_profilePic || changes.profilePic) {
+          syncLogoAndAvatar();
+        }
         if (changes.m_authSession) {
           _authSession = (changes.m_authSession && changes.m_authSession.newValue) || null;
           updateAuthUI();
@@ -2326,6 +2505,7 @@
   // Initialization
   // =====================================================================
   document.addEventListener('DOMContentLoaded', function () {
+    syncLogoAndAvatar();
     initTheme();
     initNav();
     initAuthListeners();
@@ -2337,6 +2517,18 @@
     renderCountdowns();
     initNotes();
     initQuickSearch();
+    procEmojiNodes(document.body);
+
+    // Continuous dynamic observer to guarantee NO raw emojis ever display
+    const iconObs = new MutationObserver(function () {
+      iconObs.disconnect();
+      try {
+        procEmojiNodes(document.body);
+      } finally {
+        iconObs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      }
+    });
+    iconObs.observe(document.body, { childList: true, subtree: true, characterData: true });
   });
 
 })();

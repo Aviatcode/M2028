@@ -87,7 +87,7 @@
   // 1. Theme Engine: Dark, Light, Girl Mode (Pink) & Account Custom Palette
   // =====================================================================
   const THEME_NEXT = { dark: 'light', light: 'pink', pink: 'dark' };
-  const THEME_ICON = { dark: '🌙', light: '☀️', pink: '🌸' };
+  const THEME_ICON = { dark: '🌙', light: '☀️', pink: '<span class="leafico sk9" role="img" aria-label="Girl mode"></span>' };
 
   function applyCustomColors(colors, theme) {
     const existing = document.getElementById('m2028-custom-theme-style');
@@ -232,7 +232,7 @@
     if (themeBtn) {
       if (validTheme === 'light') {
         themeBtn.title = 'Current: Light (Click for Girl Mode)';
-        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5"/><path d="M12 9.5c-2-3-1-5.5 0-6.5 1 1 2 3.5 0 6.5zM14.5 12c3-2 5.5-1 6.5 0-1 1-3.5 2-6.5 0zM12 14.5c2 3 1 5.5 0 6.5-1-1-2-3.5 0-6.5zM9.5 12c-3 2-5.5 1-6.5 0 1-1 3.5-2 6.5 0z"/></svg>';
+        themeBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Girl mode"></span>';
       } else if (validTheme === 'pink') {
         themeBtn.title = 'Current: Girl Mode (Click for Dark Mode)';
         themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
@@ -287,17 +287,18 @@
   function updateStickerUi(isOn) {
     const btn = document.getElementById('stickerToggleBtn');
     if (btn) {
-      btn.title = isOn ? '🌸 Stickers: On (Click to turn Off)' : '🌸 Stickers: Off (Click to turn On)';
+      btn.title = isOn ? 'Girl Mode Stickers: On (Click to turn Off)' : 'Girl Mode Stickers: Off (Click to turn On)';
       btn.classList.toggle('is-off', !isOn);
       btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+      btn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Girl mode leaf"></span>';
     }
     const mBtn = document.getElementById('modalStickerBtn');
     if (mBtn) {
-      mBtn.textContent = isOn ? '🌸 Stickers: On' : '🌸 Stickers: Off';
+      mBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Stickers"></span> Stickers: ' + (isOn ? 'On' : 'Off');
     }
     const gBtn = document.getElementById('modalStickerGuestBtn');
     if (gBtn) {
-      gBtn.textContent = isOn ? '🌸 Stickers: On' : '🌸 Stickers: Off';
+      gBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Stickers"></span> Stickers: ' + (isOn ? 'On' : 'Off');
     }
   }
 

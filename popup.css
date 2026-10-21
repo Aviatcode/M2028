@@ -2648,7 +2648,38 @@ html.haswp body.pink .pomo-center-card {
 }
 
 /* =====================================================================
-   7. Girl Mode Stickers (Collage Layer, Header Toggle & Modal Settings)
+   7. Authentic PWA Leaf Icons (.leafico & .sk1..sk14 from leaf-icons.css)
+   ===================================================================== */
+.leafico {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: middle;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  flex-shrink: 0;
+}
+.lf1 { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(-4 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23f4aca4"/><stop offset="1" stop-color="%23efc19f"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>'); }
+.lf2 { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(104 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23b4e4a0"/><stop offset="1" stop-color="%23a6dcae"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>'); }
+.lf3 { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(-52 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23a6c6ef"/><stop offset="1" stop-color="%23b4daee"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>'); }
+.lf4 { background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><g transform="rotate(162 50 50)"><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23f1dda9"/><stop offset="1" stop-color="%23eed7ae"/></linearGradient><path d="M52 30 C60 20 68 11 76 5 C71 15 66 23 63 29 C74 28 86 32 96 41 C85 42 76 46 71 50 C81 51 90 56 94 65 C83 63 71 60 63 55 C58 68 50 82 44 95 C40 80 38 68 39 58 C24 66 10 68 3 66 C14 58 26 48 38 42 C33 37 32 33 33 31 C40 33 46 32 52 30 Z" fill="url(%23g)" stroke="%232f2b2b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/><path d="M51 29 C40 25 30 16 33 5 C36 13 44 21 53 24" fill="none" stroke="%232f2b2b" stroke-width="3.4" stroke-linecap="round"/></g></svg>'); }
+
+.tb-btn .leafico {
+  width: 17px;
+  height: 17px;
+  vertical-align: middle;
+}
+#modalStickerBtn .leafico,
+#modalStickerGuestBtn .leafico {
+  width: 17px;
+  height: 17px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* =====================================================================
+   7b. Girl Mode Stickers (Collage Layer, Header Toggle & Modal Settings)
    ===================================================================== */
 #stickerToggleBtn {
   display: none;

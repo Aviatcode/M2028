@@ -128,9 +128,6 @@ body.light .ta {
   color: #2b0b09 !important;
   border-color: rgba(210, 32, 24, 0.24) !important;
 }
-body.light .pi {
-  background: #ffffff !important;
-}
 body.light .sp {
   background: #ffffff !important;
   color: #6e0b06 !important;
@@ -276,9 +273,6 @@ body.pink .inp, body.pink .ta {
   background: rgba(255, 255, 255, 0.8) !important;
   color: #4a1230 !important;
   border-color: rgba(255, 255, 255, 0.8) !important;
-}
-body.pink .pi {
-  background: rgba(255, 255, 255, 0.9) !important;
 }
 
 /* =====================================================================
@@ -1628,7 +1622,7 @@ html body:not(.pink) #pomoRing {
   display: block;
   width: var(--pr, 204px);
   height: var(--pr, 204px);
-  margin: 4px auto 12px;
+  margin: 0 auto 18px;
   border-radius: 50%;
   background: none !important;
   --g: #ffb62e;
@@ -1636,14 +1630,11 @@ html body:not(.pink) #pomoRing {
   --gr: #ff4a2a;
   --gd: rgba(255, 160, 40, 0.6);
   --fl: transparent;
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 14px rgba(255, 150, 30, 0.16));
-  transition: filter 0.3s ease;
-  box-shadow: none !important;
-}
-
-html body.light #pomRing,
-html body.light #pomoRing {
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.28)) drop-shadow(0 0 12px rgba(255, 150, 30, 0.14));
+  /* box-shadow (not filter): the ring is a circle, so this looks the same, but it
+     does not wrap the whole SVG in a GPU filter layer (which glitched the ticks). */
+  filter: none !important;
+  transition: box-shadow 0.3s;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 16px rgba(255, 150, 30, 0.16) !important;
 }
 
 html body:not(.pink) #pomRing[data-mode="break"],
@@ -1652,17 +1643,12 @@ html body:not(.pink) #pomoRing[data-mode="break"] {
   --g2: #3fd6a0;
   --gr: #ffb62e;
   --gd: rgba(90, 230, 180, 0.55);
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 14px rgba(80, 220, 170, 0.16));
-}
-
-html body.light #pomRing[data-mode="break"],
-html body.light #pomoRing[data-mode="break"] {
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.25)) drop-shadow(0 0 12px rgba(80, 220, 170, 0.14));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 16px rgba(80, 220, 170, 0.16) !important;
 }
 
 html body:not(.pink) #pomRing.flash,
 html body:not(.pink) #pomoRing.flash {
-  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 30px var(--fl));
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 30px var(--fl) !important;
 }
 
 body:not(.pink) #pomRing .gz,
@@ -1687,7 +1673,6 @@ body:not(.pink) #pomRing .gn,
 body:not(.pink) #pomoRing .gn {
   font-size: 15px;
   fill: var(--g);
-  filter: drop-shadow(0 0 3px var(--gd));
 }
 
 body:not(.pink) #pomRing .gn.red,
@@ -1699,7 +1684,6 @@ body:not(.pink) #pomRing .gt,
 body:not(.pink) #pomoRing .gt {
   stroke: var(--g);
   stroke-width: 4.5;
-  filter: drop-shadow(0 0 3px var(--gd));
 }
 
 body:not(.pink) #pomRing .gt.red,
@@ -1710,7 +1694,6 @@ body:not(.pink) #pomoRing .gt.red {
 body:not(.pink) #pomRing .gd,
 body:not(.pink) #pomoRing .gd {
   fill: var(--g);
-  filter: drop-shadow(0 0 2px var(--gd));
 }
 
 body:not(.pink) #pomRing .gtrail,
@@ -1721,7 +1704,6 @@ body:not(.pink) #pomoRing .gtrail {
   stroke-dasharray: 0 2;
   opacity: 0.75;
   transition: stroke-dasharray 0.5s linear;
-  filter: drop-shadow(0 0 4px var(--g2));
 }
 
 body:not(.pink) #pomRing .gneedle,
@@ -1730,7 +1712,6 @@ body:not(.pink) #pomoRing .gneedle {
   transform-origin: 150px 150px;
   transform: rotate(-135deg);
   transition: transform 0.5s linear;
-  filter: drop-shadow(0 0 4px var(--g2)) drop-shadow(0 0 9px var(--gd));
 }
 
 body:not(.pink) #pomRing .gunit,
@@ -1739,6 +1720,13 @@ body:not(.pink) #pomoRing .gunit {
   letter-spacing: 0.2em;
   fill: var(--g);
   opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:not(.pink) #pomRing .gneedle,
+  body:not(.pink) #pomRing .gtrail {
+    transition: none !important;
+  }
 }
 
 html body:not(.pink) #pomRing .pi,
@@ -1802,64 +1790,55 @@ body.pink #pomoRing .gz {
   display: none !important;
 }
 
-body.pink .pr#pomRing,
-body.pink .pr#pomoRing {
-  width: 172px !important;
-  height: 172px !important;
-  border-radius: 50% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin: 8px auto 14px !important;
-  background: conic-gradient(#ff6eb4 var(--pomo-pct, 0%), rgba(255, 110, 180, 0.16) 0%) !important;
-  box-shadow: 0 8px 34px rgba(255, 110, 180, 0.45), 0 0 32px rgba(255, 110, 180, 0.3) !important;
-  filter: none !important;
-  position: relative !important;
+/* Girl-mode clock face: same ring / inner disc / digits as index.html (#v-pomo .pr .pi .pm .pse) */
+body.pink #tab-pomo .pomo-timer {
+  --pr: 172px;
 }
 
-body.pink .pr#pomRing[data-mode="break"],
-body.pink .pr#pomoRing[data-mode="break"] {
-  background: conic-gradient(#ff9de0 var(--pomo-pct, 0%), rgba(255, 157, 224, 0.16) 0%) !important;
+body.pink #pomRing,
+body.pink #pomoRing {
+  --s3: color-mix(in srgb, var(--tx) 11%, transparent);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pr, 172px);
+  height: var(--pr, 172px);
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: conic-gradient(var(--ai) 0%, var(--s3) 0%);
+  box-shadow: none;
+  filter: drop-shadow(0 0 22px color-mix(in srgb, var(--ai) 34%, transparent));
 }
 
 body.pink #pomRing .pi,
 body.pink #pomoRing .pi {
-  width: 138px !important;
-  height: 138px !important;
-  border-radius: 50% !important;
-  background: #240d1a !important;
-  box-shadow: inset 0 2px 16px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(255, 110, 180, 0.25) !important;
-  border: 1px solid rgba(255, 110, 180, 0.35) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative !important;
-  left: auto !important;
-  top: auto !important;
-  transform: none !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--pr, 172px) - 28px);
+  height: calc(var(--pr, 172px) - 28px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--ai) 9%, var(--bg)), var(--bg) 76%);
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.25);
 }
 
 body.pink #pomRing .pm,
-body.pink #pomoRing .pm,
-body.pink .pm {
-  font-size: 46px !important;
-  font-weight: 800 !important;
-  color: #ffe4f0 !important;
-  text-shadow: 0 0 18px rgba(255, 110, 180, 0.6) !important;
-  line-height: 1 !important;
-  letter-spacing: -0.04em !important;
-  font-family: inherit !important;
+body.pink #pomoRing .pm {
+  font-size: calc(var(--pr, 172px) * 0.27);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tx);
 }
 
 body.pink #pomRing .pse,
-body.pink #pomoRing .pse,
-body.pink .pse {
-  font-size: 15px !important;
-  color: #ffb3d9 !important;
-  text-shadow: 0 0 10px rgba(255, 110, 180, 0.4) !important;
-  margin-top: 2px !important;
-  font-family: inherit !important;
+body.pink #pomoRing .pse {
+  font-size: calc(var(--pr, 172px) * 0.085);
+  color: var(--m2);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Session text */
@@ -3202,8 +3181,11 @@ body.no-stickers #stkLayer {
 }
 
 #tab-pomo #pomRing {
-  margin: 0 auto 20px;
+  margin: 0 auto 18px;
   flex-shrink: 0;
+}
+body.pink #tab-pomo #pomRing {
+  margin: 0 auto 20px;
 }
 
 html body:not(.pink) #tab-pomo #pomRing .pm,

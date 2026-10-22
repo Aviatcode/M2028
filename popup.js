@@ -1,4 +1,4 @@
-﻿/**
+/**
  * M2028 Chrome Extension Hub — Synchronized Controller
  * Fully synced with M2028 Web App Data Models, Themes & Real-Time Storage
  */
@@ -1584,9 +1584,16 @@
   function pomFlash(color) {
     const ring = document.getElementById('pomRing');
     if (!ring) return;
+    if (document.body.classList.contains('pink')) {
+      const prev = ring.style.background;
+      ring.style.transition = 'background 0.1s';
+      ring.style.background = color;
+      setTimeout(function () { ring.style.background = prev; }, 300);
+      return;
+    }
     ring.style.setProperty('--fl', color);
     ring.classList.add('flash');
-    setTimeout(function () { ring.classList.remove('flash'); }, 900);
+    setTimeout(function () { ring.classList.remove('flash'); }, 500);
   }
 
   function togglePomo() {
@@ -2004,10 +2011,21 @@
     let h = '<svg class="gz" viewBox="0 0 300 300" aria-hidden="true" focusable="false"><defs>' +
       '<linearGradient id="gzBez" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3e"/><stop offset=".5" stop-color="#121214"/><stop offset="1" stop-color="#2a2a2d"/></linearGradient>' +
       '<radialGradient id="gzFace" cx="50%" cy="50%" r="50%"><stop offset="0" style="stop-color:var(--g);stop-opacity:.16"/><stop offset=".45" stop-color="#140a04"/><stop offset="1" stop-color="#050302"/></radialGradient>' +
-      '<radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient></defs>' +
+      '<radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient>' +
+      // Glow is ONE native SVG filter on a whole group (userSpaceOnUse, so it never
+      // depends on a tick's bounding box). The old per-element CSS drop-shadow() on
+      // 32 separate ticks/labels/dots, nested inside a filtered ring inside a
+      // backdrop-filter card, made Chrome's GPU compositor draw them displaced/scaled.
+      '<filter id="gzGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="300" height="300" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="gzB"/>' +
+        '<feMerge><feMergeNode in="gzB"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+      '<filter id="gzGlowN" filterUnits="userSpaceOnUse" x="0" y="0" width="300" height="300" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="3" result="gzNB"/>' +
+        '<feMerge><feMergeNode in="gzNB"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' +
       '<circle cx="150" cy="150" r="149" fill="url(#gzBez)"/>' +
       '<circle cx="150" cy="150" r="143" fill="#040302"/>' +
-      '<circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>';
+      '<circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>' +
+      '<g class="gmarks" filter="url(#gzGlow)">';
 
     const s0 = P(135, GAUGE_A0);
     const s1 = P(135, GAUGE_A0 + GAUGE_SW);
@@ -2027,7 +2045,8 @@
       }
     }
 
-    h += '<g class="gneedle"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g>' +
+    h += '</g>' +
+      '<g class="gneedle"><g filter="url(#gzGlowN)"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g></g>' +
       '<circle cx="150" cy="150" r="26" fill="url(#gzHub)" stroke="#2c2c30" stroke-width="2"/>' +
       '<circle cx="150" cy="150" r="8" fill="#0a0605" stroke="var(--g2)" stroke-width="1.5"/>' +
       '<text class="gunit" x="150" y="252">MIN</text></svg>';
@@ -2060,7 +2079,7 @@
 
     if (needle) {
       const big = _lastGaugeDeg !== null && Math.abs(deg - _lastGaugeDeg) > 12;
-      needle.style.transition = big ? 'transform 1.1s cubic-bezier(.2,.8,.2,1)' : 'transform 0.5s linear';
+      needle.style.transition = big ? 'transform 1.1s cubic-bezier(.2,.8,.2,1)' : '';
       needle.style.transform = 'rotate(' + deg + 'deg)';
     }
 
@@ -2070,8 +2089,11 @@
     const pct = Math.min(100, Math.max(0, t * 100));
     ring.style.setProperty('--pomo-pct', pct.toFixed(1) + '%');
     if (document.body.classList.contains('pink')) {
-      const col = st.mode === 'focus' ? '#ff6eb4' : '#ff9de0';
-      ring.style.background = 'conic-gradient(' + col + ' ' + pct + '%, rgba(255, 110, 180, 0.16) 0%)';
+      // same ring paint as index.html: accent (focus) / break colour over the soft track
+      const col = st.mode === 'focus' ? 'var(--ai)' : 'var(--bd)';
+      ring.style.background = 'conic-gradient(' + col + ' ' + pct + '%, var(--s3) 0%)';
+    } else if (ring.style.background) {
+      ring.style.background = '';
     }
   }
 

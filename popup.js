@@ -1584,9 +1584,16 @@
   function pomFlash(color) {
     const ring = document.getElementById('pomRing');
     if (!ring) return;
+    if (document.body.classList.contains('pink')) {
+      const prev = ring.style.background;
+      ring.style.transition = 'background 0.1s';
+      ring.style.background = color;
+      setTimeout(function () { ring.style.background = prev; }, 300);
+      return;
+    }
     ring.style.setProperty('--fl', color);
     ring.classList.add('flash');
-    setTimeout(function () { ring.classList.remove('flash'); }, 900);
+    setTimeout(function () { ring.classList.remove('flash'); }, 500);
   }
 
   function togglePomo() {
@@ -2060,7 +2067,7 @@
 
     if (needle) {
       const big = _lastGaugeDeg !== null && Math.abs(deg - _lastGaugeDeg) > 12;
-      needle.style.transition = big ? 'transform 1.1s cubic-bezier(.2,.8,.2,1)' : 'transform 0.5s linear';
+      needle.style.transition = big ? 'transform 1.1s cubic-bezier(.2,.8,.2,1)' : '';
       needle.style.transform = 'rotate(' + deg + 'deg)';
     }
 
@@ -2070,8 +2077,11 @@
     const pct = Math.min(100, Math.max(0, t * 100));
     ring.style.setProperty('--pomo-pct', pct.toFixed(1) + '%');
     if (document.body.classList.contains('pink')) {
-      const col = st.mode === 'focus' ? '#ff6eb4' : '#ff9de0';
-      ring.style.background = 'conic-gradient(' + col + ' ' + pct + '%, rgba(255, 110, 180, 0.16) 0%)';
+      // same ring paint as index.html: accent (focus) / break colour over the soft track
+      const col = st.mode === 'focus' ? 'var(--ai)' : 'var(--bd)';
+      ring.style.background = 'conic-gradient(' + col + ' ' + pct + '%, var(--s3) 0%)';
+    } else if (ring.style.background) {
+      ring.style.background = '';
     }
   }
 

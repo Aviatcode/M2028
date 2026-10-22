@@ -47,6 +47,26 @@
     }
   };
 
+  // --- Opens the live M2028 web app (reuses an open tab if there is one) ---
+  const APP_URL = 'https://aviatcode.github.io/M2028/';
+
+  function openFullApp() {
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      chrome.tabs.query({ url: APP_URL + '*' }, function (tabs) {
+        if (!chrome.runtime.lastError && tabs && tabs.length) {
+          chrome.tabs.update(tabs[0].id, { active: true });
+          if (chrome.windows && chrome.windows.update) {
+            chrome.windows.update(tabs[0].windowId, { focused: true });
+          }
+        } else {
+          chrome.tabs.create({ url: APP_URL });
+        }
+      });
+    } else {
+      window.open(APP_URL, '_blank');
+    }
+  }
+
   function getTodayKey() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -413,13 +433,6 @@
     const openPlannerBtn = document.getElementById('openPlannerBtn');
     const openHubInsideBtn = document.getElementById('openHubInsideBtn');
     const extLogoBtn = document.getElementById('extLogoBtn');
-    function openFullApp() {
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
-        chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
-      } else {
-        window.open('index.html', '_blank');
-      }
-    }
     if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
     if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
     if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
@@ -3489,15 +3502,7 @@
     }
 
     const authOpenAppBtn = document.getElementById('authOpenAppBtn');
-    if (authOpenAppBtn) {
-      authOpenAppBtn.addEventListener('click', function () {
-        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
-          chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
-        } else {
-          window.open('index.html', '_blank');
-        }
-      });
-    }
+    if (authOpenAppBtn) authOpenAppBtn.addEventListener('click', openFullApp);
 
     const authSignOutBtn = document.getElementById('authSignOutBtn');
     if (authSignOutBtn) {

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" class="ucolors ucac redx m-ready">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M2028 Productivity Hub</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="leaf-icons.css">
+  <link rel="stylesheet" href="popup.css">
+  <script src="stickers.js" defer></script>
+</head>
+<body>
+  <div id="stkLayer" aria-hidden="true"></div>
+  <div class="popup-container">
+    <!-- Top M2028 Header -->
+    <header class="tb">
+      <div class="logo" id="extLogoBtn" title="Open Full M2028 Web App" role="button" aria-label="M2028 home">
+        <img class="logo-img" id="extLogoImg" src="favicon-32.png" width="24" height="24" alt="M2028" decoding="async">
+        <span class="logo-title">M2028</span>
+      </div>
+      <div class="tb-actions">
+        <div class="sp" id="streakBadge" title="Habits completed today">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--ai)"><path d="M12 3c.5 3-2.5 4.5-2.5 8a2.5 2.5 0 0 0 5 0c0-1-.4-1.8-1-2.5 3 1 5 3.5 5 6.5a6.5 6.5 0 0 1-13 0c0-4 3-6 6.5-12z"/></svg> <span id="streakCount">0d</span>
+        </div>
+        <button id="authBtn" class="tb-btn tb-auth-btn" title="Account &amp; Cloud Sync" aria-label="Account">
+          <span class="auth-icon" id="authBtnIcon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20c.7-3.8 3.7-6 7.5-6s6.8 2.2 7.5 6"/></svg></span>
+          <span class="auth-live-dot" id="authLiveDot" style="display:none"></span>
+        </button>
+        <button id="stickerToggleBtn" class="tb-btn tb-sticker-btn" title="Toggle Girl Mode Background Stickers (On/Off)" aria-label="Toggle Stickers"><span class="leafico sk9" role="img" aria-label="Girl mode leaf"></span></button>
+        <button id="themeToggleBtn" class="tb-btn" title="Toggle Theme" aria-label="Toggle Theme">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>
+        </button>
+        <button id="openPlannerBtn" class="tb-btn primary" title="Open Full M2028 Web App" aria-label="Open Full App">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs Bar (Unified Segmented Control Track) -->
+    <nav class="tnb" role="tablist" aria-label="M2028 Hub Tabs">
+      <div class="tnb-track">
+        <button class="nb on" data-tab="time" role="tab" aria-selected="true" title="Screen Time & Hub">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect x="13" y="3.5" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="15" width="7.5" height="5.5" rx="2"/></svg></span>
+          <span class="lbl">Time</span>
+        </button>
+        <button class="nb" data-tab="habits" role="tab" aria-selected="false" title="Daily Habits">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg></span>
+          <span class="lbl">Habits</span>
+        </button>
+        <button class="nb" data-tab="tasks" role="tab" aria-selected="false" title="Tasks & Todos">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg></span>
+          <span class="lbl">Tasks</span>
+        </button>
+        <button class="nb" data-tab="pomo" role="tab" aria-selected="false" title="Pomodoro Focus Timer">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/></svg></span>
+          <span class="lbl">Pomo</span>
+        </button>
+        <button class="nb" data-tab="countdown" role="tab" aria-selected="false" title="Target Countdowns">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/></svg></span>
+          <span class="lbl">Count</span>
+        </button>
+        <button class="nb" data-tab="notes" role="tab" aria-selected="false" title="Quick Notes">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h9l3.5 3.5v13.5H6zM14.5 3.5V7.5h4M9 12h6M9 16h6"/></svg></span>
+          <span class="lbl">Notes</span>
+        </button>
+        <button class="nb" data-tab="search" role="tab" aria-selected="false" title="Universal Search">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <span class="lbl">Search</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Tab View Content -->
+    <main class="main-content">
+
+      <!-- 1. TIME TRACKER PANEL -->
+      <section class="vw on" id="tab-time">
+        <!-- Screen Time & Hub Card Header -->
+        <div class="ct" style="margin-bottom:10px">
+          <span style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/></svg> Screen Time</span>
+          <button class="btn b-ai sm" id="openHubInsideBtn" title="Open One-Stop Hub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg> Open Hub</button>
+        </div>
+
+        <!-- Live Active Site Banner -->
+        <div class="active-site-card" id="activeSiteCard">
+          <div class="pulse-indicator"></div>
+          <div class="active-site-icon" id="activeSiteFavicon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.5-3.5-8.5s1-6 3.5-8.5z"/></svg></div>
+          <div class="active-site-details">
+            <div class="active-site-label">Active Tab</div>
+            <div class="active-site-name" id="activeSiteDomain">Detecting active tab...</div>
+            <div class="active-site-time" id="activeSiteTime">0m today</div>
+          </div>
+          <div class="active-site-badge badge-productive" id="activeSiteCategory">Productive</div>
+        </div>
+
+        <!-- Metric Summary Cards -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-title">Screen Time</div>
+            <div class="metric-val" id="todayScreenTime">0m</div>
+            <div class="metric-sub" id="todaySiteCount">0 sites today</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Productivity</div>
+            <div class="metric-val text-accent" id="prodScore">100%</div>
+            <div class="metric-sub" id="prodBreakdown">High focus</div>
+          </div>
+        </div>
+
+        <!-- Category Progress Distribution with Range Toggle -->
+        <div class="cat-bar-wrapper">
+          <div class="cat-bar-header">
+            <span>Categories</span>
+            <div class="range-toggle">
+              <button class="range-btn active" id="rangeTodayBtn">Today</button>
+              <button class="range-btn" id="rangeWeekBtn">7 Days</button>
+            </div>
+          </div>
+          <div class="cat-progress-bar" id="catProgressBar">
+            <div class="cat-seg seg-prod" style="width: 0%" title="Productive"></div>
+            <div class="cat-seg seg-comm" style="width: 0%" title="Communication"></div>
+            <div class="cat-seg seg-soc" style="width: 0%" title="Social"></div>
+            <div class="cat-seg seg-ent" style="width: 0%" title="Entertainment"></div>
+            <div class="cat-seg seg-oth" style="width: 0%" title="Other"></div>
+          </div>
+          <div class="cat-legend">
+            <span class="legend-item"><span class="dot dot-prod"></span>Work/Study</span>
+            <span class="legend-item"><span class="dot dot-comm"></span>Comm</span>
+            <span class="legend-item"><span class="dot dot-soc"></span>Social</span>
+            <span class="legend-item"><span class="dot dot-ent"></span>Media</span>
+            <span class="legend-item"><span class="dot dot-oth"></span>Other</span>
+          </div>
+        </div>
+
+        <!-- Sub-Navigation: Top Visited Places vs Open Tabs & Time -->
+        <div class="section-heading">
+          <div class="time-sub-tabs">
+            <button class="time-sub-btn active" id="subTabTopSites"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4.5a2.5 2.5 0 0 0 3 3.5M16 6h3.5a2.5 2.5 0 0 1-3 3.5M12 13v4M8.5 20h7M9.5 17h5"/></svg>Top Sites</button>
+            <button class="time-sub-btn" id="subTabOpenTabs"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg>Tabs (<span id="openTabsCount">0</span>)</button>
+          </div>
+          <button class="btn b-gh sm" id="resetTrackerBtn" title="Reset Today's Stats">Reset</button>
+        </div>
+
+        <!-- Top Sites List (Default) -->
+        <div class="sites-list" id="topSitesList">
+          <div class="empty-state">No browsing data recorded yet today. Browse normally to see your time breakdown!</div>
+        </div>
+
+        <!-- Open Tabs List with Live Time Spent -->
+        <div class="sites-list" id="openTabsTimeList" style="display:none">
+          <div class="empty-state">Loading active tabs...</div>
+        </div>
+      </section>
+
+      <!-- 2. DAILY HABITS TAB (M2028) -->
+      <section class="vw" id="tab-habits">
+        <div class="wc">
+          <div class="ct">
+            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>Habits</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn b-ai sm" id="habMarkAllBtn">Check All</button>
+              <button class="btn b-gh sm" id="habAddBtn">+ Habit</button>
+            </div>
+          </div>
+          <div id="habDateSubtitle" class="date-subtitle">Today's Focus</div>
+          
+          <div class="pt" style="margin:8px 0 12px">
+            <div class="pf" id="habProgressFill" style="width:0%;background:var(--ai)"></div>
+          </div>
+          <div class="hab-summary-row">
+            <span style="font-size:12px;color:var(--m2)"><span id="habDoneCount">0</span>/<span id="habTotalCount">0</span> completed today</span>
+            <span style="font-size:11px;font-weight:600;color:var(--ai)" id="habPercentText">0%</span>
+          </div>
+
+          <!-- Habit Add Composer (Hidden by default) -->
+          <div id="habAddForm" class="hab-add-box" style="display:none">
+            <input type="text" id="newHabInput" class="inp" placeholder="New habit name (e.g. Read 20 mins)...">
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button class="btn b-ai sm" id="saveNewHabBtn">Save Habit</button>
+              <button class="btn b-gh sm" id="cancelNewHabBtn">Cancel</button>
+            </div>
+          </div>
+
+          <div id="habListContainer" class="habits-list">
+            <!-- Dynamic habit rows -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. TASKS & CHECKLIST TAB (M2028) -->
+      <section class="vw" id="tab-tasks">
+        <div class="wc">
+          <div class="ct">
+            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>Tasks</span>
+            <span id="tskCount" style="font-size:11px;font-weight:500;color:var(--mt)">0 to do</span>
+          </div>
+          <div class="tcompose">
+            <input type="text" id="tskInp" class="inp" placeholder="Add a task or checklist item...">
+            <button class="btn b-ai" id="tskAddBtn">Add</button>
+          </div>
+          <div id="tskList" class="tasks-list">
+            <!-- Dynamic task rows -->
+          </div>
+          <div class="rdone-tog" id="taskDoneToggle" style="display:none">
+            <span class="caret">▶</span>
+            <span id="taskDoneLabel">Completed (0)</span>
+          </div>
+          <div id="tskDoneList" class="tasks-list" style="display:none">
+            <!-- Dynamic completed task rows -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. POMODORO TIMER TAB (M2028) -->
+      <section class="vw" id="tab-pomo">
+        <div class="ph">
+          <div class="ph-t">Pomodoro Timer</div>
+          <div class="ph-s">50 min focus · 10 min break (30 min every full round) · phone away</div>
+        </div>
+
+        <div class="pomo-grid">
+          <div class="card pomo-timer">
+            <div class="pomo-left">
+              <div id="pomLbl" data-mode="focus">FOCUS SESSION</div>
+
+              <!-- M2028 speedometer gauge: the dial SVG is generated by popup.js (same math as index.html) -->
+              <div class="pr" id="pomRing"><div class="pi"><div class="pm" id="pomM">50</div><div class="pse" id="pomS">:00</div></div></div>
+
+              <div class="pom-txt pom-sess">Session <span id="pomSess">1</span> / <span id="pomTot">4</span></div>
+
+              <div class="pomo-ctrl" id="pomAdjRow">
+                <button class="btn b-gh pomo-step" id="pomoStepDown" type="button" aria-label="Fewer sessions" title="Fewer sessions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+                <button class="btn pomo-primary" id="pomBtn" type="button" aria-label="Start timer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.5-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/></svg><span>Start</span></button>
+                <button class="btn b-gh pomo-step" id="pomoStepUp" type="button" aria-label="More sessions" title="More sessions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+              </div>
+
+              <button class="btn pomo-end" id="pomEndBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2.6"/></svg>End session</button>
+
+              <div class="pomo-foot">
+                <div class="pom-txt pomo-today">Today: <b id="pomToday">0</b> sessions</div>
+                <label class="pomo-snd" title="Alert sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg>
+                  <select id="pomSoundStyleSel" aria-label="Alert sound">
+                    <option value="bell">Classic bell</option>
+                    <option value="chime">Soft chime</option>
+                    <option value="digital">Digital beep</option>
+                    <option value="marimba">Marimba</option>
+                    <option value="pulse">Ping pulse</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <img id="pomDuo" src="pom-duo.webp" alt="" width="520" height="530" decoding="async" draggable="false">
+          </div>
+
+          <div class="card pom-study">
+            <div class="ct">Studying now</div>
+            <div class="pom-row">
+              <div><div class="pom-k">Now</div><strong id="subDisp">Not set</strong></div>
+              <button class="btn pomo-change" id="pomoSubBtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/><path d="M14.5 6.5l3 3"/></svg>Change</button>
+            </div>
+          </div>
+
+          <div class="ssr" id="ssrCard" data-state="idle">
+            <div class="ssr-stage" id="ssrStage">
+              <svg class="ssr-art" viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs>
+                  <linearGradient id="ssrSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--sk0)"/><stop offset="40%" style="stop-color:var(--sk1)"/><stop offset="70%" style="stop-color:var(--sk2)"/><stop offset="100%" style="stop-color:var(--sk3)"/></linearGradient>
+                  <linearGradient id="ssrSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--sea0)"/><stop offset="50%" style="stop-color:var(--sea1)"/><stop offset="100%" style="stop-color:var(--sea2)"/></linearGradient>
+                  <radialGradient id="ssrSun" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:var(--sunA)"/><stop offset="22%" style="stop-color:var(--sunB);stop-opacity:.9"/><stop offset="100%" style="stop-color:var(--sunC);stop-opacity:0"/></radialGradient>
+                  <linearGradient id="ssrPath" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" style="stop-color:var(--sunA);stop-opacity:.7"/><stop offset="100%" style="stop-color:var(--sunB);stop-opacity:.05"/></linearGradient>
+                </defs>
+                <rect width="400" height="92" fill="url(#ssrSky)"/>
+                <ellipse cx="200" cy="90" rx="120" ry="70" fill="url(#ssrSun)" opacity=".85"/>
+                <ellipse cx="200" cy="90" rx="13" ry="7" style="fill:var(--sunA)"/>
+                <ellipse cx="200" cy="92" rx="13" ry="5" style="fill:var(--sunB)"/>
+                <ellipse cx="60" cy="55" rx="45" ry="14" style="fill:var(--cl1)" opacity=".4"/>
+                <ellipse cx="100" cy="47" rx="35" ry="10" style="fill:var(--cl2)" opacity=".3"/>
+                <ellipse cx="310" cy="53" rx="50" ry="13" style="fill:var(--cl3)" opacity=".35"/>
+                <ellipse cx="350" cy="43" rx="30" ry="9" style="fill:var(--cl4)" opacity=".25"/>
+                <rect y="90" width="400" height="90" fill="url(#ssrSea)"/>
+                <polygon points="170,90 230,90 252,180 148,180" fill="url(#ssrPath)" opacity=".5"/>
+                <line x1="0" y1="100" x2="400" y2="100" style="stroke:var(--wv1)" stroke-width="1" opacity=".4"/>
+                <line x1="0" y1="110" x2="400" y2="110" style="stroke:var(--wv1)" stroke-width=".7" opacity=".3"/>
+                <line x1="0" y1="122" x2="400" y2="122" style="stroke:var(--wv2)" stroke-width=".7" opacity=".25"/>
+                <line x1="0" y1="136" x2="400" y2="136" style="stroke:var(--wv3)" stroke-width=".5" opacity=".2"/>
+                <line x1="0" y1="152" x2="400" y2="152" style="stroke:var(--wv4)" stroke-width=".5" opacity=".15"/>
+                <circle cx="30" cy="16" r="1.2" fill="#fff" opacity=".8"/><circle cx="80" cy="8" r=".8" fill="#fff" opacity=".6"/><circle cx="140" cy="15" r="1" fill="#fff" opacity=".7"/>
+                <circle cx="260" cy="10" r="1.2" fill="#fff" opacity=".8"/><circle cx="320" cy="20" r=".8" fill="#fff" opacity=".5"/><circle cx="370" cy="7" r="1" fill="#fff" opacity=".7"/><circle cx="55" cy="30" r=".6" fill="#fff" opacity=".5"/>
+              </svg>
+              <div class="ssr-scrim"></div>
+              <span class="ssr-chip"><i></i>Non-sleep deep rest</span>
+              <button type="button" class="ssr-play" id="ssrPlay" aria-label="Play Susurrus" aria-pressed="false">
+                <svg class="ic-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.2v13.6L19 12z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+                <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.2" y="5" width="4.1" height="14" rx="1.2"/><rect x="13.7" y="5" width="4.1" height="14" rx="1.2"/></svg>
+              </button>
+              <div class="ssr-meta">
+                <div class="ssr-title">Susurrus</div>
+                <div class="ssr-sub">10-minute NSDR with Dr. Andrew Huberman</div>
+              </div>
+            </div>
+            <audio id="nsdraudio" preload="none" style="display:none"><source src="sussurus1.mp3" type="audio/mpeg"></audio>
+            <div class="ssr-bar">
+              <button type="button" class="ssr-rs" id="ssrRestart" title="Restart" aria-label="Restart"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5v4.6h4.6"/></svg></button>
+              <span class="ssr-t" id="ssrCur">0:00</span>
+              <input type="range" class="ssr-seek" id="ssrSeek" value="0" min="0" max="100" step="0.1" aria-label="Seek">
+              <span class="ssr-t" id="ssrDur">10:42</span>
+            </div>
+            <div class="ssr-hint">Best during Pomodoro break · eyes closed · breathe slowly</div>
+          </div>
+
+          <div class="card pom-subject-card" id="pomSubCard">
+            <div class="ct">Study time by subject</div>
+            <div id="pomSubBody"></div>
+          </div>
+
+          <div class="card pom-logc">
+            <div class="ct">Session log</div>
+            <div id="pomLog">No sessions yet.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. COUNTDOWN TAB (M2028) -->
+      <section class="vw" id="tab-countdown">
+        <div class="wc">
+          <div class="ct">
+            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/></svg>Countdowns</span>
+            <button class="btn b-ai sm" id="cdAddToggleBtn">+ Countdown</button>
+          </div>
+
+          <!-- Countdown Add Box -->
+          <div id="cdAddForm" class="hab-add-box" style="display:none">
+            <label style="font-size:11px;color:var(--m2)">Event or Goal Title</label>
+            <input type="text" id="cdTitleInput" class="inp" placeholder="e.g. UPSC Prelims, Exam, Project Launch" style="margin-top:4px;margin-bottom:8px">
+            <label style="font-size:11px;color:var(--m2)">Target Date</label>
+            <input type="date" id="cdDateInput" class="inp" style="margin-top:4px;margin-bottom:8px">
+            <div style="display:flex;gap:6px">
+              <button class="btn b-ai sm" id="saveCountdownBtn">Save Countdown</button>
+              <button class="btn b-gh sm" id="cancelCountdownBtn">Cancel</button>
+            </div>
+          </div>
+
+          <div id="countdownListContainer" class="countdown-list">
+            <!-- Dynamic countdown cards -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. NOTES SCRATCHPAD TAB -->
+      <section class="vw" id="tab-notes">
+        <div class="wc">
+          <div class="ct">
+            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><path d="M6 3.5h9l3.5 3.5v13.5H6zM14.5 3.5V7.5h4M9 12h6M9 16h6"/></svg>Notes</span>
+            <div style="display:flex;gap:6px">
+              <button class="btn b-gh sm" id="notesCopyBtn" title="Copy to clipboard">Copy</button>
+              <button class="btn b-gh sm" id="notesModeBtn" title="Toggle Preview">Preview</button>
+            </div>
+          </div>
+          <div class="notes-meta-bar">
+            <span id="notesStats">0 words · 0 chars</span>
+            <span id="notesStatus" style="color:var(--ai)">Auto-saved</span>
+          </div>
+          <textarea id="notesInput" class="ta" placeholder="Jot down quick thoughts, tasks, code snippets... Auto-saves continuously." spellcheck="false" style="min-height:220px"></textarea>
+          <div id="notesPreview" class="notes-preview-box" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- 7. QUICK SEARCH & TABS -->
+      <section class="vw" id="tab-search">
+        <div class="wc">
+          <div class="ct">
+            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search &amp; Tabs</span>
+            <button class="btn b-gh sm" id="refreshTabsBtn">Refresh</button>
+          </div>
+          <div class="search-input-wrap">
+            <input type="text" id="quickSearchInput" class="inp" placeholder="Search web, tabs, shortcuts (e.g. 'yt lo-fi', 'gh repo')...">
+          </div>
+          <div class="engine-chips-row">
+            <button class="engine-pill" data-prefix="g"><b>g</b> Google</button>
+            <button class="engine-pill" data-prefix="yt"><b>yt</b> YouTube</button>
+            <button class="engine-pill" data-prefix="gh"><b>gh</b> GitHub</button>
+            <button class="engine-pill" data-prefix="w"><b>w</b> Wiki</button>
+            <button class="engine-pill" data-prefix="r"><b>r</b> Reddit</button>
+          </div>
+          <div class="section-subheading">Open Tabs</div>
+          <div class="open-tabs-list" id="searchResultsList">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Account & Cloud Sync Modal -->
+  <div class="ov" id="authModal">
+    <div class="mo auth-mo">
+      <div class="auth-mo-head">
+        <div class="auth-mo-title" id="authModalTitle">M2028 Account</div>
+        <button type="button" class="auth-mo-close" id="authModalClose" aria-label="Close">✕</button>
+      </div>
+
+      <!-- View A: Signed Out (Login / Sign Up) -->
+      <div id="authSignedOutView">
+        <div class="auth-brand-badge">
+          <div class="auth-brand-name">Sign In to M2028</div>
+          <div class="auth-brand-sub">Sync habits, tasks, countdowns, pomo timer, and theme across your extension and website.</div>
+        </div>
+
+        <div class="auth-fields">
+          <div class="auth-field-group">
+            <label class="auth-field-lbl" for="authEmailInp">EMAIL</label>
+            <input type="email" id="authEmailInp" class="inp" placeholder="you@email.com" autocomplete="email">
+          </div>
+
+          <div class="auth-field-group">
+            <label class="auth-field-lbl" for="authPwInp">PASSWORD</label>
+            <div style="position:relative">
+              <input type="password" id="authPwInp" class="inp" placeholder="••••••••" autocomplete="current-password">
+              <button type="button" id="authPwToggle" class="auth-eye-btn" title="Toggle password visibility"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <div id="authAlertMsg" class="auth-alert" style="display:none"></div>
+
+        <div class="auth-actions">
+          <button type="button" class="btn b-ai" id="authSubmitSignIn" style="width:100%">Sign In</button>
+          <button type="button" class="btn b-gh" id="authSubmitSignUp" style="width:100%">Create Account</button>
+        </div>
+
+        <div class="auth-divider"><span>OR</span></div>
+
+        <button type="button" class="btn b-gh sm auth-web-sync-btn" id="authSyncWebBtn">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg> Sync with Open Web App Tab
+        </button>
+
+        <div style="text-align:center;margin-top:12px">
+          <button type="button" id="authManageTabsBtnGuest" class="btn b-gh auth-tabs-btn" style="width:100%;margin-bottom:8px">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="3"/><path d="M18 16.5v3M16.5 18h3"/></svg>
+            Customize Navigation Tabs
+          </button>
+          <button type="button" id="modalStickerGuestBtn" class="btn b-gh" style="display:none;width:100%;margin-bottom:8px"><span class="leafico sk9" role="img" aria-label="Stickers"></span> Stickers: On</button>
+          <button type="button" id="authContinueGuestBtn" class="auth-ghost-btn">
+            Continue offline as Guest
+          </button>
+        </div>
+      </div>
+
+      <!-- View B: Signed In (Account Info & Sync Status) -->
+      <div id="authSignedInView" style="display:none">
+        <div class="auth-user-card">
+          <div class="auth-avatar-circle" id="authCardAvatar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20c.7-3.8 3.7-6 7.5-6s6.8 2.2 7.5 6"/></svg></div>
+          <div class="auth-user-email" id="authCardEmail">you@email.com</div>
+          <div class="auth-sync-pill">
+            <span class="auth-dot-live"></span>
+            <span>Cloud Sync Active</span>
+          </div>
+        </div>
+        <div class="auth-signedin-actions" style="margin-top:14px">
+          <button type="button" class="btn b-gh auth-tabs-btn" id="authManageTabsBtn" style="width:100%"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="3"/><path d="M18 16.5v3M16.5 18h3"/></svg>Customize Navigation Tabs</button>
+          <button type="button" class="btn b-gh" id="modalStickerBtn" style="display:none;width:100%"><span class="leafico sk9" role="img" aria-label="Stickers"></span> Stickers: On</button>
+          <button type="button" class="btn b-ai" id="authManualSyncBtn" style="width:100%"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4"/></svg>Sync Now</button>
+          <button type="button" class="btn b-gh" id="authOpenAppBtn" style="width:100%"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Open Web App</button>
+          <button type="button" class="btn b-rd" id="authSignOutBtn" style="width:100%">Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. NAVIGATION TABS MANAGER MODAL -->
+  <div class="ov" id="navTabsModal" role="dialog" aria-modal="true" aria-labelledby="navTabsModalTitle">
+    <div class="mo nav-tabs-mo">
+      <div class="auth-mo-head" style="margin-bottom:12px">
+        <div class="auth-mo-title" id="navTabsModalTitle" style="display:flex;align-items:center;gap:8px">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ai)"><path d="M4 6h16M4 12h16M4 18h7"/><circle cx="18" cy="18" r="3"/><path d="M18 16.5v3M16.5 18h3"/></svg>
+          Manage Navigation Tabs
+        </div>
+        <button type="button" class="auth-mo-close" id="navTabsModalClose" aria-label="Close">✕</button>
+      </div>
+      <p style="font-size:11.5px;color:var(--m2);margin-bottom:14px;line-height:1.4">
+        Turn tabs on or off in the top navigation bar. (At least 1 tab will always remain active)
+      </p>
+
+      <div class="nav-tabs-toggle-list" id="navTabsToggleList">
+        <!-- Dynamically populated toggle rows for Time, Habits, Tasks, Pomo, Count, Notes, Search -->
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--b)">
+        <button type="button" class="btn b-gh sm" id="navTabsResetAllBtn" style="flex:1">Show All Tabs</button>
+        <button type="button" class="btn b-ai sm" id="navTabsDoneBtn" style="flex:1">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. POMODORO SUBJECT PICKER MODAL (M2028 Web App Mirror) -->
+  <div class="ov" id="pomSubModal" role="dialog" aria-modal="true" aria-labelledby="pomSubModalTitle">
+    <div class="mo pomo-sub-mo">
+      <div class="pomo-mo-head">
+        <div class="pomo-mo-title" id="pomSubModalTitle">What are you studying?</div>
+        <button type="button" class="pomo-mo-close" id="pomSubModalCloseBtn" aria-label="Close modal">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <span class="pomo-mo-hint" id="pomSubHint" style="font-size:11px;color:var(--m2);margin:0">Tap a subject to pick it</span>
+        <button type="button" class="btn b-gh sm" id="pomSubEditBtn" style="font-size:11px;padding:3px 8px">Edit subjects</button>
+      </div>
+
+      <div id="pomSubList" class="pomo-sub-chip-list">
+        <!-- Dynamically populated subjects -->
+      </div>
+
+      <div id="pomSubAddRow" style="display:none;align-items:center;gap:6px;margin-bottom:14px">
+        <input type="text" id="pomNewSub" class="inp" maxlength="28" placeholder="New subject, e.g. Maths" style="flex:1;min-width:130px;margin:0">
+        <button type="button" class="btn b-ai" id="pomAddSubBtn">Add</button>
+        <button type="button" class="btn b-gh sm" id="pomResetSubBtn" style="font-size:11px">Reset list</button>
+      </div>
+
+      <label style="font-size:11px;color:var(--m2)">Or type your own subject</label>
+      <input type="text" id="pomCustomSub" class="inp" style="margin-top:4px;margin-bottom:14px" placeholder="e.g. Newspaper reading" maxlength="28">
+      <button type="button" class="btn b-ai" id="pomBeginBtn" style="width:100%">Begin Focus Session</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

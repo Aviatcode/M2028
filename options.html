@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M2028 - Extension Settings & Preferences</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="opts-container">
+    <header class="opts-header">
+      <div class="opts-brand">
+        <img class="opts-logo-img" src="data:image/png;base64,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" width="40" height="40" alt="M2028 Logo">
+        <div>
+          <h1>M2028 Extension Preferences</h1>
+          <p class="subtitle">Customize time tracking rules, alerts, and one-stop productivity tools</p>
+        </div>
+      </div>
+      <div class="header-links">
+        <a href="index.html" target="_blank" class="hub-btn primary sm">Open Master Planner ↗</a>
+      </div>
+    </header>
+
+    <main class="opts-main">
+      <!-- 1. Screen Time Goals -->
+      <section class="opts-card">
+        <div class="card-head">
+          <span class="card-icon">⏱️</span>
+          <div>
+            <h2>Screen Time & Productivity Goals</h2>
+            <p class="card-desc">Set daily limits and target focus score to stay on track</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label-col">
+            <label for="dailyLimitHours">Daily Distracting Sites Limit</label>
+            <span class="field-hint">Send a notification when total Social & Entertainment time exceeds:</span>
+          </div>
+          <div class="input-col">
+            <select id="dailyLimitHours" class="opts-select">
+              <option value="0.5">30 minutes</option>
+              <option value="1" selected>1 hour</option>
+              <option value="1.5">1.5 hours</option>
+              <option value="2">2 hours</option>
+              <option value="3">3 hours</option>
+              <option value="0">No limit (Disabled)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label-col">
+            <label for="targetFocusScore">Target Productivity Score</label>
+            <span class="field-hint">Desired % of screen time spent on study, work, and coding:</span>
+          </div>
+          <div class="input-col">
+            <select id="targetFocusScore" class="opts-select">
+              <option value="60">60% or higher</option>
+              <option value="70">70% or higher</option>
+              <option value="80" selected>80% or higher (Recommended)</option>
+              <option value="90">90% or higher (Hardcore)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label-col">
+            <label for="idleTimeout">Idle Detection Sensitivity</label>
+            <span class="field-hint">Pause time tracking when computer is inactive for:</span>
+          </div>
+          <div class="input-col">
+            <select id="idleTimeout" class="opts-select">
+              <option value="30">30 seconds</option>
+              <option value="60" selected>60 seconds</option>
+              <option value="120">2 minutes</option>
+              <option value="300">5 minutes</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Custom Domain Categorization -->
+      <section class="opts-card">
+        <div class="card-head">
+          <span class="card-icon">🏷️</span>
+          <div>
+            <h2>Custom Website Categorization</h2>
+            <p class="card-desc">Override or add website domains to custom category buckets</p>
+          </div>
+        </div>
+
+        <div class="add-rule-row">
+          <input type="text" id="customDomainInput" class="opts-input" placeholder="e.g. coursera.org, twitch.tv, mycompany.slack.com">
+          <select id="customCategorySelect" class="opts-select">
+            <option value="productive">Productive / Work</option>
+            <option value="communication">Communication</option>
+            <option value="social">Social Media</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="other">Other / Neutral</option>
+          </select>
+          <button id="addRuleBtn" class="hub-btn primary">Add Rule</button>
+        </div>
+
+        <div class="rules-table-wrap">
+          <table class="rules-table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>Category</th>
+                <th style="width: 80px">Action</th>
+              </tr>
+            </thead>
+            <tbody id="rulesTableBody">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3. General & Audio -->
+      <section class="opts-card">
+        <div class="card-head">
+          <span class="card-icon">⚙️</span>
+          <div>
+            <h2>Tools & Audio Alerts</h2>
+            <p class="card-desc">Default timer alert chime and scratchpad behaviors</p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label-col">
+            <label for="chimeEnabled">Timer Audio Chime</label>
+            <span class="field-hint">Play synthesized bell chime when timer or Pomodoro finishes</span>
+          </div>
+          <div class="input-col">
+            <input type="checkbox" id="chimeEnabled" checked class="opts-toggle">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="label-col">
+            <label for="defaultPomoMin">Default Timer Duration</label>
+            <span class="field-hint">Initial countdown minutes when opening the Timer panel</span>
+          </div>
+          <div class="input-col">
+            <select id="defaultPomoMin" class="opts-select">
+              <option value="15">15 minutes</option>
+              <option value="25" selected>25 minutes (Pomodoro)</option>
+              <option value="45">45 minutes</option>
+              <option value="50">50 minutes (Deep Work)</option>
+              <option value="60">60 minutes</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Data Management -->
+      <section class="opts-card">
+        <div class="card-head">
+          <span class="card-icon">💾</span>
+          <div>
+            <h2>Data & Storage Management</h2>
+            <p class="card-desc">Export or reset your local screen tracking statistics</p>
+          </div>
+        </div>
+
+        <div class="data-actions-row">
+          <button id="exportDataBtn" class="hub-btn secondary">Export Stats as JSON</button>
+          <button id="clearAllStatsBtn" class="hub-btn danger">Clear All Tracking History</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="opts-footer">
+      <div>M2028 Chrome Extension v2.0.0 • Built with 💚 for maximum focus</div>
+    </footer>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

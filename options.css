@@ -1,0 +1,285 @@
+/* Options Page Styles for M2028 */
+:root {
+  --bg: #0a0000;
+  --bg-card: #150202;
+  --bg-input: #1f0404;
+  --border: rgba(196, 38, 29, 0.20);
+  --tx: #fff1ee;
+  --mt: #a8746f;
+  --dim: #7a4642;
+  --accent: #c42018;
+  --accent-light: rgba(196, 32, 24, 0.16);
+  --danger: #d7574f;
+  --danger-bg: rgba(215, 87, 79, 0.15);
+  --radius: 14px;
+}
+
+[data-theme="light"] {
+  --bg: #faf4f2;
+  --bg-card: #ffffff;
+  --bg-input: #fbe1dc;
+  --border: rgba(200, 30, 22, 0.18);
+  --tx: #2b0b09;
+  --mt: #9a4f49;
+  --dim: #6b2622;
+  --accent: #fd2a1f;
+  --accent-light: rgba(253, 42, 31, 0.14);
+}
+
+[data-theme="pink"] {
+  --bg: #ffb7ce;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-input: rgba(255, 255, 255, 0.65);
+  --border: rgba(255, 105, 180, 0.35);
+  --tx: #4a1230;
+  --mt: #8a4868;
+  --dim: #6a2146;
+  --accent: #ff6eb4;
+  --accent-light: rgba(255, 110, 180, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--bg);
+  color: var(--tx);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 30px 20px;
+}
+
+.opts-container {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.opts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.opts-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.opts-logo-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  object-fit: contain;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.opts-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--mt);
+}
+
+.opts-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.opts-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.card-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.card-head h2 {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--tx);
+}
+
+.card-desc {
+  font-size: 12.5px;
+  color: var(--mt);
+  margin-top: 2px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.form-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.label-col {
+  flex: 1;
+  padding-right: 20px;
+}
+
+.label-col label {
+  display: block;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--tx);
+}
+
+.field-hint {
+  display: block;
+  font-size: 11.5px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+.opts-select, .opts-input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--tx);
+  font-size: 13px;
+  outline: 0;
+  font-family: inherit;
+}
+
+.opts-select:focus, .opts-input:focus {
+  border-color: var(--accent);
+}
+
+.opts-toggle {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.add-rule-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.add-rule-row .opts-input {
+  flex: 2;
+}
+
+.add-rule-row .opts-select {
+  flex: 1;
+}
+
+.rules-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12.5px;
+}
+
+.rules-table th {
+  background: var(--bg-input);
+  padding: 10px 14px;
+  color: var(--mt);
+  font-weight: 600;
+}
+
+.rules-table td {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.data-actions-row {
+  display: flex;
+  gap: 12px;
+}
+
+.hub-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.hub-btn.primary {
+  background: var(--accent);
+  color: #0c0f14;
+}
+
+.hub-btn.primary:hover {
+  filter: brightness(1.1);
+}
+
+.hub-btn.secondary {
+  background: var(--bg-input);
+  border-color: var(--border);
+  color: var(--tx);
+}
+
+.hub-btn.danger {
+  background: var(--danger-bg);
+  border-color: rgba(215, 87, 79, 0.4);
+  color: var(--danger);
+}
+
+.hub-btn.danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.hub-btn.sm {
+  padding: 5px 11px;
+  font-size: 11.5px;
+}
+
+.opts-footer {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim);
+}

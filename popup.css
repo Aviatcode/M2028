@@ -1630,11 +1630,9 @@ html body:not(.pink) #pomoRing {
   --gr: #ff4a2a;
   --gd: rgba(255, 160, 40, 0.6);
   --fl: transparent;
-  /* box-shadow (not filter): the ring is a circle, so this looks the same, but it
-     does not wrap the whole SVG in a GPU filter layer (which glitched the ticks). */
-  filter: none !important;
-  transition: box-shadow 0.3s;
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 16px rgba(255, 150, 30, 0.16) !important;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px rgba(255, 150, 30, 0.16));
+  transition: filter 0.3s;
+  box-shadow: none !important;
 }
 
 html body:not(.pink) #pomRing[data-mode="break"],
@@ -1643,12 +1641,12 @@ html body:not(.pink) #pomoRing[data-mode="break"] {
   --g2: #3fd6a0;
   --gr: #ffb62e;
   --gd: rgba(90, 230, 180, 0.55);
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 16px rgba(80, 220, 170, 0.16) !important;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px rgba(80, 220, 170, 0.16));
 }
 
 html body:not(.pink) #pomRing.flash,
 html body:not(.pink) #pomoRing.flash {
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 30px var(--fl) !important;
+  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 30px var(--fl));
 }
 
 body:not(.pink) #pomRing .gz,

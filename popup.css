@@ -1671,7 +1671,6 @@ body:not(.pink) #pomRing .gn,
 body:not(.pink) #pomoRing .gn {
   font-size: 15px;
   fill: var(--g);
-  filter: drop-shadow(0 0 3px var(--gd));
 }
 
 body:not(.pink) #pomRing .gn.red,
@@ -1683,7 +1682,6 @@ body:not(.pink) #pomRing .gt,
 body:not(.pink) #pomoRing .gt {
   stroke: var(--g);
   stroke-width: 4.5;
-  filter: drop-shadow(0 0 3px var(--gd));
 }
 
 body:not(.pink) #pomRing .gt.red,
@@ -1694,7 +1692,6 @@ body:not(.pink) #pomoRing .gt.red {
 body:not(.pink) #pomRing .gd,
 body:not(.pink) #pomoRing .gd {
   fill: var(--g);
-  filter: drop-shadow(0 0 2px var(--gd));
 }
 
 body:not(.pink) #pomRing .gtrail,
@@ -1705,7 +1702,6 @@ body:not(.pink) #pomoRing .gtrail {
   stroke-dasharray: 0 2;
   opacity: 0.75;
   transition: stroke-dasharray 0.5s linear;
-  filter: drop-shadow(0 0 4px var(--g2));
 }
 
 body:not(.pink) #pomRing .gneedle,
@@ -1714,7 +1710,6 @@ body:not(.pink) #pomoRing .gneedle {
   transform-origin: 150px 150px;
   transform: rotate(-135deg);
   transition: transform 0.5s linear;
-  filter: drop-shadow(0 0 4px var(--g2)) drop-shadow(0 0 9px var(--gd));
 }
 
 body:not(.pink) #pomRing .gunit,

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * M2028 Chrome Extension Hub — Synchronized Controller
  * Fully synced with M2028 Web App Data Models, Themes & Real-Time Storage
  */
@@ -2011,10 +2011,21 @@
     let h = '<svg class="gz" viewBox="0 0 300 300" aria-hidden="true" focusable="false"><defs>' +
       '<linearGradient id="gzBez" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3e"/><stop offset=".5" stop-color="#121214"/><stop offset="1" stop-color="#2a2a2d"/></linearGradient>' +
       '<radialGradient id="gzFace" cx="50%" cy="50%" r="50%"><stop offset="0" style="stop-color:var(--g);stop-opacity:.16"/><stop offset=".45" stop-color="#140a04"/><stop offset="1" stop-color="#050302"/></radialGradient>' +
-      '<radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient></defs>' +
+      '<radialGradient id="gzHub" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2a2e"/><stop offset="1" stop-color="#050505"/></radialGradient>' +
+      // Glow is ONE native SVG filter on a whole group (userSpaceOnUse, so it never
+      // depends on a tick's bounding box). The old per-element CSS drop-shadow() on
+      // 32 separate ticks/labels/dots, nested inside a filtered ring inside a
+      // backdrop-filter card, made Chrome's GPU compositor draw them displaced/scaled.
+      '<filter id="gzGlow" filterUnits="userSpaceOnUse" x="0" y="0" width="300" height="300" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="1.8" result="gzB"/>' +
+        '<feMerge><feMergeNode in="gzB"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+      '<filter id="gzGlowN" filterUnits="userSpaceOnUse" x="0" y="0" width="300" height="300" color-interpolation-filters="sRGB">' +
+        '<feGaussianBlur in="SourceGraphic" stdDeviation="3" result="gzNB"/>' +
+        '<feMerge><feMergeNode in="gzNB"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' +
       '<circle cx="150" cy="150" r="149" fill="url(#gzBez)"/>' +
       '<circle cx="150" cy="150" r="143" fill="#040302"/>' +
-      '<circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>';
+      '<circle cx="150" cy="150" r="139" fill="url(#gzFace)"/>' +
+      '<g class="gmarks" filter="url(#gzGlow)">';
 
     const s0 = P(135, GAUGE_A0);
     const s1 = P(135, GAUGE_A0 + GAUGE_SW);
@@ -2034,7 +2045,8 @@
       }
     }
 
-    h += '<g class="gneedle"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g>' +
+    h += '</g>' +
+      '<g class="gneedle"><g filter="url(#gzGlowN)"><polygon points="150,36 154,150 152,178 148,178 146,150" fill="var(--g2)"/><polygon points="150,36 151,150 149,150" fill="#fff" opacity=".55"/></g></g>' +
       '<circle cx="150" cy="150" r="26" fill="url(#gzHub)" stroke="#2c2c30" stroke-width="2"/>' +
       '<circle cx="150" cy="150" r="8" fill="#0a0605" stroke="var(--g2)" stroke-width="1.5"/>' +
       '<text class="gunit" x="150" y="252">MIN</text></svg>';

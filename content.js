@@ -7,6 +7,10 @@
 (function () {
   'use strict';
 
+  // Lets the website know the extension is installed (used by the "Open Hub" widget)
+  try { document.documentElement.setAttribute('data-m2028-ext', '1'); } catch (e) {}
+
+  const mirrorSigs = {};
   let lastAppliedExtTs = 0;
   let lastSentPageTs = 0;
 
@@ -39,6 +43,13 @@
         obj['m_' + event.data.key] = event.data.value;
         chrome.storage.local.set(obj);
       }
+    } else if (event.data.type === 'OPEN_EXT_HUB') {
+      // Website widget -> open the extension hub (popup.html) in a tab on the requested section
+      const allowed = ['time', 'habits', 'tasks', 'pomo', 'countdown', 'notes', 'search'];
+      const tab = allowed.indexOf(event.data.tab) >= 0 ? event.data.tab : 'time';
+      try {
+        window.open(chrome.runtime.getURL('popup.html?tab=' + tab), '_blank');
+      } catch (e) {}
     }
   });
 
@@ -106,14 +117,14 @@
       if (changes.m_habs || changes.habs) {
         const habs = (changes.m_habs && changes.m_habs.newValue) || (changes.habs && changes.habs.newValue);
         if (habs) {
-          try { window.localStorage.setItem('m_habs', JSON.stringify(habs)); } catch (e) {}
+          try { window.localStorage.setItem('m_habs', JSON.stringify(habs)); mirrorSigs.habs = JSON.stringify(habs); } catch (e) {}
           window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_SECTION', section: 'habits' }, '*');
         }
       }
       if (changes.m_hd || changes.hd) {
         const hd = (changes.m_hd && changes.m_hd.newValue) || (changes.hd && changes.hd.newValue);
         if (hd) {
-          try { window.localStorage.setItem('m_hd', JSON.stringify(hd)); } catch (e) {}
+          try { window.localStorage.setItem('m_hd', JSON.stringify(hd)); mirrorSigs.hd = JSON.stringify(hd); } catch (e) {}
           window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_SECTION', section: 'habits' }, '*');
         }
       }
@@ -285,6 +296,80 @@
       }
     });
   }
+
+  // 5. Mirror website-side changes into extension storage while a website tab is open.
+  //    (The website writes wallpaper / theme straight to localStorage and never announces it, so poll for changes.)
+  const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors'];
+  const MIRROR_RAW = ['wallpaper', 'wpDim'];
+  const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
+  let mirrorFirstRun = true;
+
+  function readPage(key) {
+    try { return window.localStorage.getItem('m_' + key); } catch (e) { return null; }
+  }
+
+  function mirrorFromPage() {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    const first = mirrorFirstRun;
+    const run = function (existing) {
+      const setObj = {};
+      const rmKeys = [];
+
+      MIRROR_JSON.forEach(function (k) {
+        const raw = readPage(k);
+        if (raw === null) return;
+        const missingInExt = first && existing && existing['m_' + k] === undefined && existing[k] === undefined;
+        const changed = !first && raw !== mirrorSigs[k];
+        mirrorSigs[k] = raw;
+        if (!changed && !missingInExt) return;
+        try {
+          const v = JSON.parse(raw);
+          setObj[k] = v;
+          setObj['m_' + k] = v;
+        } catch (e) {}
+      });
+
+      MIRROR_RAW.forEach(function (k) {
+        const raw = readPage(k);
+        const prev = mirrorSigs[k];
+        mirrorSigs[k] = raw;
+        if (first || raw === prev) return;
+        if (raw === null) {
+          rmKeys.push(k, 'm_' + k);
+        } else {
+          setObj[k] = raw;
+          setObj['m_' + k] = raw;
+        }
+      });
+
+      // Keep the extension's login token as fresh as the website's (the website refreshes it hourly)
+      let tokRaw = null;
+      try { tokRaw = window.localStorage.getItem(SUPA_TOKEN_KEY); } catch (e) {}
+      if (tokRaw) {
+        const prevTok = mirrorSigs.__tok;
+        mirrorSigs.__tok = tokRaw;
+        if (!first && tokRaw !== prevTok) {
+          try {
+            const sess = JSON.parse(tokRaw);
+            if (sess && sess.access_token && sess.user) setObj.m_authSession = sess;
+          } catch (e) {}
+        }
+      }
+
+      if (Object.keys(setObj).length) chrome.storage.local.set(setObj);
+      if (rmKeys.length) chrome.storage.local.remove(rmKeys);
+    };
+
+    mirrorFirstRun = false;
+    if (first) {
+      chrome.storage.local.get(['m_hd', 'hd', 'm_habs', 'habs', 'm_bestSt', 'bestSt', 'm_theme', 'theme', 'm_customColors', 'customColors'], run);
+    } else {
+      run(null);
+    }
+  }
+
+  setInterval(mirrorFromPage, 2000);
+  mirrorFromPage();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialSync);

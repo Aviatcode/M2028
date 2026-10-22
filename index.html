@@ -6334,9 +6334,28 @@ document.addEventListener("click",function(e){
 
   // Hub Modal Handlers
   window.openExtensionHubModal = function(tab) {
+    var t = tab || 'tracker';
+    // With the browser extension installed, send these widgets to the extension hub instead of the in-page modal.
+    // (The extension has no Stopwatch/Clock, so those still open the in-page modal.)
+    var extTab = { tracker: 'time', notes: 'notes', search: 'search', timer: 'pomo' }[t];
+    if (extTab && document.documentElement.hasAttribute('data-m2028-ext')) {
+      window.postMessage({ from: 'M2028_PAGE', type: 'OPEN_EXT_HUB', tab: extTab }, '*');
+      return;
+    }
     openMo('extHubMo');
-    switchHubModalTab(tab || 'tracker');
+    switchHubModalTab(t);
   };
+
+  // Habit/task edits made in the extension: redraw so the streak and ticks match straight away.
+  window.addEventListener('message', function(e) {
+    var d = e.data;
+    if (!d || d.from !== 'M2028_EXT' || d.type !== 'REFRESH_SECTION') return;
+    try {
+      if (d.section === 'habits' && typeof renderHabits === 'function') renderHabits();
+      if (d.section === 'tasks' && typeof renderTasks === 'function') renderTasks();
+      if (typeof renderDash === 'function') renderDash();
+    } catch (err) {}
+  });
 
   window.switchHubModalTab = function(tab) {
     document.querySelectorAll('.hub-m-tab').forEach(function(b) {

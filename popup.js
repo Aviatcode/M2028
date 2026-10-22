@@ -459,7 +459,7 @@
     });
 
     if (tab === 'time') loadTrackerData();
-    else if (tab === 'habits') renderHabits();
+    else if (tab === 'habits') { renderHabits(); if (_authSession) pullCloudData(true, ['habs', 'hd']); }
     else if (tab === 'tasks') renderTasks();
     else if (tab === 'pomo') syncPomoFromStorage();
     else if (tab === 'countdown') renderCountdowns();
@@ -2435,54 +2435,6 @@
       });
     });
 
-    // Also scan open M2028 tabs for active wallpaper
-    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-      chrome.tabs.query({}, function (tabs) {
-        if (!tabs || !tabs.length) return;
-        const appTab = tabs.find(t => t.url && (t.url.includes('localhost') || t.url.includes('127.0.0.1') || t.url.includes('m2028') || t.url.includes('index.html')));
-        if (appTab && appTab.id && chrome.scripting && chrome.scripting.executeScript) {
-          chrome.scripting.executeScript({
-            target: { tabId: appTab.id },
-            func: () => {
-              return {
-                wallpaper: localStorage.getItem('m_wallpaper') || localStorage.getItem('wallpaper'),
-                wpDim: localStorage.getItem('m_wpDim') || localStorage.getItem('wpDim'),
-                pomSubjects: localStorage.getItem('m_pomSubjects') || localStorage.getItem('pomSubjects'),
-                pom_state: localStorage.getItem('pom_state') || localStorage.getItem('m_pomLive')
-              };
-            }
-          }).then(results => {
-            if (results && results[0] && results[0].result) {
-              const res = results[0].result;
-              if (res.wallpaper) {
-                applyWallpaperSync(res.wallpaper, res.wpDim || 0.3);
-                S.set('wallpaper', res.wallpaper);
-                S.set('wpDim', res.wpDim || 0.3);
-              }
-              if (res.pomSubjects) {
-                try {
-                  const subs = JSON.parse(res.pomSubjects);
-                  if (Array.isArray(subs)) {
-                    _pomSubjects = subs.map(s => typeof s === 'string' ? s : (s.n || s.name || s.id));
-                    if (!_pomSubjects.includes('DA/PY')) _pomSubjects.unshift('DA/PY');
-                    S.set('pomSubjects', _pomSubjects);
-                  }
-                } catch (e) {}
-              }
-              if (res.pom_state) {
-                try {
-                  const st = JSON.parse(res.pom_state);
-                  if (st && st.u && (!getPomoSavedState().u || st.u > getPomoSavedState().u)) {
-                    savePomoState(st);
-                    updatePomoDisplay(st);
-                  }
-                } catch (e) {}
-              }
-            }
-          }).catch(() => {});
-        }
-      });
-    }
   }
 
   function initPomo() {
@@ -3146,6 +3098,7 @@
         setAuthAlert(err, false);
         return;
       }
+      data._src = 'popup';
       saveAuthSession(data);
       setAuthAlert('Signed in successfully! Syncing cloud data...', true);
       await pullCloudData(false);
@@ -3180,6 +3133,7 @@
         return;
       }
       if (data.access_token && data.user) {
+        data._src = 'popup';
         saveAuthSession(data);
         setAuthAlert('Account created & signed in! Syncing cloud data...', true);
         await pullCloudData(false);
@@ -3211,7 +3165,76 @@
     setAuthAlert('');
   }
 
-  async function pullCloudData(silent) {
+  // --- Session helpers: keep the cloud token fresh so pulls/pushes don't silently fail with 401 ---
+  function getSessionFromOpenTab() {
+    return new Promise(function (resolve) {
+      if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query) return resolve(null);
+      chrome.tabs.query({ url: ['*://localhost/*', '*://127.0.0.1/*', '*://aviatcode.github.io/M2028/*'] }, function (tabs) {
+        if (chrome.runtime.lastError || !tabs || !tabs.length) return resolve(null);
+        let pending = tabs.length;
+        let done = false;
+        tabs.forEach(function (t) {
+          chrome.tabs.sendMessage(t.id, { type: 'GET_M2028_TAB_AUTH' }, function (res) {
+            if (!done && !chrome.runtime.lastError && res && res.success && res.session && res.session.access_token) {
+              done = true;
+              resolve(res.session);
+              return;
+            }
+            pending--;
+            if (pending === 0 && !done) resolve(null);
+          });
+        });
+      });
+    });
+  }
+
+  async function recoverSession() {
+    // 1. The website refreshes its own token; copy the fresh one from an open M2028 tab.
+    const tabSess = await getSessionFromOpenTab();
+    if (tabSess && (!_authSession || tabSess.access_token !== _authSession.access_token)) {
+      saveAuthSession(tabSess);
+      return true;
+    }
+    // 2. Only a session created by signing in inside this popup is refreshed here. A session copied from the
+    //    website must not be refreshed by the popup, or the website's own refresh token would be invalidated.
+    if (_authSession && _authSession._src === 'popup' && _authSession.refresh_token) {
+      try {
+        const resp = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+          method: 'POST',
+          headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: _authSession.refresh_token })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.access_token && data.user) {
+            data._src = 'popup';
+            saveAuthSession(data);
+            return true;
+          }
+        }
+      } catch (e) {}
+    }
+    return false;
+  }
+
+  async function authFetch(url, opts) {
+    opts = opts || {};
+    const send = function () {
+      const headers = Object.assign({}, opts.headers || {}, {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + _authSession.access_token
+      });
+      return fetch(url, Object.assign({}, opts, { headers: headers }));
+    };
+    if (_authSession.expires_at && _authSession.expires_at * 1000 < Date.now() + 30000) {
+      await recoverSession();
+    }
+    let resp = await send();
+    if (resp.status === 401 && (await recoverSession())) resp = await send();
+    return resp;
+  }
+
+  async function pullCloudData(silent, onlyKeys) {
     if (!_authSession || !_authSession.user || !_authSession.access_token) return;
     const statusEl = document.getElementById('authSyncStatusText');
     const syncBtn = document.getElementById('authManualSyncBtn');
@@ -3222,12 +3245,8 @@
     if (statusEl) statusEl.textContent = 'Fetching latest data from cloud...';
 
     try {
-      const resp = await fetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&select=*`, {
-        method: 'GET',
-        headers: {
-          'apikey': SUPA_KEY,
-          'Authorization': `Bearer ${_authSession.access_token}`
-        }
+      const resp = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&select=*`, {
+        method: 'GET'
       });
       if (!resp.ok) throw new Error('Cloud fetch status ' + resp.status);
       const rows = await resp.json();
@@ -3237,6 +3256,12 @@
       rows.forEach(r => {
         if (r && r.data_key) dataMap[r.data_key] = r.data_value;
       });
+      // Light refresh (e.g. every 30s): only apply the requested keys so a running timer etc. isn't touched
+      if (Array.isArray(onlyKeys)) {
+        Object.keys(dataMap).forEach(k => {
+          if (!onlyKeys.includes(k)) delete dataMap[k];
+        });
+      }
 
       // 1. Habits
       if (dataMap.habs !== undefined) {
@@ -3330,12 +3355,16 @@
       }
 
       // Refresh popup UI views with cloud data
-      initTheme();
-      renderHabits();
-      renderTasks();
-      renderCountdowns();
-      syncPomoFromStorage();
-      syncLogoAndAvatar();
+      if (Array.isArray(onlyKeys)) {
+        renderHabits();
+      } else {
+        initTheme();
+        renderHabits();
+        renderTasks();
+        renderCountdowns();
+        syncPomoFromStorage();
+        syncLogoAndAvatar();
+      }
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       if (statusEl) statusEl.textContent = `All items synced with cloud at ${timeStr}`;
@@ -3358,11 +3387,9 @@
     clearTimeout(_pushTimers[key]);
     _pushTimers[key] = setTimeout(async function () {
       try {
-        await fetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
+        await authFetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
           method: 'POST',
           headers: {
-            'apikey': SUPA_KEY,
-            'Authorization': `Bearer ${_authSession.access_token}`,
             'Content-Type': 'application/json',
             'Prefer': 'resolution=merge-duplicates'
           },
@@ -3725,6 +3752,9 @@
     initNav();
     initAuthListeners();
     initAuth();
+    setInterval(function () {
+      if (_authSession) pullCloudData(true, ['habs', 'hd']);
+    }, 30000);
     initPomo();
     initTimeTracker();
     renderHabits();

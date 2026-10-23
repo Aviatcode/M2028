@@ -86,6 +86,165 @@ const CATEGORY_MAP = {
   'messenger.com': 'communication'
 };
 
+// ============================================================
+// Website Time Limits & Blocking
+// ============================================================
+
+const STORAGE_KEY_LIMITS = 'm2028_limits';
+const STORAGE_KEY_BLOCKLIST = 'm2028_blocklist';
+const STORAGE_KEY_REDIRECTS = 'm2028_redirect_settings';
+const STORAGE_KEY_LIMIT_CACHE = 'm2028_limit_blocked_cache';
+const STORAGE_KEY_BLOCK_CACHE = 'm2028_block_rule_cache';
+
+const DEFAULT_LIMIT_REDIRECT = 'https://en.wikipedia.org/wiki/Special:Random';
+const DEFAULT_BLOCK_REDIRECT = 'https://theuselessweb.com';
+
+// Starter domain lists for block-only categories that aren't part of CATEGORY_MAP.
+// Best-effort, not exhaustive — users can always add specific domains too.
+const BLOCK_CATEGORY_DOMAINS = {
+  adult: [
+    'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com',
+    'redtube.com', 'youporn.com', 'spankbang.com'
+  ],
+  gambling: [
+    'bet365.com', 'draftkings.com', 'fanduel.com', 'stake.com',
+    'pokerstars.com', 'bovada.lv', 'betway.com', '888casino.com'
+  ]
+};
+
+// Rules we manage all live in these id ranges so we can safely wipe & rebuild them
+const DNR_BLOCK_ID_BASE = 1;      // permanent blocklist
+const DNR_LIMIT_ID_BASE = 2000;   // today's over-the-limit sites
+const DNR_MANAGED_MAX_ID = 3999;
+
+// Turn a stored target ("youtube.com" or "category:adult") into concrete domains
+function expandTargetDomains(target, customRules) {
+  if (!target) return [];
+  if (target.startsWith('category:')) {
+    const cat = target.slice('category:'.length);
+    if (BLOCK_CATEGORY_DOMAINS[cat]) return BLOCK_CATEGORY_DOMAINS[cat].slice();
+    const domains = [];
+    for (const [d, c] of Object.entries(CATEGORY_MAP)) if (c === cat) domains.push(d);
+    for (const [d, c] of Object.entries(customRules || {})) if (c === cat) domains.push(d);
+    return domains;
+  }
+  return [target];
+}
+
+function makeRedirectRule(id, domain, reason) {
+  return {
+    id,
+    priority: 1,
+    action: {
+      type: 'redirect',
+      redirect: { extensionPath: `/blocked.html?reason=${reason}&domain=${encodeURIComponent(domain)}` }
+    },
+    condition: {
+      urlFilter: `||${domain}^`,
+      resourceTypes: ['main_frame']
+    }
+  };
+}
+
+// Instantly send any already-open tab away from a domain that just became blocked
+async function redirectOpenTabs(entries) {
+  if (!entries.length) return;
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      if (!tab.url || !tab.id) continue;
+      const domain = extractDomain(tab.url);
+      if (!domain) continue;
+      const hit = entries.find(e => domain === e.d || domain.endsWith('.' + e.d));
+      if (hit) {
+        const dest = chrome.runtime.getURL(`blocked.html?reason=${hit.reason}&domain=${encodeURIComponent(domain)}`);
+        chrome.tabs.update(tab.id, { url: dest }).catch(() => {});
+      }
+    }
+  } catch (e) {}
+}
+
+// Recompute the full blocking picture (permanent blocklist + today's over-limit sites)
+// and sync it to declarativeNetRequest. Dynamic DNR rules work at the network layer,
+// so once a rule exists, Chrome enforces it instantly even if this service worker is asleep.
+async function syncBlocking() {
+  if (!chrome.declarativeNetRequest) return;
+
+  try {
+    const data = await chrome.storage.local.get([
+      STORAGE_KEY_LIMITS, STORAGE_KEY_BLOCKLIST, STORAGE_KEY_STATS,
+      'm2028_custom_rules', STORAGE_KEY_LIMIT_CACHE, STORAGE_KEY_BLOCK_CACHE
+    ]);
+
+    const limits = data[STORAGE_KEY_LIMITS] || [];
+    const blocklist = data[STORAGE_KEY_BLOCKLIST] || [];
+    const customRules = data.m2028_custom_rules || {};
+    const stats = data[STORAGE_KEY_STATS] || {};
+    const today = getTodayKey();
+    const todayData = stats[today] || { totalSeconds: 0, domains: {} };
+
+    // 1. Permanent blocklist domains
+    const blockedDomains = new Set();
+    for (const entry of blocklist) {
+      expandTargetDomains(entry.target, customRules).forEach(d => blockedDomains.add(d));
+    }
+
+    // 2. Domains over today's limit
+    const overLimitDomains = new Set();
+    for (const limit of limits) {
+      const limitSeconds = (Number(limit.minutes) || 0) * 60;
+      if (limitSeconds <= 0) continue;
+      const domains = expandTargetDomains(limit.target, customRules);
+      let usedSeconds = 0;
+      for (const d of domains) {
+        const rec = todayData.domains[d];
+        if (rec) usedSeconds += rec.seconds;
+      }
+      if (usedSeconds >= limitSeconds) domains.forEach(d => overLimitDomains.add(d));
+    }
+    // Permanent blocks take priority — don't double-handle as a "limit" redirect
+    for (const d of [...overLimitDomains]) {
+      if (blockedDomains.has(d)) overLimitDomains.delete(d);
+    }
+
+    // 3. Diff against the last sync so we know what just became blocked
+    const prevBlocked = new Set(data[STORAGE_KEY_BLOCK_CACHE] || []);
+    const prevLimited = new Set(data[STORAGE_KEY_LIMIT_CACHE] || []);
+    const newlyBlocked = [...blockedDomains].filter(d => !prevBlocked.has(d));
+    const newlyLimited = [...overLimitDomains].filter(d => !prevLimited.has(d));
+
+    await chrome.storage.local.set({
+      [STORAGE_KEY_BLOCK_CACHE]: [...blockedDomains],
+      [STORAGE_KEY_LIMIT_CACHE]: [...overLimitDomains]
+    });
+
+    // 4. Rebuild our managed dynamic rules
+    const existing = await chrome.declarativeNetRequest.getDynamicRules();
+    const removeRuleIds = existing
+      .map(r => r.id)
+      .filter(id => id >= DNR_BLOCK_ID_BASE && id <= DNR_MANAGED_MAX_ID);
+
+    const addRules = [];
+    let blockId = DNR_BLOCK_ID_BASE;
+    for (const domain of blockedDomains) addRules.push(makeRedirectRule(blockId++, domain, 'block'));
+    let limitId = DNR_LIMIT_ID_BASE;
+    for (const domain of overLimitDomains) addRules.push(makeRedirectRule(limitId++, domain, 'limit'));
+
+    if (removeRuleIds.length || addRules.length) {
+      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
+    }
+
+    // 5. Boot any tab already sitting on something that just got blocked
+    const toRedirect = [
+      ...newlyBlocked.map(d => ({ d, reason: 'block' })),
+      ...newlyLimited.map(d => ({ d, reason: 'limit' }))
+    ];
+    if (toRedirect.length) await redirectOpenTabs(toRedirect);
+  } catch (err) {
+    console.warn('syncBlocking error:', err);
+  }
+}
+
 // State variables
 let currentDomain = null;
 let currentTitle = '';
@@ -390,6 +549,7 @@ chrome.alarms.create('m2028_pomo_tick', { periodInMinutes: 0.5 });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'm2028_tracker_flush') {
     await flushTime();
+    await syncBlocking();
   } else if (alarm.name === 'm2028_pomo_tick') {
     try {
       const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
@@ -735,10 +895,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Initial boot check
 checkCurrentTab();
+syncBlocking();
 
 // Sync storage changes with background alarms and extension badges
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
+  if (changes[STORAGE_KEY_LIMITS] || changes[STORAGE_KEY_BLOCKLIST] || changes[STORAGE_KEY_REDIRECTS]) {
+    syncBlocking();
+  }
   if (changes.pom_state || changes.m_pomLive) {
     const st = (changes.pom_state && changes.pom_state.newValue) ||
                (changes.m_pomLive && changes.m_pomLive.newValue);

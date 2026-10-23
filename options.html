@@ -7,6 +7,12 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" href="favicon.ico">
   <link rel="stylesheet" href="options.css">
+  <style>
+    .subsection-title { margin: 18px 0 2px; font-size: 15px; }
+    .opts-divider { border: none; border-top: 1px solid rgba(127,127,127,0.2); margin: 26px 0; }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .count-hint { font-size: 12px; color: var(--mt); margin: 4px 0 10px; }
+  </style>
 </head>
 <body>
   <div class="opts-container">
@@ -117,6 +123,92 @@
               <!-- Populated dynamically -->
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- 2b. Website Time Limits & Blocking -->
+      <section class="opts-card">
+        <div class="card-head">
+          <span class="card-icon">⏳</span>
+          <div>
+            <h2>Website Time Limits & Blocking</h2>
+            <p class="card-desc">Cap daily time on a site or category, or block it outright — up to 10 of each</p>
+          </div>
+        </div>
+
+        <h3 class="subsection-title">⏳ Daily Time Limits</h3>
+        <p class="field-hint">When a site or category hits its daily cap, it's blocked instantly for the rest of the day.</p>
+
+        <div class="add-rule-row">
+          <select id="limitTargetType" class="opts-select">
+            <option value="domain">Specific website</option>
+            <option value="category">Category</option>
+          </select>
+          <input type="text" id="limitDomainInput" class="opts-input" placeholder="e.g. youtube.com">
+          <select id="limitCategorySelect" class="opts-select" style="display:none"></select>
+          <input type="number" id="limitMinutesInput" class="opts-input" style="max-width:120px" placeholder="Minutes/day" min="1" max="1440">
+          <button id="addLimitBtn" class="hub-btn primary">Add Limit</button>
+        </div>
+        <div id="limitCountHint" class="count-hint"></div>
+
+        <div class="rules-table-wrap">
+          <table class="rules-table">
+            <thead><tr><th>Site / Category</th><th>Daily Limit</th><th style="width: 80px">Action</th></tr></thead>
+            <tbody id="limitsTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="form-row" style="margin-top:14px">
+          <div class="label-col">
+            <label for="limitRedirectUrl">When a limit is hit, redirect to</label>
+            <span class="field-hint">Instantly sent here instead of the blocked page — good default: somewhere you can actually learn something</span>
+          </div>
+          <div class="input-col" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <input type="url" id="limitRedirectUrl" class="opts-input" placeholder="https://..." style="width:100%">
+            <div class="preset-row">
+              <button type="button" class="hub-btn secondary sm" data-preset-limit="https://en.wikipedia.org/wiki/Special:Random">🎲 Random Wikipedia</button>
+              <button type="button" class="hub-btn secondary sm" data-preset-limit="https://www.khanacademy.org">🎓 Khan Academy</button>
+              <button type="button" class="hub-btn secondary sm" data-preset-limit="https://www.freecodecamp.org">💻 freeCodeCamp</button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="opts-divider">
+
+        <h3 class="subsection-title">🚫 Always Blocked</h3>
+        <p class="field-hint">These are blocked instantly, all day, every day — no limit needed.</p>
+
+        <div class="add-rule-row">
+          <select id="blockTargetType" class="opts-select">
+            <option value="domain">Specific website</option>
+            <option value="category">Category</option>
+          </select>
+          <input type="text" id="blockDomainInput" class="opts-input" placeholder="e.g. example.com">
+          <select id="blockCategorySelect" class="opts-select" style="display:none"></select>
+          <button id="addBlockBtn" class="hub-btn primary">Add to Blocklist</button>
+        </div>
+        <div id="blockCountHint" class="count-hint"></div>
+
+        <div class="rules-table-wrap">
+          <table class="rules-table">
+            <thead><tr><th>Site / Category</th><th style="width: 80px">Action</th></tr></thead>
+            <tbody id="blocklistTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="form-row" style="margin-top:14px">
+          <div class="label-col">
+            <label for="blockRedirectUrl">When something's blocked, redirect to</label>
+            <span class="field-hint">Swap this for anything — it's just meant to be a fun landing spot instead</span>
+          </div>
+          <div class="input-col" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <input type="url" id="blockRedirectUrl" class="opts-input" placeholder="https://..." style="width:100%">
+            <div class="preset-row">
+              <button type="button" class="hub-btn secondary sm" data-preset-block="https://theuselessweb.com">🎲 The Useless Web</button>
+              <button type="button" class="hub-btn secondary sm" data-preset-block="https://www.ndtv.com">📰 News</button>
+              <button type="button" class="hub-btn secondary sm" data-preset-block="https://www.duolingo.com">🦉 Duolingo</button>
+            </div>
+          </div>
         </div>
       </section>
 

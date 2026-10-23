@@ -81,60 +81,10 @@
         }
       }
 
-      // Pomodoro Sessions log change
-      if (changes.m_pomSessions || changes.pomSessions) {
-        const sessions = (changes.m_pomSessions && changes.m_pomSessions.newValue) ||
-                         (changes.pomSessions && changes.pomSessions.newValue);
-        if (sessions) {
-          try {
-            window.localStorage.setItem('m_pomSessions', JSON.stringify(sessions));
-          } catch (e) {}
-          window.postMessage({
-            from: 'M2028_EXT',
-            type: 'SESSIONS_UPDATE',
-            sessions: sessions
-          }, '*');
-        }
-      }
+      // NOTE: lists (habits, habit ticks, tasks, session log, daily counts) are deliberately NOT written into the
+      // website from here. The website merges them itself from the cloud, by timestamp. Writing the extension's
+      // copy straight into the page's storage is what brought old items back.
 
-      // Daily session counts change
-      if (changes.m_pd || changes.pd) {
-        const pd = (changes.m_pd && changes.m_pd.newValue) ||
-                   (changes.pd && changes.pd.newValue);
-        if (pd) {
-          try {
-            window.localStorage.setItem('m_pd', JSON.stringify(pd));
-          } catch (e) {}
-          window.postMessage({
-            from: 'M2028_EXT',
-            type: 'PD_UPDATE',
-            pd: pd
-          }, '*');
-        }
-      }
-
-      // Habits & Tasks live sync
-      if (changes.m_habs || changes.habs) {
-        const habs = (changes.m_habs && changes.m_habs.newValue) || (changes.habs && changes.habs.newValue);
-        if (habs) {
-          try { window.localStorage.setItem('m_habs', JSON.stringify(habs)); mirrorSigs.habs = JSON.stringify(habs); } catch (e) {}
-          window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_SECTION', section: 'habits' }, '*');
-        }
-      }
-      if (changes.m_hd || changes.hd) {
-        const hd = (changes.m_hd && changes.m_hd.newValue) || (changes.hd && changes.hd.newValue);
-        if (hd) {
-          try { window.localStorage.setItem('m_hd', JSON.stringify(hd)); mirrorSigs.hd = JSON.stringify(hd); } catch (e) {}
-          window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_SECTION', section: 'habits' }, '*');
-        }
-      }
-      if (changes.m_tasks || changes.tasks) {
-        const tasks = (changes.m_tasks && changes.m_tasks.newValue) || (changes.tasks && changes.tasks.newValue);
-        if (tasks) {
-          try { window.localStorage.setItem('m_tasks', JSON.stringify(tasks)); } catch (e) {}
-          window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_SECTION', section: 'tasks' }, '*');
-        }
-      }
       if (changes.m_profilePic || changes.profilePic) {
         const pic = (changes.m_profilePic && changes.m_profilePic.newValue) || (changes.profilePic && changes.profilePic.newValue);
         if (pic) {

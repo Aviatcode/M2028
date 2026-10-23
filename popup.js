@@ -1015,14 +1015,19 @@
     { id: 'film', label: '🎬 Max 1 film', days: 'sat' }
   ];
 
+  // Same schedule rules as the website's habitDows()
+  const DOW_ABBR = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  function habitDows(h) {
+    if (!h || !h.days || h.days === 'daily') return [0, 1, 2, 3, 4, 5, 6];
+    if (h.days === 'mwf') return [1, 3, 5];
+    if (h.days === 'sat') return [6];
+    const list = String(h.days).split(',').map(x => DOW_ABBR[x.trim()]).filter(x => x !== undefined);
+    return list.length ? list : [0, 1, 2, 3, 4, 5, 6];
+  }
+
   function getScheduledHabits(allHabits) {
     const dow = new Date().getDay();
-    return allHabits.filter(h => {
-      if (!h.days || h.days === 'daily') return true;
-      if (h.days === 'mwf') return dow === 1 || dow === 3 || dow === 5;
-      if (h.days === 'sat') return dow === 6;
-      return true;
-    });
+    return allHabits.filter(h => habitDows(h).includes(dow));
   }
 
   function calcM2028Streak(hdMap) {
@@ -1045,18 +1050,22 @@
     return count;
   }
 
-  function calcHabitItemStreak(hid, hdMap) {
+  function calcHabitItemStreak(hid, hdMap, habList) {
+    const keyOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const habit = (habList || []).find(h => h.id === hid);
+    const dows = habitDows(habit);
     let count = 0;
     let n = new Date();
     n.setHours(0, 0, 0, 0);
-    const todayK = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
-    if (!hdMap[todayK] || !hdMap[todayK][hid]) {
+    // Start from today only if it is a scheduled day and already ticked; otherwise start from yesterday
+    if (!(dows.includes(n.getDay()) && (hdMap[keyOf(n)] || {})[hid] === true)) {
       n = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
     }
-    for (; count < 365; ) {
-      const k = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
-      if (!hdMap[k] || !hdMap[k][hid]) break;
-      count++;
+    for (let i = 0; i < 36000; i++) {
+      if (dows.includes(n.getDay())) {
+        if ((hdMap[keyOf(n)] || {})[hid] !== true) break;
+        count++;
+      }
       n = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
     }
     return count;
@@ -1112,7 +1121,7 @@
           const isPink = document.body.classList.contains('pink');
           listEl.innerHTML = scheduled.map(h => {
             const isDone = !!todayDone[h.id];
-            const r = calcHabitItemStreak(h.id, hdMap);
+            const r = calcHabitItemStreak(h.id, hdMap, allHabits);
             return `
               <div class="hr ${isDone ? 'ck' : ''}" data-hid="${h.id}">
                 <button class="hc ${isDone ? 'ck' : ''}" data-hid="${h.id}" title="Toggle Done">
@@ -2942,8 +2951,9 @@
 
   let _authSession = null;
   let _lastPull = 'not yet';
-  const SYNC_KEYS = ['habs', 'hd', 'tasks', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
+  const SYNC_KEYS = ['habs', 'hd', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
   const _pushTimers = {};
+  const _lastSync = {};
 
   function setAuthAlert(msg, isSuccess) {
     const el = document.getElementById('authAlertMsg');
@@ -3343,7 +3353,10 @@
 
       const dataMap = {};
       rows.forEach(r => {
-        if (r && r.data_key) dataMap[r.data_key] = r.data_value;
+        if (r && r.data_key) {
+          dataMap[r.data_key] = r.data_value;
+          _lastSync[r.data_key] = Date.parse(r.updated_at) || 0;
+        }
       });
       // Light refresh (e.g. every 30s): only apply the requested keys so a running timer etc. isn't touched
       if (Array.isArray(onlyKeys)) {
@@ -3366,13 +3379,7 @@
         }
       }
 
-      // 2. Tasks
-      if (dataMap.tasks !== undefined) {
-        try { localStorage.setItem('m_tasks', JSON.stringify(dataMap.tasks)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_tasks: dataMap.tasks, tasks: dataMap.tasks });
-        }
-      }
+      // 2. Tasks: the website keeps tasks on each device only, so they are not pulled from the cloud here
 
       // 3. Countdowns
       if (dataMap.customWidgets !== undefined) {
@@ -3479,6 +3486,24 @@
     clearTimeout(_pushTimers[key]);
     _pushTimers[key] = setTimeout(async function () {
       try {
+        // Safety check: if the cloud copy is newer than what this popup last saw (for example the website changed
+        // it), do NOT overwrite it with this older copy. Take the cloud version instead.
+        const chk = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&data_key=eq.${encodeURIComponent(key)}&select=updated_at`, { method: 'GET' });
+        if (chk.ok) {
+          const cur = await chk.json();
+          if (Array.isArray(cur) && cur.length) {
+            const cloudTs = Date.parse(cur[0].updated_at) || 0;
+            if (cloudTs > (_lastSync[key] || 0)) {
+              const statusEl0 = document.getElementById('authSyncStatusText');
+              if (statusEl0) statusEl0.textContent = 'Cloud had newer ' + key + ' - kept the cloud version';
+              pullCloudData(true, [key]);
+              return;
+            }
+          }
+        } else {
+          return; // cannot verify, so do not risk overwriting
+        }
+        const sentAt = new Date().toISOString();
         await authFetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
           method: 'POST',
           headers: {
@@ -3489,9 +3514,10 @@
             user_id: _authSession.user.id,
             data_key: key,
             data_value: val,
-            updated_at: new Date().toISOString()
+            updated_at: sentAt
           })
         });
+        _lastSync[key] = Date.parse(sentAt);
         const statusEl = document.getElementById('authSyncStatusText');
         if (statusEl) {
           const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

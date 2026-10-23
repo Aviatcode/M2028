@@ -1686,8 +1686,21 @@
     renderPomLog();
   }
 
+  // If the background already played the sound for this phase end, stay quiet (avoids a double ding)
+  function claimAndPlayPomoSound(phaseEnd) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local || !phaseEnd) {
+      pomSound('session');
+      return;
+    }
+    chrome.storage.local.get('m2028_pomoSoundClaim', function (r) {
+      if (r && r.m2028_pomoSoundClaim === phaseEnd) return;
+      chrome.storage.local.set({ m2028_pomoSoundClaim: phaseEnd });
+      pomSound('session');
+    });
+  }
+
   function handlePomoCompletion(st) {
-    pomSound('session');
+    claimAndPlayPomoSound(st.endTs);
     st.tot = st.tot || 4;
 
     if (st.mode === 'focus') {

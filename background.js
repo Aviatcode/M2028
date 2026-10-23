@@ -332,12 +332,69 @@ function updatePomoBadge(st) {
   } catch (e) {}
 }
 
+// ---- Pomodoro sound (played through a hidden offscreen page, because a service worker cannot play audio) ----
+let _offscreenPromise = null;
+
+async function ensureOffscreen() {
+  if (!chrome.offscreen || !chrome.runtime.getContexts) return false;
+  const existing = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
+  if (existing && existing.length) return true;
+  if (!_offscreenPromise) {
+    _offscreenPromise = chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['AUDIO_PLAYBACK'],
+      justification: 'Play the Pomodoro break and end sounds while the popup is closed'
+    }).catch(function () {}).then(function () { _offscreenPromise = null; });
+  }
+  await _offscreenPromise;
+  return true;
+}
+
+// Only one place (popup or background) may play the sound for a given phase end
+async function claimPomoSound(phaseEnd) {
+  try {
+    const r = await chrome.storage.local.get('m2028_pomoSoundClaim');
+    if (phaseEnd && r.m2028_pomoSoundClaim === phaseEnd) return false;
+    await chrome.storage.local.set({ m2028_pomoSoundClaim: phaseEnd || Date.now() });
+  } catch (e) {}
+  return true;
+}
+
+// True when this browser can play the sound itself (then the system notification sound is switched off)
+const CAN_PLAY_SOUND = !!(chrome.offscreen && chrome.runtime.getContexts);
+
+// kind: 'session' = focus finished, break starts | 'end' = break finished
+async function playPomoSound(kind, phaseEnd) {
+  try {
+    if (!(await claimPomoSound(phaseEnd))) return true; // the popup already played it
+    if (!(await ensureOffscreen())) return false;
+    const r = await chrome.storage.local.get(['m_pomSoundStyle', 'pomSoundStyle']);
+    let style = r.m_pomSoundStyle || r.pomSoundStyle || 'bell';
+    if (typeof style !== 'string') style = 'bell';
+    const res = await chrome.runtime.sendMessage({ target: 'm2028-offscreen', type: 'PLAY_POMO_SOUND', kind: kind, style: style });
+    try { await chrome.offscreen.closeDocument(); } catch (e) {}
+    const ok = !!(res && res.ok);
+    try { await chrome.storage.local.set({ m2028_lastPomoSound: { kind: kind, style: style, ok: ok, at: Date.now() } }); } catch (e) {}
+    return ok;
+  } catch (e) {
+    console.warn('Pomo sound error:', e);
+    return false;
+  }
+}
+
 // Alarms: Heartbeat every 30 seconds to persist time continuously
 chrome.alarms.create('m2028_tracker_flush', { periodInMinutes: 0.5 });
+// Keeps the toolbar badge (minutes left) counting down while the popup is closed
+chrome.alarms.create('m2028_pomo_tick', { periodInMinutes: 0.5 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'm2028_tracker_flush') {
     await flushTime();
+  } else if (alarm.name === 'm2028_pomo_tick') {
+    try {
+      const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
+      updatePomoBadge(res.pom_state || res.m_pomLive || null);
+    } catch (e) {}
   } else if (alarm.name === 'm2028_timer_alarm') {
     // Timer reached 0!
     try {
@@ -362,7 +419,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       let st = res.pom_state || res.m_pomLive;
       if (!st || !st.run) return;
 
+      // Stale alarm: the popup or website already moved this timer to its next phase, so do nothing
+      if (st.endTs && st.endTs - Date.now() > 2000) {
+        chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+        updatePomoBadge(st);
+        return;
+      }
+
       const tot = st.tot || 4;
+      const phaseEnd = st.endTs;
       if (st.mode === 'focus') {
         st.cur = (st.cur || 0) + 1;
         await logPomoSession(st.sub || 'General', st.phaseLen || 3000);
@@ -370,13 +435,16 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         const isLong = st.cur % tot === 0;
         const breakLen = isLong ? 1800 : (st.phaseLen === 1500 ? 300 : 600);
 
+        // Break sound: starts right away and plays alongside the phase change (it never delays it)
+        playPomoSound('session', phaseEnd);
         chrome.notifications.create('m2028_pomo_end_' + Date.now(), {
           type: 'basic',
           iconUrl: 'icon-192.png',
           title: isLong ? `🏆 All ${tot} Sessions Complete!` : '✅ Focus Session Done!',
           message: isLong ? 'Awesome work! Take a 30-min long break.' : `Take a ${breakLen / 60}-min break. Refresh and stretch!`,
           priority: 2,
-          requireInteraction: true
+          requireInteraction: true,
+          silent: CAN_PLAY_SOUND
         });
 
         st.mode = 'break';
@@ -394,13 +462,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       } else {
         // Break over
         if (st.cur >= tot) {
+          playPomoSound('end', phaseEnd);
           chrome.notifications.create('m2028_pomo_cycle_' + Date.now(), {
             type: 'basic',
             iconUrl: 'icon-192.png',
             title: '🎉 Daily Pomodoro Cycle Complete!',
             message: 'All scheduled sessions finished! Great discipline today.',
             priority: 2,
-            requireInteraction: true
+            requireInteraction: true,
+            silent: CAN_PLAY_SOUND
           });
 
           st.run = false;
@@ -416,13 +486,15 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
           await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
           updatePomoBadge(st);
         } else {
+          playPomoSound('end', phaseEnd);
           chrome.notifications.create('m2028_pomo_next_' + Date.now(), {
             type: 'basic',
             iconUrl: 'icon-192.png',
             title: '☕ Break Over!',
             message: `Starting focus session ${(st.cur || 0) + 1} of ${tot}. Let's dive in!`,
             priority: 2,
-            requireInteraction: true
+            requireInteraction: true,
+            silent: CAN_PLAY_SOUND
           });
 
           st.mode = 'focus';

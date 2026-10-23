@@ -32,7 +32,8 @@
     "storage",
     "idle",
     "alarms",
-    "notifications"
+    "notifications",
+    "offscreen"
   ],
   "host_permissions": [
     "http://localhost/*",

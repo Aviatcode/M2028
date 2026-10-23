@@ -248,6 +248,11 @@
       if (layer) layer.innerHTML = '';
     }
 
+    // The className assignments above wipe every class on <html>, including the wallpaper flag. Put it back.
+    if (document.getElementById('m2028-ext-wallpaper-style')) {
+      document.documentElement.classList.add('haswp');
+    }
+
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) {
       if (validTheme === 'light') {
@@ -2936,6 +2941,7 @@
   const SUPA_AUTH_STORE_KEY = "sb-" + SUPA_URL.replace("https://", "").split(".")[0] + "-auth-token";
 
   let _authSession = null;
+  let _lastPull = 'not yet';
   const SYNC_KEYS = ['habs', 'hd', 'tasks', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
   const _pushTimers = {};
 
@@ -2993,6 +2999,7 @@
     if (!modal) return;
     modal.classList.add('op');
     setAuthAlert('');
+    updateSyncDiag();
   }
 
   function closeAuthModal() {
@@ -3234,6 +3241,88 @@
     return resp;
   }
 
+  // --- Take habit data straight from an open M2028 website tab (it is the app of record) ---
+  const APP_TAB_PATTERNS = ['*://localhost/*', '*://127.0.0.1/*', '*://aviatcode.github.io/M2028/*'];
+
+  function adoptWebAppData() {
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query) return;
+    chrome.tabs.query({ url: APP_TAB_PATTERNS }, function (tabs) {
+      if (chrome.runtime.lastError || !tabs || !tabs.length) return;
+      let done = false;
+      tabs.forEach(function (t) {
+        chrome.tabs.sendMessage(t.id, { type: 'GET_M2028_PAGE_DATA' }, function (res) {
+          if (done || chrome.runtime.lastError || !res || !res.success || !res.data) return;
+          done = true;
+          const obj = {};
+          ['hd', 'habs', 'bestSt'].forEach(function (k) {
+            const v = res.data[k];
+            if (v === undefined || v === null) return;
+            obj[k] = v;
+            obj['m_' + k] = v;
+            try { localStorage.setItem('m_' + k, JSON.stringify(v)); } catch (e) {}
+          });
+          if (Object.keys(obj).length && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set(obj);
+            renderHabits();
+          }
+        });
+      });
+    });
+  }
+
+  // --- Small "what is syncing" report shown at the top of the account panel ---
+  function updateSyncDiag() {
+    const el = document.getElementById('syncDiag');
+    if (!el) return;
+    const lines = [];
+    const finish = function () { el.textContent = lines.join('\n'); };
+    const sum = function (hd) {
+      hd = hd || {};
+      const days = Object.keys(hd).filter(function (d) {
+        return Object.values(hd[d] || {}).some(function (v) { return v === true; });
+      }).sort();
+      return days.length + ' days ticked' + (days.length ? ', latest ' + days[days.length - 1] : '') + ', streak ' + calcM2028Streak(hd);
+    };
+    lines.push('Login: ' + (_authSession && _authSession.user
+      ? _authSession.user.email + (_authSession._src === 'popup' ? ' (signed in here)' : ' (from website)')
+      : 'NOT signed in'));
+    lines.push('Last cloud pull: ' + _lastPull);
+    S.get('hd', {}, function (hd) {
+      lines.push('Extension habits: ' + sum(hd));
+      const afterWallpaper = function (extWp) {
+        lines.push('Wallpaper stored in extension: ' + (extWp ? Math.round(String(extWp).length / 1024) + ' KB' : 'none'));
+        if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query) return finish();
+        chrome.tabs.query({ url: APP_TAB_PATTERNS }, function (tabs) {
+          if (chrome.runtime.lastError || !tabs || !tabs.length) {
+            lines.push('Website tab: none open');
+            return finish();
+          }
+          let pending = tabs.length;
+          let got = false;
+          tabs.forEach(function (t) {
+            chrome.tabs.sendMessage(t.id, { type: 'GET_M2028_PAGE_DATA' }, function (res) {
+              if (!got && !chrome.runtime.lastError && res && res.success) {
+                got = true;
+                lines.push('Website habits: ' + sum(res.data && res.data.hd));
+                lines.push('Wallpaper on website: ' + (res.wallpaperLen ? Math.round(res.wallpaperLen / 1024) + ' KB' : 'none'));
+              }
+              pending--;
+              if (pending === 0) {
+                if (!got) lines.push('Website tab is open but the extension script is not running in it. Refresh that tab.');
+                finish();
+              }
+            });
+          });
+        });
+      };
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['m_wallpaper', 'wallpaper'], function (r) { afterWallpaper(r.m_wallpaper || r.wallpaper); });
+      } else {
+        afterWallpaper(null);
+      }
+    });
+  }
+
   async function pullCloudData(silent, onlyKeys) {
     if (!_authSession || !_authSession.user || !_authSession.access_token) return;
     const statusEl = document.getElementById('authSyncStatusText');
@@ -3365,11 +3454,14 @@
         syncPomoFromStorage();
         syncLogoAndAvatar();
       }
+      adoptWebAppData();
 
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      _lastPull = 'OK at ' + timeStr;
       if (statusEl) statusEl.textContent = `All items synced with cloud at ${timeStr}`;
     } catch (e) {
       console.warn('Cloud sync error:', e);
+      _lastPull = 'FAILED (' + (e && e.message ? e.message : 'unknown') + ')';
       if (statusEl) statusEl.textContent = 'Sync notice: offline or connection issue';
     } finally {
       if (!silent && syncBtn) {
@@ -3752,7 +3844,9 @@
     initNav();
     initAuthListeners();
     initAuth();
+    adoptWebAppData();
     setInterval(function () {
+      adoptWebAppData();
       if (_authSession) pullCloudData(true, ['habs', 'hd']);
     }, 30000);
     initPomo();

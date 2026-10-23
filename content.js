@@ -280,6 +280,19 @@
   // 4. Listen for tab auth queries from extension popup
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+      if (request.type === 'GET_M2028_PAGE_DATA') {
+        const out = {};
+        ['hd', 'habs', 'bestSt'].forEach(function (k) {
+          try {
+            const raw = window.localStorage.getItem('m_' + k);
+            if (raw !== null) out[k] = JSON.parse(raw);
+          } catch (e) {}
+        });
+        let wpLen = 0;
+        try { wpLen = (window.localStorage.getItem('m_wallpaper') || '').length; } catch (e) {}
+        sendResponse({ success: true, data: out, wallpaperLen: wpLen });
+        return true;
+      }
       if (request.type === 'GET_M2028_TAB_AUTH') {
         try {
           const supaTok = window.localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token');

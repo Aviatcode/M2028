@@ -6337,7 +6337,7 @@ document.addEventListener("click",function(e){
     var t = tab || 'tracker';
     // With the browser extension installed, send these widgets to the extension hub instead of the in-page modal.
     // (The extension has no Stopwatch/Clock, so those still open the in-page modal.)
-    var extTab = { tracker: 'time', notes: 'notes', search: 'search', timer: 'pomo' }[t];
+    var extTab = { tracker: 'time', search: 'search', timer: 'pomo' }[t];
     if (extTab && document.documentElement.hasAttribute('data-m2028-ext')) {
       window.postMessage({ from: 'M2028_PAGE', type: 'OPEN_EXT_HUB', tab: extTab }, '*');
       return;
@@ -6367,10 +6367,10 @@ document.addEventListener("click",function(e){
     } else if (tab === 'notes') {
       var a = document.getElementById('hubMoNotesArea');
       if (a) {
-        a.value = localStorage.getItem('ext_m2028_scratchpad') || S.go('hubNotes', '');
+        // Synced notes first (shared with the extension); the old device-only copy is only a fallback
+        a.value = S.go('hubNotes', '') || localStorage.getItem('ext_m2028_scratchpad') || '';
         updateNotesWords(a.value);
         a.oninput = function() {
-          localStorage.setItem('ext_m2028_scratchpad', a.value);
           S.s('hubNotes', a.value);
           updateNotesWords(a.value);
         };

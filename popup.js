@@ -713,7 +713,6 @@
   function initTimeTracker() {
     const rangeTodayBtn = document.getElementById('rangeTodayBtn');
     const rangeWeekBtn = document.getElementById('rangeWeekBtn');
-    const resetBtn = document.getElementById('resetTrackerBtn');
     const subTopBtn = document.getElementById('subTabTopSites');
     const subTabsBtn = document.getElementById('subTabOpenTabs');
     const topListEl = document.getElementById('topSitesList');
@@ -734,16 +733,6 @@
         rangeWeekBtn.classList.add('active');
         if (rangeTodayBtn) rangeTodayBtn.classList.remove('active');
         loadTrackerData();
-      });
-    }
-
-    if (resetBtn) {
-      resetBtn.addEventListener('click', function () {
-        if (confirm("Reset today's tracking data?")) {
-          sendBgMessage({ type: 'RESET_TRACKER_DATA' }, function () {
-            loadTrackerData();
-          });
-        }
       });
     }
 
@@ -2743,17 +2732,20 @@
       updateNotesStats(val);
     };
 
+    // Pick up notes written on the website before the user starts typing here
+    if (_authSession) pullCloudData(true, ['hubNotes']);
+
     if (copyBtn) {
-      copyBtn.addEventListener('click', function () {
+      copyBtn.onclick = function () {
         navigator.clipboard.writeText(area.value).then(() => {
           copyBtn.textContent = 'Copied!';
           setTimeout(() => copyBtn.textContent = 'Copy', 1500);
         });
-      });
+      };
     }
 
     if (modeBtn && preview) {
-      modeBtn.addEventListener('click', function () {
+      modeBtn.onclick = function () {
         isNotesPreview = !isNotesPreview;
         if (isNotesPreview) {
           preview.innerHTML = renderMarkdown(area.value);
@@ -2766,7 +2758,7 @@
           modeBtn.textContent = 'Preview';
           area.focus();
         }
-      });
+      };
     }
   }
 
@@ -2951,7 +2943,7 @@
 
   let _authSession = null;
   let _lastPull = 'not yet';
-  const SYNC_KEYS = ['habs', 'hd', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
+  const SYNC_KEYS = ['habs', 'hd', 'hubNotes', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
   const _pushTimers = {};
   const _lastSync = {};
 
@@ -3380,6 +3372,20 @@
       }
 
       // 2. Tasks: the website keeps tasks on each device only, so they are not pulled from the cloud here
+
+      // 2b. Notes (shared with the website's Hub notes)
+      if (typeof dataMap.hubNotes === 'string') {
+        try { localStorage.setItem('m_hubNotes', JSON.stringify(dataMap.hubNotes)); } catch (e) {}
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ m_hubNotes: dataMap.hubNotes, hubNotes: dataMap.hubNotes });
+        }
+        const notesArea = document.getElementById('notesInput');
+        // Never replace text the user is typing right now
+        if (notesArea && document.activeElement !== notesArea && notesArea.value !== dataMap.hubNotes) {
+          notesArea.value = dataMap.hubNotes;
+          updateNotesStats(dataMap.hubNotes);
+        }
+      }
 
       // 3. Countdowns
       if (dataMap.customWidgets !== undefined) {

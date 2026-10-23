@@ -11,6 +11,15 @@
   try { document.documentElement.setAttribute('data-m2028-ext', '1'); } catch (e) {}
 
   const mirrorSigs = {};
+  let lastNotes = null; // last notes text passed between page and extension (stops echo loops)
+
+  // The extension only needs the access token. The website's refresh token stays in the website, so nothing
+  // else can ever use it up and sign the website out.
+  function safeSession(s) {
+    const c = Object.assign({}, s);
+    delete c.refresh_token;
+    return c;
+  }
   let lastAppliedExtTs = 0;
   let lastSentPageTs = 0;
 
@@ -37,10 +46,15 @@
       }
     } else if (event.data.type === 'DATA_UPDATE' && event.data.key && event.data.value !== undefined) {
       // Sync other M2028 keys (habits, tasks, pd, pomSessions)
+      if (event.data.key === 'hubNotes') {
+        if (event.data.value === lastNotes) return;
+        lastNotes = event.data.value;
+      }
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         const obj = {};
         obj[event.data.key] = event.data.value;
         obj['m_' + event.data.key] = event.data.value;
+        if (event.data.key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
         chrome.storage.local.set(obj);
       }
     } else if (event.data.type === 'OPEN_EXT_HUB') {
@@ -85,6 +99,15 @@
       // website from here. The website merges them itself from the cloud, by timestamp. Writing the extension's
       // copy straight into the page's storage is what brought old items back.
 
+      // Notes written in the extension popup -> show them on the open website right away
+      if (changes.m_hubNotes || changes.hubNotes) {
+        const nv = (changes.m_hubNotes && changes.m_hubNotes.newValue !== undefined) ? changes.m_hubNotes.newValue : (changes.hubNotes && changes.hubNotes.newValue);
+        if (typeof nv === 'string' && nv !== lastNotes) {
+          lastNotes = nv;
+          window.postMessage({ from: 'M2028_EXT', type: 'NOTES_UPDATE', value: nv }, '*');
+        }
+      }
+
       if (changes.m_profilePic || changes.profilePic) {
         const pic = (changes.m_profilePic && changes.m_profilePic.newValue) || (changes.profilePic && changes.profilePic.newValue);
         if (pic) {
@@ -112,7 +135,7 @@
   function initialSync() {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
 
-    chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pomSessions', 'm_pd'], function (res) {
+    chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pomSessions', 'm_pd', 'm_hubNotes', 'm_hubNotesTs'], function (res) {
       let pageSt = null;
       try {
         const raw = window.localStorage.getItem('pom_state') || window.localStorage.getItem('m_pomLive');
@@ -152,6 +175,24 @@
       if (res.m_pd && !window.localStorage.getItem('m_pd')) {
         try { window.localStorage.setItem('m_pd', JSON.stringify(res.m_pd)); } catch (e) {}
       }
+
+      // Notes: whichever side was edited last wins when the website opens
+      try {
+        const rawN = window.localStorage.getItem('m_hubNotes');
+        let pageNotes = null;
+        try { pageNotes = rawN === null ? null : JSON.parse(rawN); } catch (e) {}
+        let pageTs = 0;
+        try { pageTs = (JSON.parse(window.localStorage.getItem('m_sync_ts') || '{}') || {}).hubNotes || 0; } catch (e) {}
+        const extNotes = res.m_hubNotes;
+        const extTs = res.m_hubNotesTs || 0;
+        if (typeof extNotes === 'string' && extNotes !== pageNotes && (typeof pageNotes !== 'string' || pageNotes === '' || extTs > pageTs)) {
+          lastNotes = extNotes;
+          window.postMessage({ from: 'M2028_EXT', type: 'NOTES_UPDATE', value: extNotes }, '*');
+        } else if (typeof pageNotes === 'string' && pageNotes !== '' && pageNotes !== extNotes) {
+          lastNotes = pageNotes;
+          chrome.storage.local.set({ m_hubNotes: pageNotes, hubNotes: pageNotes, m_hubNotesTs: pageTs || Date.now() });
+        }
+      } catch (e) {}
 
       // Sync theme & customColors from page to extension storage
       try {
@@ -207,7 +248,7 @@
           try {
             const sess = JSON.parse(supaTok);
             if (sess && sess.access_token && sess.user) {
-              syncObj.m_authSession = sess;
+              syncObj.m_authSession = safeSession(sess);
             }
           } catch (e) {}
         }
@@ -249,7 +290,7 @@
           if (supaTok) {
             const sess = JSON.parse(supaTok);
             if (sess && sess.access_token && sess.user) {
-              sendResponse({ success: true, session: sess });
+              sendResponse({ success: true, session: safeSession(sess) });
               return true;
             }
           }
@@ -314,7 +355,7 @@
         if (!first && tokRaw !== prevTok) {
           try {
             const sess = JSON.parse(tokRaw);
-            if (sess && sess.access_token && sess.user) setObj.m_authSession = sess;
+            if (sess && sess.access_token && sess.user) setObj.m_authSession = safeSession(sess);
           } catch (e) {}
         }
       }

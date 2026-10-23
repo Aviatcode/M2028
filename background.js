@@ -518,9 +518,23 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 // Keyboard Commands handler
+// Always open the hosted website, never the copy of index.html inside the extension: that copy runs on a different
+// origin with its own login, and it used to refresh the website's session and sign the website out.
+const M2028_APP_URL = 'https://aviatcode.github.io/M2028/';
+function openHostedApp() {
+  chrome.tabs.query({ url: M2028_APP_URL + '*' }, (tabs) => {
+    if (!chrome.runtime.lastError && tabs && tabs.length) {
+      chrome.tabs.update(tabs[0].id, { active: true });
+      if (chrome.windows && chrome.windows.update) chrome.windows.update(tabs[0].windowId, { focused: true });
+    } else {
+      chrome.tabs.create({ url: M2028_APP_URL });
+    }
+  });
+}
+
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'open_full_planner') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('index.html') });
+    openHostedApp();
   }
 });
 
@@ -668,8 +682,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       case 'OPEN_FULL_PLANNER': {
-        const url = chrome.runtime.getURL('index.html');
-        chrome.tabs.create({ url: url });
+        openHostedApp();
         sendResponse({ success: true });
         break;
       }

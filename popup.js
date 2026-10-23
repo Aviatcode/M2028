@@ -39,6 +39,7 @@
         const obj = {};
         obj['m_' + key] = val;
         obj[key] = val;
+        if (key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
         chrome.storage.local.set(obj);
       }
       if (typeof pushCloudData === 'function') {
@@ -3015,37 +3016,45 @@
     setAuthAlert('');
   }
 
+  // The website's own login must never be copied into a place where another copy of the app could refresh it.
+  // (Supabase refresh tokens are single use: whoever refreshes first invalidates the website's token and the
+  // website is signed out.) So: no 'sb-...-auth-token' copy, and no refresh token for sessions taken from the website.
+  function purgeSupabaseCopies() {
+    try { localStorage.removeItem(SUPA_AUTH_STORE_KEY); } catch (e) {}
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.remove([SUPA_AUTH_STORE_KEY]);
+    }
+  }
+
   function saveAuthSession(session) {
+    if (session && session._src !== 'popup' && session.refresh_token) {
+      session = Object.assign({}, session);
+      delete session.refresh_token;
+    }
     _authSession = session;
     if (session) {
-      try {
-        localStorage.setItem('m_authSession', JSON.stringify(session));
-        localStorage.setItem(SUPA_AUTH_STORE_KEY, JSON.stringify(session));
-      } catch (e) {}
+      try { localStorage.setItem('m_authSession', JSON.stringify(session)); } catch (e) {}
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        const obj = { m_authSession: session };
-        obj[SUPA_AUTH_STORE_KEY] = session;
-        chrome.storage.local.set(obj);
+        chrome.storage.local.set({ m_authSession: session });
       }
     } else {
-      try {
-        localStorage.removeItem('m_authSession');
-        localStorage.removeItem(SUPA_AUTH_STORE_KEY);
-      } catch (e) {}
+      try { localStorage.removeItem('m_authSession'); } catch (e) {}
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.remove(['m_authSession', SUPA_AUTH_STORE_KEY]);
+        chrome.storage.local.remove(['m_authSession']);
       }
     }
+    purgeSupabaseCopies();
     updateAuthUI();
   }
 
   function initAuth(callback) {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get(['m_authSession', SUPA_AUTH_STORE_KEY], function (res) {
-        let sess = res.m_authSession || res[SUPA_AUTH_STORE_KEY];
+      purgeSupabaseCopies();
+      chrome.storage.local.get(['m_authSession'], function (res) {
+        let sess = res.m_authSession;
         if (!sess) {
           try {
-            const raw = localStorage.getItem('m_authSession') || localStorage.getItem(SUPA_AUTH_STORE_KEY);
+            const raw = localStorage.getItem('m_authSession');
             if (raw) sess = JSON.parse(raw);
           } catch (e) {}
         }
@@ -3061,7 +3070,7 @@
       });
     } else {
       try {
-        const raw = localStorage.getItem('m_authSession') || localStorage.getItem(SUPA_AUTH_STORE_KEY);
+        const raw = localStorage.getItem('m_authSession');
         if (raw) {
           const sess = JSON.parse(raw);
           if (sess && sess.user && sess.access_token) {
@@ -3162,9 +3171,12 @@
   }
 
   async function doSignOut() {
-    if (_authSession && _authSession.access_token) {
+    // Only end a session that was created inside this popup, and only on this device (scope=local).
+    // A session copied from the website is the website's own login: the logout endpoint signs out EVERY device
+    // by default, which is what used to sign the website out whenever the extension signed out.
+    if (_authSession && _authSession.access_token && _authSession._src === 'popup') {
       try {
-        fetch(`${SUPA_URL}/auth/v1/logout`, {
+        fetch(`${SUPA_URL}/auth/v1/logout?scope=local`, {
           method: 'POST',
           headers: {
             'apikey': SUPA_KEY,
@@ -3413,7 +3425,7 @@
       if (typeof dataMap.hubNotes === 'string') {
         try { localStorage.setItem('m_hubNotes', JSON.stringify(dataMap.hubNotes)); } catch (e) {}
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_hubNotes: dataMap.hubNotes, hubNotes: dataMap.hubNotes });
+          chrome.storage.local.set({ m_hubNotes: dataMap.hubNotes, hubNotes: dataMap.hubNotes, m_hubNotesTs: _lastSync.hubNotes || Date.now() });
         }
         const notesArea = document.getElementById('notesInput');
         // Never replace text the user is typing right now
@@ -3558,7 +3570,7 @@
                 if (JSON.stringify(merged) === JSON.stringify(cloudVal)) { _lastSync[key] = cloudTs; return; }
                 val = merged;
               }
-            } else if (cloudTs > (_lastSync[key] || 0)) {
+            } else if (key !== 'hubNotes' && cloudTs > (_lastSync[key] || 0)) {
               const statusEl0 = document.getElementById('authSyncStatusText');
               if (statusEl0) statusEl0.textContent = 'Cloud had newer ' + key + ' - kept the cloud version';
               pullCloudData(true, [key]);
@@ -3569,7 +3581,7 @@
           return; // cannot verify, so do not risk overwriting
         }
         const sentAt = new Date().toISOString();
-        await authFetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
+        const pr = await authFetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3582,6 +3594,11 @@
             updated_at: sentAt
           })
         });
+        if (!pr.ok) {
+          const failEl = document.getElementById('authSyncStatusText');
+          if (failEl) failEl.textContent = 'Could not save ' + key + ' to the cloud (' + pr.status + '). Open M2028 in a tab to refresh the login.';
+          return;
+        }
         _lastSync[key] = Date.parse(sentAt);
         const statusEl = document.getElementById('authSyncStatusText');
         if (statusEl) {
@@ -3920,6 +3937,17 @@
           updateAuthUI();
           if (_authSession) pullCloudData(true);
         }
+        if (changes.m_hubNotes || changes.hubNotes) {
+          const nv = (changes.m_hubNotes && changes.m_hubNotes.newValue !== undefined) ? changes.m_hubNotes.newValue : (changes.hubNotes && changes.hubNotes.newValue);
+          const na = document.getElementById('notesInput');
+          // Notes changed on the website: show them here unless the box is being typed in
+          if (typeof nv === 'string' && na && document.activeElement !== na && na.value !== nv) {
+            na.value = nv;
+            updateNotesStats(nv);
+            const np = document.getElementById('notesPreview');
+            if (isNotesPreview && np) np.innerHTML = renderMarkdown(nv);
+          }
+        }
       }
     });
   }
@@ -3938,7 +3966,7 @@
     adoptWebAppData();
     setInterval(function () {
       adoptWebAppData();
-      if (_authSession) pullCloudData(true, ['habs', 'hd']);
+      if (_authSession) pullCloudData(true, ['habs', 'hd', 'hubNotes']);
     }, 30000);
     initPomo();
     initTimeTracker();

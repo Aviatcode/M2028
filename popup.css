@@ -2993,42 +2993,6 @@ body.pink .nav-tab-toggle-row {
 /* =====================================================================
    7b. Girl Mode Stickers (Collage Layer, Header Toggle & Modal Settings)
    ===================================================================== */
-#stickerToggleBtn {
-  display: none;
-  font-size: 13px;
-  line-height: 1;
-  padding: 0;
-  border-radius: 8px;
-  transition: all 0.18s ease;
-  cursor: pointer;
-}
-
-body.pink #stickerToggleBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 110, 180, 0.16);
-  border: 1px solid rgba(255, 110, 180, 0.4);
-  color: #ff6eb4;
-  box-shadow: 0 0 10px rgba(255, 110, 180, 0.25);
-}
-
-body.pink #stickerToggleBtn:hover {
-  background: rgba(255, 110, 180, 0.28);
-  border-color: #ff6eb4;
-  transform: scale(1.08);
-  box-shadow: 0 0 14px rgba(255, 110, 180, 0.45);
-}
-
-body.pink #stickerToggleBtn.is-off,
-body.pink.no-stickers #stickerToggleBtn {
-  opacity: 0.45;
-  filter: grayscale(1);
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: none;
-}
-
 /* Modal Sticker Button in Auth / Settings */
 #modalStickerBtn,
 #modalStickerGuestBtn {

@@ -310,13 +310,6 @@
   // 1b. Girl Mode Stickers Controller (On/Off Toggle & Background Collage)
   // =====================================================================
   function updateStickerUi(isOn) {
-    const btn = document.getElementById('stickerToggleBtn');
-    if (btn) {
-      btn.title = isOn ? 'Girl Mode Stickers: On (Click to turn Off)' : 'Girl Mode Stickers: Off (Click to turn On)';
-      btn.classList.toggle('is-off', !isOn);
-      btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
-      btn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Girl mode leaf"></span>';
-    }
     const mBtn = document.getElementById('modalStickerBtn');
     if (mBtn) {
       mBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Stickers"></span> Stickers: ' + (isOn ? 'On' : 'Off');
@@ -412,8 +405,6 @@
       }
     });
 
-    const btn = document.getElementById('stickerToggleBtn');
-    if (btn) btn.addEventListener('click', toggleStickers);
     const mBtn = document.getElementById('modalStickerBtn');
     if (mBtn) mBtn.addEventListener('click', toggleStickers);
     const gBtn = document.getElementById('modalStickerGuestBtn');

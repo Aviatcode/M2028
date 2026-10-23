@@ -3329,6 +3329,38 @@
     });
   }
 
+  // Keys the website merges instead of replacing: timer state (newest 'u' wins), session log (union), daily counts (max)
+  const MERGE_KEYS = ['pomLive', 'pomSessions', 'pd'];
+  function pomSessionSig(x) { return (x && x.d || '') + '|' + (x && x.t || '') + '|' + (x && x.sub || '') + '|' + (x && x.dur || ''); }
+  function mergeKeyValue(key, local, cloud) {
+    if (key === 'pomLive') {
+      if (!cloud || typeof cloud !== 'object') return local;
+      if (!local || typeof local !== 'object') return cloud;
+      return (cloud.u || 0) > (local.u || 0) ? cloud : local;
+    }
+    if (key === 'pd') {
+      const out = Object.assign({}, (local && typeof local === 'object') ? local : {});
+      Object.keys(cloud || {}).forEach(function (d) { out[d] = Math.max(out[d] || 0, cloud[d] || 0); });
+      return out;
+    }
+    if (key === 'pomSessions') {
+      const out = Array.isArray(local) ? local.slice() : [];
+      const seen = new Set(out.map(pomSessionSig));
+      (Array.isArray(cloud) ? cloud : []).forEach(function (x) {
+        const sig = pomSessionSig(x);
+        if (!seen.has(sig)) { seen.add(sig); out.push(x); }
+      });
+      out.sort(function (a, b) { return ((a.d || '') + (a.t || '')).localeCompare((b.d || '') + (b.t || '')); });
+      return out;
+    }
+    return cloud;
+  }
+  function readExtValue(key, cb) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return cb(undefined);
+    const names = key === 'pomLive' ? ['pom_state', 'm_pomLive'] : ['m_' + key, key];
+    chrome.storage.local.get(names, function (r) { cb(r[names[0]] !== undefined ? r[names[0]] : r[names[1]]); });
+  }
+
   async function pullCloudData(silent, onlyKeys) {
     if (!_authSession || !_authSession.user || !_authSession.access_token) return;
     const statusEl = document.getElementById('authSyncStatusText');
@@ -3406,26 +3438,31 @@
       }
 
       // 4. Pomodoro
-      if (dataMap.pomSessions !== undefined) {
-        try { localStorage.setItem('m_pomSessions', JSON.stringify(dataMap.pomSessions)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_pomSessions: dataMap.pomSessions, pomSessions: dataMap.pomSessions });
-        }
-      }
-      if (dataMap.pd !== undefined) {
-        try { localStorage.setItem('m_pd', JSON.stringify(dataMap.pd)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_pd: dataMap.pd, pd: dataMap.pd });
-        }
-      }
-      if (dataMap.pomLive !== undefined) {
-        try {
-          localStorage.setItem('pom_state', JSON.stringify(dataMap.pomLive));
-          localStorage.setItem('m_pomLive', JSON.stringify(dataMap.pomLive));
-        } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ pom_state: dataMap.pomLive, m_pomLive: dataMap.pomLive });
-        }
+      // Session log and daily counts are merged with what the extension already has (never overwritten)
+      ['pomSessions', 'pd'].forEach(function (k) {
+        if (dataMap[k] === undefined) return;
+        readExtValue(k, function (loc) {
+          const merged = mergeKeyValue(k, loc, dataMap[k]);
+          try { localStorage.setItem('m_' + k, JSON.stringify(merged)); } catch (e) {}
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            const o = {}; o['m_' + k] = merged; o[k] = merged;
+            chrome.storage.local.set(o);
+          }
+        });
+      });
+      // Timer state: take the cloud copy only if it is newer than the one running here
+      if (dataMap.pomLive && typeof dataMap.pomLive === 'object') {
+        readExtValue('pomLive', function (loc) {
+          if (loc && (loc.u || 0) >= (dataMap.pomLive.u || 0)) return;
+          try {
+            localStorage.setItem('pom_state', JSON.stringify(dataMap.pomLive));
+            localStorage.setItem('m_pomLive', JSON.stringify(dataMap.pomLive));
+          } catch (e) {}
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ pom_state: dataMap.pomLive, m_pomLive: dataMap.pomLive });
+          }
+          syncPomoFromStorage();
+        });
       }
 
       // 5. Theme & Colors
@@ -3498,12 +3535,30 @@
       try {
         // Safety check: if the cloud copy is newer than what this popup last saw (for example the website changed
         // it), do NOT overwrite it with this older copy. Take the cloud version instead.
-        const chk = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&data_key=eq.${encodeURIComponent(key)}&select=updated_at`, { method: 'GET' });
+        const isMerge = MERGE_KEYS.includes(key);
+        const chk = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&data_key=eq.${encodeURIComponent(key)}&select=updated_at${isMerge ? ',data_value' : ''}`, { method: 'GET' });
         if (chk.ok) {
           const cur = await chk.json();
           if (Array.isArray(cur) && cur.length) {
             const cloudTs = Date.parse(cur[0].updated_at) || 0;
-            if (cloudTs > (_lastSync[key] || 0)) {
+            if (isMerge) {
+              const cloudVal = cur[0].data_value;
+              if (key === 'pomLive') {
+                // Whoever has the newer timer state wins; never push an older one over it
+                if (cloudVal && (cloudVal.u || 0) > ((val && val.u) || 0)) return;
+              } else {
+                const merged = mergeKeyValue(key, val, cloudVal);
+                if (JSON.stringify(merged) !== JSON.stringify(val)) {
+                  try { localStorage.setItem('m_' + key, JSON.stringify(merged)); } catch (e) {}
+                  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    const o = {}; o['m_' + key] = merged; o[key] = merged;
+                    chrome.storage.local.set(o);
+                  }
+                }
+                if (JSON.stringify(merged) === JSON.stringify(cloudVal)) { _lastSync[key] = cloudTs; return; }
+                val = merged;
+              }
+            } else if (cloudTs > (_lastSync[key] || 0)) {
               const statusEl0 = document.getElementById('authSyncStatusText');
               if (statusEl0) statusEl0.textContent = 'Cloud had newer ' + key + ' - kept the cloud version';
               pullCloudData(true, [key]);

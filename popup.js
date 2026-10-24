@@ -104,6 +104,30 @@
     } catch (e) {}
   }
 
+  // ---------------------------------------------------------------------
+  // Stable list rendering: lists that refresh on a timer or on storage events
+  // (Time tab every 2s, habits, tasks, countdowns) used to be rebuilt with
+  // innerHTML every time. That reset the scroll position of the page and of the
+  // list itself, which looked like an abrupt jump when scrolled to the bottom.
+  // Now: identical content is skipped, and real changes restore scroll offsets.
+  // ---------------------------------------------------------------------
+  function setHtmlStable(el, html) {
+    if (!el) return;
+    html = String(html);
+    if (el.__stableHtml === html && el.childElementCount === el.__stableCount && el.firstChild) return;
+    const saved = [];
+    for (let n = el; n; n = n.parentElement) {
+      if (n.scrollTop > 0) saved.push([n, n.scrollTop]);
+    }
+    el.innerHTML = html;
+    el.__stableHtml = html;
+    el.__stableCount = el.childElementCount;
+    saved.forEach(function (p) { if (p[0].scrollTop !== p[1]) p[0].scrollTop = p[1]; });
+  }
+  function stableHtml(el) {
+    return { set html(v) { setHtmlStable(el, v); } };
+  }
+
   // =====================================================================
   // 1. Theme Engine: Dark, Light, Girl Mode (Pink) & Account Custom Palette
   // =====================================================================
@@ -111,10 +135,11 @@
   const THEME_ICON = { dark: '🌙', light: '☀️', pink: '<span class="leafico sk9" role="img" aria-label="Girl mode"></span>' };
 
   function applyCustomColors(colors, theme) {
+    // Keep the old <style> in place until the new one is ready, so there is never a frame with default colours (that gap was the flicker).
     const existing = document.getElementById('m2028-custom-theme-style');
-    if (existing) existing.remove();
 
     if (!colors || !(colors.bg || colors.tx || colors.ac)) {
+      if (existing) existing.remove();
       return;
     }
 
@@ -223,38 +248,46 @@
       }
     `;
 
+    if (existing && existing.textContent === css) return; // nothing changed, touch nothing
     const st = document.createElement('style');
     st.id = 'm2028-custom-theme-style';
     st.textContent = css;
     document.head.appendChild(st);
+    if (existing) existing.remove();
+  }
+
+  let _themePainted = false;
+  function setRootFlags(map) {
+    // Toggle only our own flags; never overwrite className (that dropped 'haswp' and flashed the whole popup).
+    const rc = document.documentElement.classList;
+    Object.keys(map).forEach(k => { if (rc.contains(k) !== !!map[k]) rc.toggle(k, !!map[k]); });
   }
 
   function paintTheme(themeName) {
     const validTheme = THEME_NEXT[themeName] ? themeName : 'dark';
+    const themeChanged = !_themePainted || document.documentElement.getAttribute('data-theme') !== validTheme;
+    _themePainted = true;
+
+    if (themeChanged) {
     document.documentElement.setAttribute('data-theme', validTheme);
-    document.body.classList.remove('light', 'pink');
-    
+    document.body.classList.toggle('light', validTheme === 'light');
+    document.body.classList.toggle('pink', validTheme === 'pink');
+
     if (validTheme === 'light') {
-      document.documentElement.className = 'ucolors ucac redx';
-      document.body.classList.add('light');
+      setRootFlags({ ucolors: true, ucac: true, redx: true, 'm-ready': false });
       const layer = document.getElementById('stkLayer');
       if (layer) layer.innerHTML = '';
     } else if (validTheme === 'pink') {
-      document.documentElement.className = 'm-ready';
-      document.body.classList.add('pink');
+      setRootFlags({ ucolors: false, ucac: false, redx: false, 'm-ready': true });
       if (typeof buildStickersCollage === 'function') buildStickersCollage();
     } else {
-      document.documentElement.className = 'ucolors ucac redx m-ready';
+      setRootFlags({ ucolors: true, ucac: true, redx: true, 'm-ready': true });
       const layer = document.getElementById('stkLayer');
       if (layer) layer.innerHTML = '';
     }
-
-    // The className assignments above wipe every class on <html>, including the wallpaper flag. Put it back.
-    if (document.getElementById('m2028-ext-wallpaper-style')) {
-      document.documentElement.classList.add('haswp');
     }
 
-    const themeBtn = document.getElementById('themeToggleBtn');
+    const themeBtn = themeChanged ? document.getElementById('themeToggleBtn') : null;
     if (themeBtn) {
       if (validTheme === 'light') {
         themeBtn.title = 'Current: Light (Click for Girl Mode)';
@@ -286,6 +319,7 @@
       applyCustomColors(cfg, validTheme);
     });
 
+    if (!themeChanged) return; // only a colour tweak: the atomic style swap above is all that is needed
     if (activeTabName === 'habits') renderHabits();
     if (activeTabName === 'tasks') renderTasks();
     if (activeTabName === 'time') loadTrackerData();
@@ -875,7 +909,7 @@
       const listEl = document.getElementById('topSitesList');
       if (listEl) {
         if (domainEntries.length === 0) {
-          listEl.innerHTML = '<div class="empty-state">No browsing time recorded yet. Start surfing and your stats will appear!</div>';
+          stableHtml(listEl).html = '<div class="empty-state">No browsing time recorded yet. Start surfing and your stats will appear!</div>';
         } else {
           domainEntries.sort((a, b) => b[1].seconds - a[1].seconds);
           const maxSec = domainEntries[0][1].seconds || 1;
@@ -888,7 +922,7 @@
             other: 'oth'
           };
 
-          listEl.innerHTML = topList.map(([dom, data]) => {
+          stableHtml(listEl).html = topList.map(([dom, data]) => {
             const pct = Math.round((data.seconds / maxSec) * 100);
             const cat = data.category || 'other';
             const catPrefix = catPrefixMap[cat] || 'oth';
@@ -925,7 +959,7 @@
     if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
       chrome.tabs.query({}, function (tabs) {
         if (!tabs || tabs.length === 0) {
-          listEl.innerHTML = '<div class="empty-state">No open tabs detected.</div>';
+          stableHtml(listEl).html = '<div class="empty-state">No open tabs detected.</div>';
           if (countEl) countEl.textContent = '0';
           return;
         }
@@ -946,7 +980,7 @@
   }
 
   function renderOpenTabsTimeRows(tabs, container) {
-    container.innerHTML = tabs.map(tab => {
+    stableHtml(container).html = tabs.map(tab => {
       const dom = getDomainFromUrl(tab.url);
       const timeData = cachedDomainsData[dom];
       const timeStr = timeData && timeData.seconds ? formatDuration(timeData.seconds) + ' today' : 'New tab';
@@ -1100,7 +1134,7 @@
         const listEl = document.getElementById('habListContainer');
         if (listEl) {
           const isPink = document.body.classList.contains('pink');
-          listEl.innerHTML = scheduled.map(h => {
+          stableHtml(listEl).html = scheduled.map(h => {
             const isDone = !!todayDone[h.id];
             const r = calcHabitItemStreak(h.id, hdMap, allHabits);
             return `
@@ -1218,9 +1252,9 @@
       const listEl = document.getElementById('tskList');
       if (listEl) {
         if (pending.length === 0) {
-          listEl.innerHTML = '<div class="empty-msg">All tasks done! Add a new item above.</div>';
+          stableHtml(listEl).html = '<div class="empty-msg">All tasks done! Add a new item above.</div>';
         } else {
-          listEl.innerHTML = pending.map(t => {
+          stableHtml(listEl).html = pending.map(t => {
             let dueChip = '';
             if (t.date) {
               const cls = t.date < today ? 'chip bad' : t.date === today ? 'chip warn' : 'chip set';
@@ -2222,7 +2256,7 @@
 
     if (!subs.length) {
       h += '<div style="font-size:11px;color:var(--m2)">No study time this week.</div>';
-      box.innerHTML = h;
+      stableHtml(box).html = h;
       attachPomWeekNav(box);
       return;
     }
@@ -2247,7 +2281,7 @@
       '<td style="' + td + ';font-weight:700;color:var(--ai)">' + fmtTime(col.reduce(function (x, y) { return x + y; }, 0)) + '</td></tr></table></div>' +
       '<div style="font-size:11px;color:var(--m2);margin-top:8px">' + MONTHS[we.getMonth()] + ' total so far: <b style="color:var(--tx)">' + fmtTime(monthTotal) + '</b></div>';
 
-    box.innerHTML = h;
+    stableHtml(box).html = h;
     attachPomWeekNav(box);
   }
 
@@ -2402,7 +2436,14 @@
   }
 
   // --- Wallpaper Synchronization Logic ---
+  let _wpAppliedSig = null;
   function applyWallpaperSync(wp, dim) {
+    // Same image + dim as already shown: do nothing (re-injecting a ~1 MB data URL makes the image reload and blink).
+    const okWp = (typeof wp === 'string' && /^data:image\//.test(wp.trim())) ? wp.trim() : '';
+    const sig = okWp ? okWp.length + ':' + okWp.slice(-48) + '|' + dim : '';
+    if (sig === _wpAppliedSig) return;
+    _wpAppliedSig = sig;
+    wp = okWp;
     const existing = document.getElementById('m2028-ext-wallpaper-style');
     if (existing) existing.remove();
 
@@ -2428,6 +2469,57 @@
       body.classList.remove('haswp');
       root.style.removeProperty('--wpdim');
     }
+  }
+
+
+  // --- Wallpaper: the website keeps it only in its own localStorage (key m_wallpaper) and never
+  // sends it to the extension, so copy it across by reading the open website tab. ---
+  let _wpPulling = false;
+  function adoptWallpaperFromWebTab() {
+    if (_wpPulling) return;
+    if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query || !chrome.scripting || !chrome.scripting.executeScript) return;
+    _wpPulling = true;
+    const finish = function () { _wpPulling = false; };
+    chrome.tabs.query({ url: APP_TAB_PATTERNS }, function (tabs) {
+      if (chrome.runtime.lastError || !tabs || !tabs.length) return finish();
+      const tab = tabs.find(function (t) { return t.active; }) || tabs[0];
+      const probe = function () {
+        try {
+          const w = localStorage.getItem('m_wallpaper');
+          return { ok: true, len: w ? w.length : 0, tail: w ? w.slice(-48) : '', dim: localStorage.getItem('m_wpDim') };
+        } catch (e) { return { ok: false }; }
+      };
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, func: probe }, function (r1) {
+        const p = !chrome.runtime.lastError && r1 && r1[0] && r1[0].result;
+        if (!p || !p.ok) return finish();
+        chrome.storage.local.get(['m_wallpaper', 'wallpaper', 'm_wpDim', 'm_wpSig'], function (cur) {
+          const have = cur.m_wallpaper || cur.wallpaper || '';
+          const dim = (p.dim === null || p.dim === undefined || isNaN(parseFloat(p.dim))) ? 0.3 : parseFloat(p.dim);
+          if (!p.len) {
+            // Website has no wallpaper: mirror that (only when we could really read the page).
+            if (have) chrome.storage.local.remove(['m_wallpaper', 'wallpaper', 'm_wpDim', 'wpDim', 'm_wpSig'], finish);
+            else finish();
+            return;
+          }
+          const sig = p.len + ':' + p.tail;
+          if (have && cur.m_wpSig === sig) {
+            if (cur.m_wpDim !== dim) chrome.storage.local.set({ m_wpDim: dim, wpDim: dim }, finish); else finish();
+            return;
+          }
+          const grab = function () {
+            try { return localStorage.getItem('m_wallpaper'); } catch (e) { return null; }
+          };
+          chrome.scripting.executeScript({ target: { tabId: tab.id }, func: grab }, function (r2) {
+            const wp = !chrome.runtime.lastError && r2 && r2[0] && r2[0].result;
+            if (typeof wp === 'string' && /^data:image\//.test(wp)) {
+              chrome.storage.local.set({ m_wallpaper: wp, wallpaper: wp, m_wpDim: dim, wpDim: dim, m_wpSig: sig }, finish);
+            } else {
+              finish();
+            }
+          });
+        });
+      });
+    });
   }
 
   function initWallpaperSync() {
@@ -2610,13 +2702,13 @@
       if (!listEl) return;
 
       if (cds.length === 0) {
-        listEl.innerHTML = '<div class="empty-msg">No target countdowns yet. Click "+ Countdown" to create one!</div>';
+        stableHtml(listEl).html = '<div class="empty-msg">No target countdowns yet. Click "+ Countdown" to create one!</div>';
         return;
       }
 
       function updateCdCards() {
         const now = Date.now();
-        listEl.innerHTML = cds.map(c => {
+        stableHtml(listEl).html = cds.map(c => {
           const target = new Date(c.date + 'T00:00:00').getTime();
           const diff = target - now;
           const isPast = diff <= 0;
@@ -3910,8 +4002,10 @@
     initAuthListeners();
     initAuth();
     adoptWebAppData();
+    adoptWallpaperFromWebTab();
     setInterval(function () {
       adoptWebAppData();
+      adoptWallpaperFromWebTab();
       if (_authSession) pullCloudData(true, ['habs', 'hd', 'hubNotes']);
     }, 30000);
     initPomo();

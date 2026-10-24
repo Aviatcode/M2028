@@ -285,11 +285,20 @@ body.pink .inp, body.pink .ta {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Same approach as the website: the page colour lives on <html>, <body> stays transparent,
+   so a theme/colour change can never expose a white canvas or fade through another colour. */
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+html[data-theme="light"] { color-scheme: light; }
+html body { background: transparent !important; }
+
 body {
   width: 440px;
   min-height: 590px;
   max-height: 610px;
-  background: var(--bg);
+  background: transparent;
   color: var(--tx);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   font-size: 13.5px;
@@ -297,7 +306,6 @@ body {
   user-select: none;
   -webkit-font-smoothing: antialiased;
   position: relative;
-  transition: background 0.25s, color 0.25s;
 }
 
 /* Ambient Scene Background Glow (Synced with M2028 .hero / html.redx) */
@@ -4036,3 +4044,16 @@ html.redx body.light .ssr {
   html { background: var(--bg, #0a0000); }
   body { margin: 0 auto; box-shadow: 0 0 60px rgba(0, 0, 0, 0.45); }
 }
+
+/* =====================================================================
+   Scroll stability (same idea as the website's html,body{overflow-anchor:none})
+   - no scroll anchoring jumps when a list re-renders
+   - no scroll chaining / rubber-band at the bottom of any scroll area
+   ===================================================================== */
+html, body, .popup-container, .main-content, .mo,
+.sites-list, .habits-list, .tasks-list, .pomo-sub-chip-list, .countdown-list,
+.notes-preview-box, .open-tabs-list, .nav-tabs-toggle-list, #tab-pomo #pomLog, #pomSubList {
+  overflow-anchor: none;
+  overscroll-behavior: contain;
+}
+.main-content { scrollbar-gutter: stable; }

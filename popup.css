@@ -4057,3 +4057,74 @@ html, body, .popup-container, .main-content, .mo,
   overscroll-behavior: contain;
 }
 .main-content { scrollbar-gutter: stable; }
+
+/* =====================================================================
+   No horizontal scrolling anywhere.
+   A box with overflow-y:auto and overflow-x left at "visible" silently
+   becomes overflow-x:auto, so a few pixels of overflow (e.g. from an inner
+   list's own vertical scrollbar) produced a sideways scrollbar.
+   ===================================================================== */
+html, body, .popup-container, .main-content, .mo,
+.sites-list, .habits-list, .tasks-list, .pomo-sub-chip-list, .countdown-list,
+.notes-preview-box, .open-tabs-list, .nav-tabs-toggle-list, #tab-pomo #pomLog, #pomSubList, #pomSubBody {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+.main-content > *, .sites-list > *, .habits-list > *, .tasks-list > *, .countdown-list > *, .open-tabs-list > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+img, video, canvas { max-width: 100%; }
+
+/* =====================================================================
+   Flicker fix + easy scrolling over widgets
+   1. No live backdrop blurs. Blurring what is behind an element has to be
+      redrawn every frame while anything moves, which showed up as flicker
+      when scrolling over / hovering the widgets. (The top bar and nav bar
+      do not sit over scrolling content, so nothing visible is lost.)
+   2. Widgets and rows stay put on hover. Moving an element away from the
+      pointer toggles :hover on and off at its edge = flicker.
+   3. "transition: all" also animated layout/paint properties; limit it.
+   4. Inner lists pass the wheel on to the page, so you never get stuck.
+   ===================================================================== */
+*, *::before, *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.ov { background: rgba(0, 0, 0, 0.82); }
+.ssr-chip { background: rgba(8, 10, 20, 0.7); }
+
+/* frosted cards over a wallpaper: a little more opaque instead of blurred */
+html.haswp .card, html.haswp .wc, html.haswp .st, html.haswp .pomo-center-card {
+  background: rgba(18, 20, 32, 0.84) !important;
+}
+html.haswp body.light .card, html.haswp body.light .wc, html.haswp body.light .st, html.haswp body.light .pomo-center-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+html.haswp body.pink .card, html.haswp body.pink .wc, html.haswp body.pink .st, html.haswp body.pink .pomo-center-card {
+  background: rgba(255, 225, 238, 0.85) !important;
+}
+
+.logo:hover, .site-row:hover, .tab-row:hover,
+.pomo-step-btn:hover:not(:disabled), .pomo-main-btn:hover,
+#tab-pomo .pomo-ctrl .pomo-step:hover:not(:disabled),
+#tab-pomo .pomo-primary:hover, #tab-pomo .pomo-change:hover {
+  transform: none !important;
+}
+
+.sp, .tb-btn, .nb, .range-btn, .time-sub-btn, .tab-row-action, .hr, .hc, .row, .rck,
+.pomo-mode-badge, .pomo-sub-btn, .pomo-chip, .pomo-step-btn, .pomo-main-btn,
+.pomo-sub-chip, .sj, .engine-pill, .tab-item-row, .tb-auth-btn, .auth-mo-close,
+.nav-tab-toggle-row {
+  transition-property: background-color, border-color, color, opacity, box-shadow !important;
+}
+
+/* big slow "breathing" glow on the NSDR button repainted constantly while playing */
+.ssr[data-state="playing"] .ssr-play::after { animation: none !important; }
+
+/* let the wheel continue to the page when an inner list reaches its end */
+.sites-list, .habits-list, .tasks-list, .pomo-sub-chip-list, .countdown-list,
+.notes-preview-box, .open-tabs-list, .nav-tabs-toggle-list, #tab-pomo #pomLog, #pomSubList, #pomSubBody {
+  overscroll-behavior: auto;
+}

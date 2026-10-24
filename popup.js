@@ -124,6 +124,32 @@
     el.__stableCount = el.childElementCount;
     saved.forEach(function (p) { if (p[0].scrollTop !== p[1]) p[0].scrollTop = p[1]; });
   }
+  // Image fallbacks. Inline onerror="" attributes are blocked by the extension's content security policy
+  // (and crashed when the image was already detached), so handle failed images in one place instead.
+  document.addEventListener('error', function (ev) {
+    const img = ev.target;
+    if (!img || img.tagName !== 'IMG' || img.__fbDone) return;
+    img.__fbDone = true;
+    if (img.classList.contains('site-favicon')) {
+      img.style.display = 'none';
+    } else if (img.classList.contains('tab-row-favicon')) {
+      img.src = 'favicon-32.png';
+    } else if (img.parentNode && img.parentNode.id === 'activeSiteFavicon') {
+      const holder = img.parentNode;
+      holder.textContent = '🌐';
+      holder.__fav = null;
+    }
+  }, true);
+
+  // Bind a handler only once per element. Lists are no longer rebuilt when nothing changed, so the
+  // same rows survive between renders; attaching again would stack duplicate handlers on them.
+  function bindOnce(el, type, fn) {
+    const k = '__bound_' + type;
+    if (!el || el[k]) return;
+    el[k] = true;
+    el.addEventListener(type, fn);
+  }
+
   function stableHtml(el) {
     return { set html(v) { setHtmlStable(el, v); } };
   }
@@ -831,10 +857,15 @@
           activeBadgeEl.className = `active-site-badge badge-${active.category || 'other'}`;
         }
         if (activeFaviconEl) {
-          if (active.favicon) {
-            activeFaviconEl.innerHTML = `<img src="${escapeHtml(active.favicon)}" onerror="this.onerror=null;this.parentNode.innerHTML='🌐';">`;
-          } else {
-            activeFaviconEl.textContent = '🌐';
+          // Only touch the favicon when it actually changed (this runs every 2s; recreating the <img> flashed it).
+          const favKey = active.favicon || '';
+          if (activeFaviconEl.__fav !== favKey) {
+            activeFaviconEl.__fav = favKey;
+            if (active.favicon) {
+              activeFaviconEl.innerHTML = `<img src="${escapeHtml(active.favicon)}">`;
+            } else {
+              activeFaviconEl.textContent = '🌐';
+            }
           }
         }
         if (activeTimeEl) {
@@ -922,27 +953,43 @@
             other: 'oth'
           };
 
-          stableHtml(listEl).html = topList.map(([dom, data]) => {
-            const pct = Math.round((data.seconds / maxSec) * 100);
-            const cat = data.category || 'other';
-            const catPrefix = catPrefixMap[cat] || 'oth';
-            const fav = data.favicon || `https://www.google.com/s2/favicons?domain=${dom}&sz=32`;
+          const _rowKey = topList.map(([d, x]) => d + ':' + (x.category || 'other')).join('|');
+          const _rows = listEl.querySelectorAll(':scope > .site-row');
+          if (listEl.__rowKey === _rowKey && _rows.length === topList.length) {
+            // Same sites in the same order: only update numbers and bars. Rebuilding the rows would
+            // recreate every favicon <img>, which flashes blank while it reloads.
+            topList.forEach(([dom, data], i) => {
+              const t = _rows[i].querySelector('.site-time');
+              const b = _rows[i].querySelector('.site-bar-fill');
+              const txt = formatDuration(data.seconds);
+              const w = Math.round((data.seconds / maxSec) * 100) + '%';
+              if (t && t.textContent !== txt) t.textContent = txt;
+              if (b && b.style.width !== w) b.style.width = w;
+            });
+          } else {
+            stableHtml(listEl).html = topList.map(([dom, data]) => {
+              const pct = Math.round((data.seconds / maxSec) * 100);
+              const cat = data.category || 'other';
+              const catPrefix = catPrefixMap[cat] || 'oth';
+              const fav = data.favicon || `https://www.google.com/s2/favicons?domain=${dom}&sz=32`;
 
-            return `
-              <div class="site-row">
-                <img class="site-favicon" src="${escapeHtml(fav)}" onerror="this.onerror=null;this.style.display='none';">
-                <div class="site-info">
-                  <div class="site-name-wrap">
-                    <span class="site-name" title="${escapeHtml(data.title || dom)}">${escapeHtml(dom)}</span>
-                    <span class="site-time">${formatDuration(data.seconds)}</span>
-                  </div>
-                  <div class="site-bar-track">
-                    <div class="site-bar-fill seg-${catPrefix}" style="width: ${pct}%"></div>
+              return `
+                <div class="site-row">
+                  <img class="site-favicon" src="${escapeHtml(fav)}">
+                  <div class="site-info">
+                    <div class="site-name-wrap">
+                      <span class="site-name" title="${escapeHtml(data.title || dom)}">${escapeHtml(dom)}</span>
+                      <span class="site-time">${formatDuration(data.seconds)}</span>
+                    </div>
+                    <div class="site-bar-track">
+                      <div class="site-bar-fill seg-${catPrefix}" style="width: ${pct}%"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            `;
-          }).join('');
+              `;
+            }).join('');
+            listEl.__rowKey = _rowKey;
+          }
         }
       }
 
@@ -989,7 +1036,7 @@
 
       return `
         <div class="tab-row ${isActive ? 'is-active' : ''}" data-tabid="${tab.id}" data-winid="${tab.windowId}">
-          <img class="tab-row-favicon" src="${escapeHtml(fav)}" onerror="this.onerror=null;this.src='favicon-32.png';">
+          <img class="tab-row-favicon" src="${escapeHtml(fav)}">
           <div class="tab-row-info">
             <div class="tab-row-title" title="${escapeHtml(tab.title || tab.url)}">${escapeHtml(tab.title || tab.url || 'Untitled Tab')}</div>
             <div class="tab-row-meta">
@@ -1005,7 +1052,7 @@
     }).join('');
 
     container.querySelectorAll('.tab-row').forEach(row => {
-      row.addEventListener('click', function () {
+      bindOnce(row, 'click', function () {
         const tid = parseInt(this.getAttribute('data-tabid'), 10);
         const wid = parseInt(this.getAttribute('data-winid'), 10);
         if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.update) {
@@ -1154,14 +1201,14 @@
           procEmojiNodes(listEl);
 
           listEl.querySelectorAll('.hc').forEach(btn => {
-            btn.addEventListener('click', function (e) {
+            bindOnce(btn, 'click', function (e) {
               e.stopPropagation();
               toggleHabit(this.getAttribute('data-hid'));
             });
           });
 
           listEl.querySelectorAll('.del-hab').forEach(btn => {
-            btn.addEventListener('click', function (e) {
+            bindOnce(btn, 'click', function (e) {
               e.stopPropagation();
               deleteHabit(this.getAttribute('data-delhid'));
             });
@@ -1273,17 +1320,17 @@
         }
 
         listEl.querySelectorAll('.rck').forEach(btn => {
-          btn.addEventListener('click', function () {
+          bindOnce(btn, 'click', function () {
             toggleTask(this.getAttribute('data-tid'));
           });
         });
         listEl.querySelectorAll('.ract.del').forEach(btn => {
-          btn.addEventListener('click', function () {
+          bindOnce(btn, 'click', function () {
             deleteTask(this.getAttribute('data-tid'));
           });
         });
         listEl.querySelectorAll('.rtext').forEach(inp => {
-          inp.addEventListener('change', function () {
+          bindOnce(inp, 'change', function () {
             updateTaskText(this.getAttribute('data-tid'), this.value);
           });
         });
@@ -1306,12 +1353,12 @@
           procEmojiNodes(doneList);
 
           doneList.querySelectorAll('.rck').forEach(btn => {
-            btn.addEventListener('click', function () {
+            bindOnce(btn, 'click', function () {
               toggleTask(this.getAttribute('data-tid'));
             });
           });
           doneList.querySelectorAll('.ract.del').forEach(btn => {
-            btn.addEventListener('click', function () {
+            bindOnce(btn, 'click', function () {
               deleteTask(this.getAttribute('data-tid'));
             });
           });
@@ -1444,13 +1491,24 @@
     );
   }
 
+  // The website stamps every pomodoro update with `u` (ms). Several storage keys hold copies of the
+  // state, and they can disagree (a copy written by one side may not reach every key). Never trust
+  // "the first key that exists": always take the copy with the newest `u`.
+  function freshestPomo(list) {
+    let best = null;
+    list.forEach(function (c) {
+      if (c && typeof c === 'object' && (!best || (Number(c.u) || 0) > (Number(best.u) || 0))) best = c;
+    });
+    return best;
+  }
+
   function getPomoSavedState() {
     let st = null;
     try {
-      const raw = localStorage.getItem('pom_state') ||
-                  localStorage.getItem('m_pomLive') ||
-                  localStorage.getItem('m_pom_state');
-      if (raw) st = JSON.parse(raw);
+      const cands = ['pom_state', 'm_pomLive', 'm_pom_state'].map(function (k) {
+        try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+      });
+      st = freshestPomo(cands);
     } catch (e) {}
     if (!st || typeof st !== 'object') st = {};
 
@@ -1503,15 +1561,47 @@
     }
   }
 
+  let _pomSyncT = null;
+  let _pomBgPausedU = null;
   function syncPomoFromStorage() {
+    // Both storage listeners fire for the same change; handle it once.
+    clearTimeout(_pomSyncT);
+    _pomSyncT = setTimeout(syncPomoFromStorageNow, 60);
+  }
+
+  function syncPomoFromStorageNow() {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pom_state'], function (res) {
-        const extSt = res.pom_state || res.m_pomLive || res.m_pom_state;
+        const copies = [res.pom_state, res.m_pomLive, res.m_pom_state];
+        const extSt = freshestPomo(copies);
         if (extSt) {
+          const json = JSON.stringify(extSt);
           try {
-            localStorage.setItem('pom_state', JSON.stringify(extSt));
-            localStorage.setItem('m_pomLive', JSON.stringify(extSt));
+            localStorage.setItem('pom_state', json);
+            localStorage.setItem('m_pomLive', json);
+            localStorage.setItem('m_pom_state', json);
           } catch (e) {}
+
+          // Heal disagreeing copies (others, e.g. the background worker, may read a different key).
+          // Same object, same `u`, so nothing is re-stamped and no echo loop starts.
+          const stale = ['pom_state', 'm_pomLive', 'm_pom_state'].filter(function (k, i) {
+            return !copies[i] || JSON.stringify(copies[i]) !== json;
+          });
+          if (stale.length) {
+            const patch = {};
+            stale.forEach(function (k) { patch[k] = extSt; });
+            try { chrome.storage.local.set(patch); } catch (e) {}
+          }
+
+          // The website (or another device) paused / reset: make sure the background worker stops
+          // its alarm, sound and notification too, not just this popup.
+          if (!extSt.run && extSt.dev && extSt.dev !== 'extension' && _pomBgPausedU !== extSt.u) {
+            _pomBgPausedU = extSt.u; // once per pause (our own repair write above triggers a second sync)
+            try {
+              const p = chrome.runtime.sendMessage({ type: 'PAUSE_POMO', state: extSt, fromSync: true });
+              if (p && p.catch) p.catch(function () {});
+            } catch (e) {}
+          }
         }
         applyPomoSync(extSt || getPomoSavedState());
       });
@@ -2739,7 +2829,7 @@
         procEmojiNodes(listEl);
 
         listEl.querySelectorAll('.ract.del').forEach(btn => {
-          btn.addEventListener('click', function () {
+          bindOnce(btn, 'click', function () {
             deleteCountdown(this.getAttribute('data-cdid'));
           });
         });

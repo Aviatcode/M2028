@@ -7147,13 +7147,28 @@ document.addEventListener("click",function(e){
     if (!root || busy) return;
     injectCss();
     var installed = document.documentElement.hasAttribute('data-m2028-ext');
-    var head = installed
-      ? '<h3>M2028 extension <span class="chip">Installed \u2713</span></h3><p>Share it with a friend or set it up on another browser.</p>'
-      : '<h3>\u2B07\uFE0F Get the M2028 extension</h3><p>Blocking sites and daily limits need the extension. It is free, and takes about a minute to set up.</p>';
-    var steps = installed ? '<details><summary>How to install it on another browser</summary>' + STEPS + '</details>' : STEPS;
-    root.innerHTML = '<div class="xdl' + (installed ? '' : ' need') + '">' + head +
-      '<button class="go" id="xdlBtn">Download extension (.zip)</button><span class="st" id="xdlStatus"></span>' + steps + '</div>';
-    document.getElementById('xdlBtn').onclick = build;
+    var es = window.m2028ExtState || {};
+    if (installed) {
+      var ver = es.version ? ' \u00b7 v' + es.version : '';
+      var who = es.loggedIn ? 'Signed in automatically from your account.' : (es.ready ? 'Not signed in yet. Sign in on this website and it signs in the extension too.' : 'Connecting\u2026');
+      var checks = ['Habits', 'Tasks', 'Pomodoro', 'Subjects', 'Notes'].map(function (n) { return '<span class="chip">\u2713 ' + n + '</span>'; }).join(' ');
+      root.innerHTML = '<div class="xdl"><h3>M2028 extension <span class="chip">\u25CF Connected' + ver + '</span></h3>' +
+        '<p>' + who + ' Everything below stays in sync with the extension.</p><p style="display:flex;gap:6px;flex-wrap:wrap">' + checks + '</p>' +
+        '<button class="go" id="xdlSync">Sync now</button><span class="st" id="xdlStatus"></span>' +
+        '<details style="margin-top:10px"><summary>Download again / install on another browser</summary><div style="margin-top:8px">' +
+        '<button class="go" id="xdlBtn">Download extension (.zip)</button>' + STEPS + '</div></details></div>';
+      document.getElementById('xdlBtn').onclick = build;
+      document.getElementById('xdlSync').onclick = function () {
+        setStatus('Syncing\u2026');
+        try { window.m2028ExtPing && window.m2028ExtPing(); } catch (e) {}
+        setTimeout(function () { setStatus('Synced just now.'); }, 900);
+      };
+    } else {
+      root.innerHTML = '<div class="xdl need"><h3>\u2B07\uFE0F Get the M2028 extension</h3>' +
+        '<p>Blocking sites and daily limits need the extension. It is free, and takes about a minute to set up. This page connects to it by itself once it is installed.</p>' +
+        '<button class="go" id="xdlBtn">Download extension (.zip)</button><span class="st" id="xdlStatus"></span>' + STEPS + '</div>';
+      document.getElementById('xdlBtn').onclick = build;
+    }
     var cp = document.getElementById('xdlCopy');
     if (cp) cp.onclick = function () {
       var done = function () { cp.textContent = 'Copied'; setTimeout(function () { cp.textContent = 'Copy'; }, 1500); };
@@ -7161,6 +7176,160 @@ document.addEventListener("click",function(e){
     };
   };
   window.m2028ExtDlBuild = build; // exposed for testing
+})();
+</script>
+<script>
+/* M2028 website: extension handshake + data sync, hamburger tab menu, clean (no white hairlines) look */
+(function () {
+  'use strict';
+
+  // ---------- 1. clean look: remove the white hairlines ----------
+  var css = '' +
+    /* hairlines around the nav, hero and cards (dark themes) */
+    'html body:not(.light):not(.pink) .tnb,html body:not(.light):not(.pink) .tb{border-bottom-color:transparent!important;box-shadow:none!important}' +
+    'html body:not(.light):not(.pink) :is(.card,.wc,.st,.hero){border-color:transparent!important;box-shadow:0 10px 30px rgba(0,0,0,.28)!important}' +
+    /* dotted overlay whose faded edges look like pale vertical bands */
+    'html body:not(.light):not(.pink) .hero::after{display:none!important}' +
+    /* tiny pale scrollbars inside dashboard widgets */
+    '#v-dash,#v-dash *{scrollbar-width:none!important}#v-dash *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}' +
+    /* hamburger menu */
+    '.tnb .tnb-burger{margin-left:auto}' +
+    '.tnb-menu{position:fixed;top:108px;right:16px;z-index:140;width:min(92vw,360px);padding:10px;border-radius:18px;background:var(--s2,#171c29);box-shadow:0 18px 50px rgba(0,0,0,.45);display:none;grid-template-columns:1fr 1fr;gap:6px}' +
+    '.tnb-menu.open{display:grid}' +
+    '.tnb-item{display:flex;align-items:center;gap:9px;padding:11px 12px;border:none;border-radius:12px;background:transparent;color:var(--tx,#fff);font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer;white-space:nowrap}' +
+    '.tnb-item:hover{background:rgba(128,128,128,.16)}' +
+    '.tnb-item.on{background:var(--a2,rgba(79,216,160,.14));color:var(--ai,#4fd8a0)}' +
+    '.tnb-item .ic{display:inline-flex;width:20px;justify-content:center}';
+  var st = document.createElement('style');
+  st.id = 'm2028-clean';
+  st.textContent = css;
+  document.head.appendChild(st);
+
+  // ---------- 2. hamburger menu for the top tab bar ----------
+  function itemHtml(t) {
+    var go = t.pseudo ? "gotoTab('" + t.id + "')" : "showV('" + t.id + "')";
+    return '<button class="nb" onclick="' + go + '" title="' + escAttr(navLabel(t)) + '"><span class="ic">' + t.icon + '</span><span class="lbl">' + navLabel(t) +
+      '</span><span class="lbl-s">' + tabShort(t) + '</span></button>';
+  }
+  function closeBurger() {
+    var m = document.getElementById('tnbMenu'), b = document.getElementById('tnbBurger');
+    if (m) m.classList.remove('open');
+    if (b) b.setAttribute('aria-expanded', 'false');
+  }
+  window.m2028Burger = function (ev) {
+    if (ev) ev.stopPropagation();
+    var m = document.getElementById('tnbMenu'), b = document.getElementById('tnbBurger');
+    if (!m) return;
+    var open = m.classList.toggle('open');
+    if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  window.renderTopNav = function () {
+    var o = document.getElementById('tnbNav');
+    if (!o) return;
+    var sp = navSplit(), html = '';
+    sp.bar.forEach(function (t) { html += itemHtml(t); });
+    if (sp.rest.length) {
+      html += '<button class="nb tnb-burger" id="tnbBurger" aria-haspopup="true" aria-expanded="false" onclick="m2028Burger(event)" title="More tabs">' +
+        '<span class="ic">\u2630</span><span class="lbl">More</span><span class="lbl-s">More</span></button>';
+    }
+    o.innerHTML = html;
+    var m = document.getElementById('tnbMenu');
+    if (!m) { m = document.createElement('div'); m.id = 'tnbMenu'; m.className = 'tnb-menu'; document.body.appendChild(m); }
+    m.innerHTML = sp.rest.map(function (t) {
+      var go = t.pseudo ? "gotoTab('" + t.id + "')" : "showV('" + t.id + "')";
+      return '<button class="tnb-item" data-tab="' + t.id + '" onclick="' + go + ';m2028CloseBurger()"><span class="ic">' + t.icon + '</span><span>' + navLabel(t) + '</span></button>';
+    }).join('');
+    m.classList.remove('open');
+    try { syncNavActive(); } catch (e) {}
+  };
+  window.m2028CloseBurger = closeBurger;
+  document.addEventListener('click', function (e) {
+    var m = document.getElementById('tnbMenu');
+    if (m && m.classList.contains('open') && !m.contains(e.target)) closeBurger();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeBurger(); });
+  var origSync = window.syncNavActive;
+  window.syncNavActive = function () {
+    if (origSync) origSync();
+    try {
+      var cur = (document.querySelector('.vw.on') || { id: 'v-dash' }).id.replace('v-', '');
+      var inRest = false;
+      document.querySelectorAll('.tnb-item').forEach(function (b) {
+        var on = b.getAttribute('data-tab') === cur;
+        b.classList.toggle('on', on);
+        if (on) inRest = true;
+      });
+      var burger = document.getElementById('tnbBurger');
+      if (burger) burger.classList.toggle('on', inRest);
+    } catch (e) {}
+  };
+
+  // ---------- 3. extension handshake ----------
+  var state = window.m2028ExtState = { ready: false, version: '', loggedIn: false, syncedAt: 0 };
+  function refreshBlockUi() {
+    try { window.m2028ExtDlRender && window.m2028ExtDlRender(); } catch (e) {}
+    try {
+      var v = document.getElementById('v-block');
+      if (v && v.classList.contains('on')) window.m2028BlockRender && window.m2028BlockRender();
+    } catch (e) {}
+  }
+  function onReady(d) {
+    var first = !state.ready;
+    state.ready = true; state.version = d.version || ''; state.loggedIn = !!d.loggedIn; state.syncedAt = Date.now();
+    document.documentElement.setAttribute('data-m2028-ext', '1');
+    document.documentElement.classList.add('m2028ext');
+    if (first) {
+      try { banner('\u2713 M2028 extension connected \u2014 habits, tasks, pomodoro, subjects and notes now stay in sync'); } catch (e) {}
+    }
+    refreshBlockUi();
+  }
+  function ping() { try { window.postMessage({ from: 'M2028_PAGE', type: 'EXT_PING' }, '*'); } catch (e) {} }
+  window.m2028ExtPing = ping;
+
+  // ---------- 4. edits made inside the extension -> this page ----------
+  var ALLOWED = ['tasks', 'pomSubjects', 'habs', 'hd', 'cd', 'customWidgets', 'pd', 'pomSessions'];
+  function sig(x) { try { return JSON.stringify(x); } catch (e) { return ''; } }
+  function applyExt(k, v) {
+    if (ALLOWED.indexOf(k) < 0 || typeof S === 'undefined') return;
+    var cur = S.g(k);
+    if (sig(cur) === sig(v)) return;
+    if ((k === 'tasks' || k === 'pomSubjects' || k === 'pomSessions') && !Array.isArray(v)) return;
+    if (k === 'pd') {
+      var m = Object.assign({}, cur || {});
+      Object.keys(v || {}).forEach(function (d) { m[d] = Math.max(m[d] || 0, v[d] || 0); });
+      v = m;
+    } else if (k === 'pomSessions') {
+      var seen = {}, out = (cur || []).slice();
+      out.forEach(function (s) { seen[typeof sessionSig === 'function' ? sessionSig(s) : sig(s)] = 1; });
+      v.forEach(function (s) { var key = typeof sessionSig === 'function' ? sessionSig(s) : sig(s); if (!seen[key]) { seen[key] = 1; out.push(s); } });
+      v = out;
+    }
+    if (sig(cur) === sig(v)) return;
+    S.s(k, v);
+    try {
+      if (k === 'tasks') renderTasks();
+      else if (k === 'pomSubjects') renderPomSubjects();
+      else if (k === 'habs' || k === 'hd' || k === 'cd' || k === 'customWidgets') { renderHabits(); renderDash(); }
+      else renderPomLog();
+    } catch (e) {}
+  }
+
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.from !== 'M2028_EXT') return;
+    if (d.type === 'EXT_READY') onReady(d);
+    else if (d.type === 'EXT_DATA') { try { applyExt(d.key, d.value); } catch (err) {} }
+  });
+
+  // ping now, keep trying until the extension answers, and again whenever the tab regains focus
+  function start() {
+    ping();
+    var tries = 0, t = setInterval(function () { if (state.ready || ++tries > 40) { clearInterval(t); return; } ping(); }, 3000);
+    window.addEventListener('focus', ping);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) ping(); });
+    try { renderTopNav(); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>
 </body>

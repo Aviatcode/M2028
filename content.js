@@ -7,6 +7,10 @@
 (function () {
   'use strict';
 
+  // Injected again after install/update? Only the first live copy runs.
+  try { if (window.__m2028CS && chrome.runtime && chrome.runtime.id) return; } catch (e) {}
+  window.__m2028CS = true;
+
   // Lets the website know the extension is installed (used by the "Open Hub" widget)
   try { document.documentElement.setAttribute('data-m2028-ext', '1'); } catch (e) {}
 
@@ -417,7 +421,7 @@
 
   // 5. Mirror website-side changes into extension storage while a website tab is open.
   //    (The website writes wallpaper / theme straight to localStorage and never announces it, so poll for changes.)
-  const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors'];
+  const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors', 'tasks', 'pd', 'plog', 'pomSessions', 'pomSubjects', 'cd', 'customWidgets', 'dashCfg'];
   const MIRROR_RAW = ['wallpaper', 'wpDim'];
   const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
   let mirrorFirstRun = true;
@@ -469,7 +473,7 @@
         if (!first && tokRaw !== prevTok) {
           try {
             const sess = JSON.parse(tokRaw);
-            if (sess && sess.access_token && sess.user) setObj.m_authSession = safeSession(sess);
+            if (sess && sess.access_token && sess.user) { setObj.m_authSession = safeSession(sess); setTimeout(announce, 400); }
           } catch (e) {}
         }
       }
@@ -480,11 +484,115 @@
 
     mirrorFirstRun = false;
     if (first) {
-      chrome.storage.local.get(['m_hd', 'hd', 'm_habs', 'habs', 'm_bestSt', 'bestSt', 'm_theme', 'theme', 'm_customColors', 'customColors'], run);
+      chrome.storage.local.get(['m_hd', 'hd', 'm_habs', 'habs', 'm_bestSt', 'bestSt', 'm_theme', 'theme', 'm_customColors', 'customColors', 'm_tasks', 'tasks', 'm_pd', 'pd', 'm_plog', 'plog', 'm_pomSessions', 'pomSessions', 'm_pomSubjects', 'pomSubjects', 'm_cd', 'cd', 'm_customWidgets', 'customWidgets', 'm_dashCfg', 'dashCfg'], run);
     } else {
       run(null);
     }
   }
+
+
+  // 7. Handshake, full data mirror, and edits made inside the extension -> website
+  //    Page -> extension : { from:'M2028_PAGE', type:'EXT_PING' }
+  //    Extension -> page : { from:'M2028_EXT',  type:'EXT_READY', version, loggedIn }
+  //    Extension -> page : { from:'M2028_EXT',  type:'EXT_DATA', key, value }   (edits made in the popup)
+  const BRIDGE_KEYS = ['habs', 'hd', 'tasks', 'pd', 'plog', 'bestSt', 'pomSessions', 'pomSubjects', 'cd', 'customWidgets', 'dashCfg'];
+  const FWD_ALWAYS = ['tasks', 'pomSubjects'];                                   // the website never sends these through the cloud
+  const FWD_UNSYNCED = ['habs', 'hd', 'cd', 'customWidgets', 'pd', 'pomSessions']; // only forwarded when the cloud is not carrying them
+
+  function storageOK() { return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local; }
+  function pageHasSession() { try { return !!window.localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token'); } catch (e) { return false; } }
+
+  function announce() {
+    if (!storageOK()) return;
+    chrome.storage.local.get(['m_authSession'], function (r) {
+      const s = r && r.m_authSession;
+      let version = '';
+      try { version = chrome.runtime.getManifest().version; } catch (e) {}
+      window.postMessage({ from: 'M2028_EXT', type: 'EXT_READY', version: version, loggedIn: !!(s && s.access_token && s.user) }, '*');
+    });
+  }
+
+  // The website is the source of truth at handshake time; if it has nothing for a key the extension still has, send that over.
+  function fullMirror() {
+    if (!storageOK()) return;
+    const want = ['m_authSession'];
+    BRIDGE_KEYS.forEach(function (k) { want.push('m_' + k, k, 'm_' + k + '_ets'); });
+    chrome.storage.local.get(want, function (res) {
+      const setObj = {};
+      let pageTs = {};
+      try { pageTs = JSON.parse(window.localStorage.getItem('m_sync_ts') || '{}') || {}; } catch (e) {}
+      const extAuthed = !!(res.m_authSession && res.m_authSession.access_token);
+      const pageAuthed = pageHasSession();
+      BRIDGE_KEYS.forEach(function (k) {
+        // An edit made in the extension while the website was closed is newer than the website's copy: send it over instead of overwriting it.
+        const extEdited = res['m_' + k + '_ets'] || 0;
+        const forwardable = FWD_ALWAYS.indexOf(k) > -1 || (FWD_UNSYNCED.indexOf(k) > -1 && !(extAuthed && pageAuthed));
+        const extNow = res['m_' + k] !== undefined ? res['m_' + k] : res[k];
+        if (forwardable && extEdited && extEdited > (pageTs[k] || 0) && extNow !== undefined) {
+          let r0 = null;
+          try { r0 = window.localStorage.getItem('m_' + k); } catch (e) {}
+          if (r0 !== JSON.stringify(extNow)) {
+            window.postMessage({ from: 'M2028_EXT', type: 'EXT_DATA', key: k, value: extNow }, '*');
+            return;
+          }
+        }
+        let raw = null;
+        try { raw = window.localStorage.getItem('m_' + k); } catch (e) {}
+        const extVal = res['m_' + k] !== undefined ? res['m_' + k] : res[k];
+        if (raw !== null && raw !== 'null') {
+          try {
+            const v = JSON.parse(raw);
+            if (JSON.stringify(v) !== JSON.stringify(extVal)) { setObj[k] = v; setObj['m_' + k] = v; }
+            mirrorSigs[k] = raw;
+          } catch (e) {}
+        } else if (FWD_ALWAYS.indexOf(k) > -1 && Array.isArray(extVal) && extVal.length) {
+          window.postMessage({ from: 'M2028_EXT', type: 'EXT_DATA', key: k, value: extVal }, '*');
+        }
+      });
+      if (Object.keys(setObj).length) chrome.storage.local.set(setObj);
+    });
+  }
+
+  window.addEventListener('message', function (event) {
+    if (!event.data || event.data.from !== 'M2028_PAGE' || event.data.type !== 'EXT_PING') return;
+    if (!storageOK()) return;
+    fullMirror();
+    announce();
+    pushBlockToPage(false);
+  });
+
+  if (storageOK() && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (area !== 'local') return;
+      const cand = [];
+      Object.keys(changes).forEach(function (name) {
+        const k = name.replace(/^m_/, '');
+        if ((FWD_ALWAYS.indexOf(k) > -1 || FWD_UNSYNCED.indexOf(k) > -1) && cand.indexOf(k) < 0) cand.push(k);
+      });
+      if (!cand.length) return;
+      const want = ['m_authSession'];
+      cand.forEach(function (k) { want.push('m_' + k, k); });
+      chrome.storage.local.get(want, function (res) {
+        const extAuthed = !!(res.m_authSession && res.m_authSession.access_token);
+        const pageAuthed = pageHasSession();
+        cand.forEach(function (k) {
+          if (FWD_UNSYNCED.indexOf(k) > -1 && extAuthed && pageAuthed) return; // the cloud carries it
+          const v = res['m_' + k] !== undefined ? res['m_' + k] : res[k];
+          if (v === undefined) return;
+          let pageRaw = null;
+          try { pageRaw = window.localStorage.getItem('m_' + k); } catch (e) {}
+          const extRaw = JSON.stringify(v);
+          if (pageRaw === extRaw) return;
+          try { if (pageRaw !== null && JSON.stringify(JSON.parse(pageRaw)) === extRaw) return; } catch (e) {}
+          window.postMessage({ from: 'M2028_EXT', type: 'EXT_DATA', key: k, value: v }, '*');
+        });
+      });
+    });
+  }
+
+  // announce on load (and again once the website has restored its login)
+  setTimeout(function () { fullMirror(); announce(); }, 500);
+  setTimeout(function () { fullMirror(); announce(); }, 2500);
 
   setInterval(mirrorFromPage, 2000);
   mirrorFromPage();

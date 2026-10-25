@@ -1181,3 +1181,21 @@ chrome.storage.local.get(['pom_state', 'm_pomLive'], (res) => {
     chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
   }
 });
+
+// ============================================================
+// After install / update, attach the website bridge to website tabs that are already open,
+// so the website and the extension shake hands without a manual refresh.
+// ============================================================
+async function injectBridgeIntoOpenTabs() {
+  try {
+    const tabs = await chrome.tabs.query({ url: [
+      'http://localhost/*', 'http://127.0.0.1/*', 'http://localhost:*/*', 'http://127.0.0.1:*/*', 'https://aviatcode.github.io/M2028/*'
+    ] });
+    for (const tab of tabs) {
+      if (!tab.id) continue;
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }).catch(() => {});
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['wallpaper-bridge.js'] }).catch(() => {});
+    }
+  } catch (e) {}
+}
+chrome.runtime.onInstalled.addListener(function () { injectBridgeIntoOpenTabs(); });

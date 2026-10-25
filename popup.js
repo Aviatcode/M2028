@@ -40,6 +40,7 @@
         obj['m_' + key] = val;
         obj[key] = val;
         if (key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
+        if (['tasks', 'pomSubjects', 'habs', 'hd', 'cd', 'customWidgets', 'pd', 'pomSessions'].indexOf(key) > -1) obj['m_' + key + '_ets'] = Date.now();
         chrome.storage.local.set(obj);
       }
       if (typeof pushCloudData === 'function') {

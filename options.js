@@ -40,6 +40,8 @@ const Storage = {
 let currentRules = {};
 let currentLimits = [];
 let currentBlocklist = [];
+let currentLock = null;
+const LOCK_HOURS = 72;
 
 const MAX_LIMITS = 10;
 const MAX_BLOCKLIST = 10;
@@ -172,7 +174,7 @@ function renderRulesTable() {
         <td style="font-weight:600">${escapeHtml(domain)}</td>
         <td style="text-transform:capitalize"><span class="badge" style="color:var(--accent)">${escapeHtml(category)}</span></td>
         <td>
-          <button class="hub-btn danger sm" onclick="deleteRule('${escapeHtml(domain)}')">Delete</button>
+          <button class="hub-btn danger sm" data-del-rule="${escapeHtml(domain)}">Delete</button>
         </td>
       </tr>
     `;
@@ -232,7 +234,8 @@ function wireTargetTypeToggle(typeSelId, domainInputId, categorySelId) {
 }
 
 async function loadBlockingSettings() {
-  const data = await Storage.get(['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings']);
+  const data = await Storage.get(['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock']);
+  currentLock = data.m2028_lock || null;
   currentLimits = Array.isArray(data.m2028_limits) ? data.m2028_limits : [];
   currentBlocklist = Array.isArray(data.m2028_blocklist) ? data.m2028_blocklist : [];
   const redirects = data.m2028_redirect_settings || {};
@@ -243,6 +246,30 @@ async function loadBlockingSettings() {
   populateCategorySelects();
   renderLimitsTable();
   renderBlocklistTable();
+  applyLockUi();
+}
+
+function lockEntry(kind, target) {
+  return currentLock && currentLock.entries ? currentLock.entries[kind + ':' + target] || null : null;
+}
+function leftText(e) {
+  if (!e || !e.req) return '';
+  const ms = (e.req.requestedAt || 0) + LOCK_HOURS * 3600000 - Date.now();
+  if (ms <= 0) return 'any moment';
+  const m = Math.ceil(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
+  return d > 0 ? d + 'd ' + h + 'h' : h + 'h ' + (m % 60) + 'm';
+}
+function lockCell(kind, target) {
+  const e = lockEntry(kind, target);
+  const t = escapeHtml(target);
+  if (!e) return '<span class="badge">Locking in…</span>';
+  if (e.req) {
+    const what = e.req.op === 'raise' ? 'Limit rises in ' : 'Removed in ';
+    return '<span class="badge" style="color:var(--accent)">' + what + leftText(e) + '</span> ' +
+      '<button class="hub-btn sm" data-cancel-req="' + kind + '|' + t + '">Keep it</button>';
+  }
+  return '<span class="badge" style="color:var(--accent)">🔒 Locked</span> ' +
+    '<button class="hub-btn danger sm" data-req-remove="' + kind + '|' + t + '">Request removal</button>';
 }
 
 function renderLimitsTable() {
@@ -252,11 +279,11 @@ function renderLimitsTable() {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--mt);padding:16px">No time limits set yet.</td></tr>';
     return;
   }
-  tbody.innerHTML = currentLimits.map((l, i) => `
+  tbody.innerHTML = currentLimits.map(l => `
     <tr>
       <td style="font-weight:600">${escapeHtml(targetLabel(l.target))}</td>
       <td>${escapeHtml(String(l.minutes))} min/day</td>
-      <td><button class="hub-btn danger sm" onclick="deleteLimit(${i})">Delete</button></td>
+      <td>${lockCell('limit', l.target)}</td>
     </tr>
   `).join('');
 }
@@ -268,12 +295,22 @@ function renderBlocklistTable() {
     tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--mt);padding:16px">Nothing blocked yet.</td></tr>';
     return;
   }
-  tbody.innerHTML = currentBlocklist.map((b, i) => `
+  tbody.innerHTML = currentBlocklist.map(b => `
     <tr>
       <td style="font-weight:600">${escapeHtml(targetLabel(b.target))}</td>
-      <td><button class="hub-btn danger sm" onclick="deleteBlockEntry(${i})">Delete</button></td>
+      <td>${lockCell('block', b.target)}</td>
     </tr>
   `).join('');
+}
+
+// Redirect pages are locked once anything is locked, so they cannot be pointed somewhere else
+function applyLockUi() {
+  const locked = !!(currentLock && currentLock.entries && Object.keys(currentLock.entries).length);
+  ['limitRedirectUrl', 'blockRedirectUrl'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.disabled = locked; el.title = locked ? 'Locked together with your blocks and limits' : ''; }
+  });
+  document.querySelectorAll('[data-preset-limit],[data-preset-block]').forEach(b => { b.disabled = locked; });
 }
 
 async function saveLimits() { await Storage.set({ m2028_limits: currentLimits }); }
@@ -288,17 +325,38 @@ async function saveRedirectSettings() {
   });
 }
 
-window.deleteLimit = function(i) {
-  currentLimits.splice(i, 1);
-  saveLimits();
-  renderLimitsTable();
-};
 
-window.deleteBlockEntry = function(i) {
-  currentBlocklist.splice(i, 1);
-  saveBlocklist();
-  renderBlocklistTable();
-};
+// Extension pages (MV3) block inline click handlers, so buttons use data attributes + one delegated listener
+document.addEventListener('click', function (e) {
+  const t = e.target && e.target.closest ? e.target.closest('[data-del-rule],[data-req-remove],[data-cancel-req]') : null;
+  if (!t) return;
+  if (t.hasAttribute('data-del-rule')) { window.deleteRule(t.getAttribute('data-del-rule')); return; }
+  const raw = t.getAttribute('data-req-remove') || t.getAttribute('data-cancel-req');
+  const sep = raw.indexOf('|');
+  const kind = raw.slice(0, sep), target = raw.slice(sep + 1);
+  if (t.hasAttribute('data-cancel-req')) { sendLockRequest({ op: 'cancel', kind, target }); return; }
+  if (!confirm('Request removal of "' + targetLabel(target) + '"?\n\nIt stays fully active for ' + LOCK_HOURS + ' hours before it is removed. You can cancel the request any time.')) return;
+  const phrase = 'I want to remove this';
+  const typed = prompt('Type exactly: ' + phrase);
+  if (!typed || typed.trim().toLowerCase() !== phrase.toLowerCase()) { alert('That did not match, so nothing was changed.'); return; }
+  sendLockRequest({ op: 'remove', kind, target });
+});
+
+function sendLockRequest(req) {
+  try {
+    chrome.runtime.sendMessage(Object.assign({ type: 'LOCK_REQUEST' }, req), function () {
+      void chrome.runtime.lastError;
+      loadBlockingSettings();
+    });
+  } catch (e) {}
+}
+
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area !== 'local') return;
+    if (changes.m2028_limits || changes.m2028_blocklist || changes.m2028_lock) loadBlockingSettings();
+  });
+}
 
 function initBlockingUI() {
   wireTargetTypeToggle('limitTargetType', 'limitDomainInput', 'limitCategorySelect');
@@ -322,6 +380,7 @@ function initBlockingUI() {
     }
     if (currentLimits.some(l => l.target === target)) { alert('That site or category already has a limit.'); return; }
 
+    if (!confirm('Lock in ' + targetLabel(target) + ' at ' + minutes + ' min per day?\n\nYou will not be able to remove or loosen it for at least ' + LOCK_HOURS + ' hours.')) return;
     currentLimits.push({ target, minutes });
     document.getElementById('limitDomainInput').value = '';
     document.getElementById('limitMinutesInput').value = '';
@@ -344,6 +403,7 @@ function initBlockingUI() {
     }
     if (currentBlocklist.some(b => b.target === target)) { alert('Already on the blocklist.'); return; }
 
+    if (!confirm('Block ' + targetLabel(target) + '?\n\nYou will not be able to remove it for at least ' + LOCK_HOURS + ' hours.')) return;
     currentBlocklist.push({ target });
     document.getElementById('blockDomainInput').value = '';
     saveBlocklist();

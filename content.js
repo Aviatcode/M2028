@@ -59,7 +59,7 @@
       }
     } else if (event.data.type === 'OPEN_EXT_HUB') {
       // Website widget -> open the extension hub (popup.html) in a tab on the requested section
-      const allowed = ['time', 'habits', 'tasks', 'pomo', 'countdown', 'notes', 'search'];
+      const allowed = ['time', 'habits', 'tasks', 'pomo', 'countdown', 'notes', 'search', 'block'];
       const tab = allowed.indexOf(event.data.tab) >= 0 ? event.data.tab : 'time';
       try {
         window.open(chrome.runtime.getURL('popup.html?tab=' + tab), '_blank');
@@ -265,6 +265,120 @@
           chrome.storage.local.set(syncObj);
         }
       } catch (e) {}
+    });
+  }
+
+
+  // 6. Block websites & usage limits  <->  website "Block" tab
+  //    Page -> extension : { from:'M2028_PAGE', type:'BLOCK_UPDATE', limits, blocklist, redirects }
+  //    Page -> extension : { from:'M2028_PAGE', type:'BLOCK_REQUEST' }  (ask for the current state)
+  //    Extension -> page : { from:'M2028_EXT',  type:'BLOCK_UPDATE', limits, blocklist, redirects, usage }
+  const BLOCK_KEYS = ['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock'];
+  const BLOCK_MAX = 10;
+  const DEF_LIMIT_REDIRECT = 'https://en.wikipedia.org/wiki/Special:Random';
+  const DEF_BLOCK_REDIRECT = 'https://theuselessweb.com';
+  let lastBlockSig = '';
+  let lastUsagePush = 0;
+
+  function cleanTarget(t) {
+    t = String(t || '').trim().toLowerCase();
+    if (t.indexOf('category:') === 0) return /^category:[a-z]+$/.test(t) ? t : '';
+    if (t.indexOf('://') > -1) { try { t = new URL(t).hostname; } catch (e) { return ''; } }
+    if (t.indexOf('www.') === 0) t = t.slice(4);
+    return /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(t) ? t : '';
+  }
+  function cleanUrl(u, fallback) {
+    try {
+      const x = new URL(String(u || '').trim());
+      if (x.protocol === 'http:' || x.protocol === 'https:') return x.href;
+    } catch (e) {}
+    return fallback;
+  }
+  function cleanBlockPayload(p) {
+    const seen = {};
+    const limits = [];
+    (Array.isArray(p.limits) ? p.limits : []).forEach(function (l) {
+      const t = cleanTarget(l && l.target);
+      const m = Math.round(Number(l && l.minutes));
+      if (t && m > 0 && m <= 1440 && !seen[t] && limits.length < BLOCK_MAX) { seen[t] = 1; limits.push({ target: t, minutes: m }); }
+    });
+    const seenB = {};
+    const blocklist = [];
+    (Array.isArray(p.blocklist) ? p.blocklist : []).forEach(function (b) {
+      const t = cleanTarget(b && b.target);
+      if (t && !seenB[t] && blocklist.length < BLOCK_MAX) { seenB[t] = 1; blocklist.push({ target: t }); }
+    });
+    const r = p.redirects || {};
+    return {
+      limits: limits,
+      blocklist: blocklist,
+      redirects: {
+        limitRedirectUrl: cleanUrl(r.limitRedirectUrl, DEF_LIMIT_REDIRECT),
+        blockRedirectUrl: cleanUrl(r.blockRedirectUrl, DEF_BLOCK_REDIRECT)
+      }
+    };
+  }
+  function localDayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function readBlockState(cb) {
+    chrome.storage.local.get(BLOCK_KEYS.concat(['m2028_limit_usage']), function (res) {
+      cb({
+        limits: res.m2028_limits || [],
+        blocklist: res.m2028_blocklist || [],
+        redirects: res.m2028_redirect_settings || {},
+        lock: res.m2028_lock || null,
+        usage: res.m2028_limit_usage || {}
+      });
+    });
+  }
+  function pushBlockToPage(skipIfSame) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    readBlockState(function (s) {
+      const sig = JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock]);
+      if (skipIfSame && sig === lastBlockSig) return;
+      lastBlockSig = sig;
+      window.postMessage({ from: 'M2028_EXT', type: 'BLOCK_UPDATE', limits: s.limits, blocklist: s.blocklist, redirects: s.redirects, lock: s.lock, usage: s.usage }, '*');
+    });
+  }
+
+  window.addEventListener('message', function (event) {
+    if (!event.data || event.data.from !== 'M2028_PAGE') return;
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    if (event.data.type === 'BLOCK_REQUEST') {
+      pushBlockToPage(false);
+    } else if (event.data.type === 'BLOCK_UPDATE') {
+      // Adds and tightenings are accepted; the background script puts back anything loosened or removed.
+      const clean = cleanBlockPayload(event.data);
+      chrome.storage.local.set({
+        m2028_limits: clean.limits,
+        m2028_blocklist: clean.blocklist,
+        m2028_redirect_settings: clean.redirects
+      }, function () { setTimeout(function () { pushBlockToPage(false); }, 400); });
+    } else if (event.data.type === 'BLOCK_LOCK') {
+      // Removal / raise / cancel requests are handled (and delayed) by the background script
+      try {
+        chrome.runtime.sendMessage({
+          type: 'LOCK_REQUEST',
+          op: String(event.data.op || ''),
+          kind: event.data.kind === 'limit' ? 'limit' : 'block',
+          target: String(event.data.target || ''),
+          minutes: Number(event.data.minutes) || 0
+        }, function () { void chrome.runtime.lastError; setTimeout(function () { pushBlockToPage(false); }, 300); });
+      } catch (e) {}
+    }
+  });
+
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(function (changes, areaName) {
+      if (areaName !== 'local') return;
+      if (BLOCK_KEYS.some(function (k) { return changes[k]; })) {
+        pushBlockToPage(true); // changed from the popup / options page / lock engine
+      } else if (changes.m2028_limit_usage && Date.now() - lastUsagePush > 15000) {
+        lastUsagePush = Date.now();
+        pushBlockToPage(false); // refresh today's usage numbers
+      }
     });
   }
 

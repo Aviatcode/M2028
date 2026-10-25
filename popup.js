@@ -503,6 +503,55 @@
     } catch (e) {}
   }
 
+
+  // =====================================================================
+  // Block Sites & Daily Limits tab (UI lives in block-ui.js; background.js enforces the lock)
+  // =====================================================================
+  const BLK_KEYS = ['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock', 'm2028_limit_usage'];
+  let blkMounted = false;
+  let blkListener = null;
+  const blkTransport = {
+    onState(fn) { blkListener = fn; },
+    requestState() {
+      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local || !blkListener) return;
+      chrome.storage.local.get(BLK_KEYS, function (res) {
+        blkListener({
+          limits: res.m2028_limits || [],
+          blocklist: res.m2028_blocklist || [],
+          redirects: res.m2028_redirect_settings || {},
+          lock: res.m2028_lock || null,
+          usage: res.m2028_limit_usage || {}
+        });
+      });
+    },
+    saveLists(s) {
+      chrome.storage.local.set({
+        m2028_limits: s.limits, m2028_blocklist: s.blocklist, m2028_redirect_settings: s.redirects
+      });
+    },
+    lockRequest(req) {
+      chrome.runtime.sendMessage(Object.assign({ type: 'LOCK_REQUEST' }, req), function () {
+        void chrome.runtime.lastError;
+        blkTransport.requestState();
+      });
+    }
+  };
+  function renderBlockTab() {
+    const root = document.getElementById('blkRoot');
+    if (!root || !window.M2028BlockUI) return;
+    if (!blkMounted) {
+      blkMounted = true;
+      window.M2028BlockUI.mount(root, blkTransport, {});
+      if (chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener(function (changes, area) {
+          if (area !== 'local') return;
+          if (BLK_KEYS.some(function (k) { return changes[k]; })) blkTransport.requestState();
+        });
+      }
+    }
+    blkTransport.requestState();
+  }
+
   function switchTab(tab) {
     activeTabName = tab;
     document.querySelectorAll('.tnb .nb').forEach(b => {
@@ -522,6 +571,7 @@
     else if (tab === 'countdown') renderCountdowns();
     else if (tab === 'notes') initNotes();
     else if (tab === 'search') loadOpenTabs();
+    else if (tab === 'block') renderBlockTab();
   }
 
   // --- Navigation Tabs Visibility Management (Customizable via DP button) ---
@@ -532,7 +582,8 @@
     { id: 'pomo', name: 'Pomo', desc: 'Pomodoro Focus Timer', icon: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/>' },
     { id: 'countdown', name: 'Count', desc: 'Target Countdowns', icon: '<path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/>' },
     { id: 'notes', name: 'Notes', desc: 'Quick Scratchpad', icon: '<path d="M6 3.5h9l3.5 3.5v13.5H6zM14.5 3.5V7.5h4M9 12h6M9 16h6"/>' },
-    { id: 'search', name: 'Search', desc: 'Universal Search', icon: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>' }
+    { id: 'search', name: 'Search', desc: 'Universal Search', icon: '<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>' },
+    { id: 'block', name: 'Block', desc: 'Block Sites & Limits', icon: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>' }
   ];
 
   function getHiddenNavTabs() {

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "M2028 - Productivity Hub & Screen Time Tracker",
   "short_name": "M2028",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Monitors where you spend time most. One-stop stopwatch, clock, notes scratchpad, countdown timer, and quick search hub.",
   "icons": {
     "16": "favicon-32.png",

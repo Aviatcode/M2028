@@ -99,18 +99,44 @@ const STORAGE_KEY_BLOCK_CACHE = 'm2028_block_rule_cache';
 const DEFAULT_LIMIT_REDIRECT = 'https://en.wikipedia.org/wiki/Special:Random';
 const DEFAULT_BLOCK_REDIRECT = 'https://theuselessweb.com';
 
-// Starter domain lists for block-only categories that aren't part of CATEGORY_MAP.
-// Best-effort, not exhaustive — users can always add specific domains too.
+// Domain lists for the block-only categories (adult, gambling) and extras that top up the
+// categories already in CATEGORY_MAP (social, entertainment, communication).
 const BLOCK_CATEGORY_DOMAINS = {
   adult: [
-    'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com',
-    'redtube.com', 'youporn.com', 'spankbang.com'
+    'pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'redtube.com', 'youporn.com', 'spankbang.com',
+    'tube8.com', 'porn.com', 'eporner.com', 'tnaflix.com', 'beeg.com', 'motherless.com', 'brazzers.com',
+    'chaturbate.com', 'livejasmin.com', 'stripchat.com', 'bongacams.com', 'camsoda.com', 'cam4.com',
+    'myfreecams.com', 'onlyfans.com', 'fansly.com', 'rule34.xxx', 'rule34.xyz', 'nhentai.net', 'hentaihaven.xxx',
+    'e-hentai.org', 'exhentai.org', 'fapello.com', 'erome.com', 'thothub.to', 'pornpics.com', 'porntrex.com',
+    'sex.com', 'daftsex.com', 'hqporner.com', 'txxx.com', 'hclips.com', 'vporn.com', 'youjizz.com', '4tube.com',
+    'sunporno.com', 'drtuber.com', 'gotporn.com', 'naughtyamerica.com', 'realitykings.com', 'bangbros.com',
+    'literotica.com', 'missav.com', 'thisav.com', 'javhd.com', 'gelbooru.com', 'xvideos2.com', 'xhamster2.com',
+    'pornone.com', 'ixxx.com', 'fuq.com', 'zbporn.com', 'xmoviesforyou.com', 'tubegalore.com', 'sexvid.xxx'
   ],
   gambling: [
-    'bet365.com', 'draftkings.com', 'fanduel.com', 'stake.com',
-    'pokerstars.com', 'bovada.lv', 'betway.com', '888casino.com'
+    'bet365.com', 'draftkings.com', 'fanduel.com', 'stake.com', 'pokerstars.com', 'bovada.lv', 'betway.com',
+    '888casino.com', '888poker.com', 'williamhill.com', 'paddypower.com', 'ladbrokes.com', 'coral.co.uk',
+    'unibet.com', 'betfair.com', '1xbet.com', '22bet.com', 'melbet.com', 'mostbet.com', 'parimatch.com',
+    'betmgm.com', 'pointsbet.com', 'bwin.com', 'partypoker.com', 'ggpoker.com', 'betano.com', 'bet9ja.com',
+    'sportybet.com', 'dafabet.com', '10cric.com', 'betwinner.com', '1win.com', 'rummycircle.com', 'dream11.com',
+    'my11circle.com', 'winzogames.com', 'mpl.live', 'pokerbaazi.com', 'adda52.com', 'casino.com', 'leovegas.com',
+    'betsson.com', 'bodog.eu', 'ignitioncasino.eu', 'slotomania.com', 'jackpotcity.com', 'roobet.com',
+    'bc.game', 'stake.us', 'betrivers.com', 'caesarscasino.com', 'sportsbet.com.au', 'tab.com.au', 'skybet.com'
   ]
 };
+const EXTRA_CATEGORY_DOMAINS = {
+  social: ['tiktok.com', 'snapchat.com', 'pinterest.com', 'tumblr.com', 'threads.net', 'bsky.app', 'quora.com', '9gag.com', 'mastodon.social', 'bereal.com', 'x.com', 'twitter.com', 'reddit.com', 'instagram.com', 'facebook.com'],
+  entertainment: ['youtube.com', 'netflix.com', 'twitch.tv', 'primevideo.com', 'hotstar.com', 'disneyplus.com', 'hulu.com', 'crunchyroll.com', 'dailymotion.com', 'jiocinema.com', 'sonyliv.com', 'zee5.com', 'max.com', 'hbomax.com', 'peacocktv.com', 'paramountplus.com', 'kick.com', 'rumble.com'],
+  communication: ['whatsapp.com', 'telegram.org', 't.me', 'discord.com', 'discord.gg', 'messenger.com', 'signal.org', 'viber.com', 'line.me', 'wechat.com', 'omegle.com', 'ome.tv']
+};
+
+// Keywords that mark a site as adult even if it is not on the list above (new domains, mirrors, etc.)
+const ADULT_KEYWORDS = ['porn', 'xxx', 'hentai', 'xvideo', 'xnxx', 'xhamster', 'redtube', 'youporn', 'brazzers',
+  'chaturbate', 'livejasmin', 'stripchat', 'bongacams', 'onlyfans', 'rule34', 'spankbang', 'eporner', 'tnaflix',
+  'motherless', 'camsoda', 'nsfw'];
+const ADULT_REGEX = '^https?://([a-z0-9-]+\\.)*[a-z0-9-]*(' + ADULT_KEYWORDS.join('|') + ')[a-z0-9-]*(\\.[a-z0-9-]+)+([:/?#]|$)';
+const ADULT_RE_JS = new RegExp(ADULT_REGEX, 'i');
+const DNR_ADULT_KEYWORD_ID = 3990;
 
 // Rules we manage all live in these id ranges so we can safely wipe & rebuild them
 const DNR_BLOCK_ID_BASE = 1;      // permanent blocklist
@@ -122,14 +148,196 @@ function expandTargetDomains(target, customRules) {
   if (!target) return [];
   if (target.startsWith('category:')) {
     const cat = target.slice('category:'.length);
-    if (BLOCK_CATEGORY_DOMAINS[cat]) return BLOCK_CATEGORY_DOMAINS[cat].slice();
-    const domains = [];
-    for (const [d, c] of Object.entries(CATEGORY_MAP)) if (c === cat) domains.push(d);
-    for (const [d, c] of Object.entries(customRules || {})) if (c === cat) domains.push(d);
-    return domains;
+    const out = new Set(BLOCK_CATEGORY_DOMAINS[cat] || []);
+    (EXTRA_CATEGORY_DOMAINS[cat] || []).forEach(d => out.add(d));
+    for (const [d, c] of Object.entries(CATEGORY_MAP)) if (c === cat) out.add(d);
+    for (const [d, c] of Object.entries(customRules || {})) if (c === cat) out.add(d);
+    return [...out];
   }
   return [target];
 }
+
+// ============================================================
+// Commitment lock
+// Everything on the blocklist / limit list is "committed". The UIs (popup, options page, website tab)
+// can only ADD or TIGHTEN. Removing or loosening needs a request that waits COOLOFF_MS. This service
+// worker is the single authority: if any other code edits the lists, they are put back immediately.
+// ============================================================
+const STORAGE_KEY_LOCK = 'm2028_lock';
+const STORAGE_KEY_LOCK_MIRROR = 'm2028_lock_mirror';
+const STORAGE_KEY_USAGE_TRACK = 'm2028_usage_track';
+const STORAGE_KEY_LIMIT_USAGE = 'm2028_limit_usage';
+const COOLOFF_MS = 72 * 60 * 60 * 1000; // how long a removal / loosening request must wait
+const LOCK_MAX_ITEMS = 10;
+const LOCK_CATEGORIES = ['adult', 'gambling', 'social', 'entertainment', 'communication'];
+
+function lockTarget(t) {
+  t = String(t || '').trim().toLowerCase();
+  if (t.startsWith('category:')) return LOCK_CATEGORIES.includes(t.slice(9)) ? t : '';
+  if (t.startsWith('www.')) t = t.slice(4);
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(t) ? t : '';
+}
+function lockUrl(u, fallback) {
+  try { const x = new URL(String(u || '').trim()); if (x.protocol === 'http:' || x.protocol === 'https:') return x.href; } catch (e) {}
+  return fallback;
+}
+function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function emptyLock() { return { v: 1, rev: 0, entries: {}, redirects: null }; }
+
+function cleanLockObject(l, now) {
+  if (!l || l.v !== 1 || !l.entries || typeof l.entries !== 'object' || Array.isArray(l.entries)) return null;
+  const out = { v: 1, rev: Number(l.rev) || 0, entries: {}, redirects: null };
+  for (const e of Object.values(l.entries)) {
+    if (!e || (e.kind !== 'block' && e.kind !== 'limit')) continue;
+    const target = lockTarget(e.target);
+    if (!target) continue;
+    const ne = { kind: e.kind, target, addedAt: Math.min(Number(e.addedAt) || now, now) };
+    if (e.kind === 'limit') {
+      const m = Math.round(Number(e.minutes));
+      if (!(m >= 1 && m <= 1440)) continue;
+      ne.minutes = m;
+    }
+    if (e.req && (e.req.op === 'remove' || (e.req.op === 'raise' && e.kind === 'limit'))) {
+      ne.req = { op: e.req.op, requestedAt: Math.min(Number(e.req.requestedAt) || now, now) };
+      if (e.req.op === 'raise') {
+        const rm = Math.round(Number(e.req.minutes));
+        if (!(rm > ne.minutes && rm <= 1440)) delete ne.req; else ne.req.minutes = rm;
+      }
+    }
+    out.entries[ne.kind + ':' + ne.target] = ne;
+  }
+  if (l.redirects && typeof l.redirects === 'object') {
+    out.redirects = {
+      limitRedirectUrl: lockUrl(l.redirects.limitRedirectUrl, DEFAULT_LIMIT_REDIRECT),
+      blockRedirectUrl: lockUrl(l.redirects.blockRedirectUrl, DEFAULT_BLOCK_REDIRECT)
+    };
+  }
+  return out;
+}
+// Two copies are stored. If someone edits one, the other (equal revision) wins.
+function pickLock(a, b, now) {
+  const ca = cleanLockObject(a, now), cb = cleanLockObject(b, now);
+  if (ca && cb) return ca.rev > cb.rev ? ca : cb;
+  return ca || cb || emptyLock();
+}
+function cleanBlockList(list) {
+  const seen = new Set(), out = [];
+  for (const b of Array.isArray(list) ? list : []) {
+    const t = lockTarget(b && b.target);
+    if (t && !seen.has(t) && out.length < LOCK_MAX_ITEMS) { seen.add(t); out.push({ target: t }); }
+  }
+  return out;
+}
+function cleanLimitList(list) {
+  const seen = new Set(), out = [];
+  for (const l of Array.isArray(list) ? list : []) {
+    const t = lockTarget(l && l.target);
+    const m = Math.round(Number(l && l.minutes));
+    if (t && m >= 1 && m <= 1440 && !seen.has(t) && out.length < LOCK_MAX_ITEMS) { seen.add(t); out.push({ target: t, minutes: m }); }
+  }
+  return out;
+}
+
+let lockQueue = Promise.resolve();
+function queueLock(fn) {
+  const run = lockQueue.then(fn, fn);
+  lockQueue = run.catch(() => {});
+  return run;
+}
+
+async function doEnforceLock() {
+  const data = await chrome.storage.local.get([
+    STORAGE_KEY_LIMITS, STORAGE_KEY_BLOCKLIST, STORAGE_KEY_REDIRECTS, STORAGE_KEY_LOCK, STORAGE_KEY_LOCK_MIRROR
+  ]);
+  const now = Date.now();
+  const lock = pickLock(data[STORAGE_KEY_LOCK], data[STORAGE_KEY_LOCK_MIRROR], now);
+  const E = lock.entries;
+  let changed = !sameJson(lock, data[STORAGE_KEY_LOCK]) || !sameJson(lock, data[STORAGE_KEY_LOCK_MIRROR]);
+  const count = kind => Object.values(E).filter(e => e.kind === kind).length;
+
+  // 1. Register anything new that was added (adding is always allowed) and accept tightened limits
+  for (const b of cleanBlockList(data[STORAGE_KEY_BLOCKLIST])) {
+    const k = 'block:' + b.target;
+    if (!E[k] && count('block') < LOCK_MAX_ITEMS) { E[k] = { kind: 'block', target: b.target, addedAt: now }; changed = true; }
+  }
+  for (const l of cleanLimitList(data[STORAGE_KEY_LIMITS])) {
+    const k = 'limit:' + l.target, e = E[k];
+    if (!e) {
+      if (count('limit') < LOCK_MAX_ITEMS) { E[k] = { kind: 'limit', target: l.target, minutes: l.minutes, addedAt: now }; changed = true; }
+    } else if (l.minutes < e.minutes) {
+      e.minutes = l.minutes;
+      if (e.req && e.req.op === 'raise' && e.req.minutes <= e.minutes) delete e.req;
+      changed = true;
+    }
+  }
+
+  // 2. Apply requests whose waiting period is over
+  for (const k of Object.keys(E)) {
+    const e = E[k];
+    if (e.req && e.req.requestedAt + COOLOFF_MS <= now) {
+      if (e.req.op === 'remove') delete E[k];
+      else { e.minutes = e.req.minutes; delete e.req; }
+      changed = true;
+    }
+  }
+
+  // 3. Redirect pages are locked as soon as anything is locked
+  if (Object.keys(E).length) {
+    if (!lock.redirects) {
+      const r = data[STORAGE_KEY_REDIRECTS] || {};
+      lock.redirects = {
+        limitRedirectUrl: lockUrl(r.limitRedirectUrl, DEFAULT_LIMIT_REDIRECT),
+        blockRedirectUrl: lockUrl(r.blockRedirectUrl, DEFAULT_BLOCK_REDIRECT)
+      };
+      changed = true;
+    }
+  } else if (lock.redirects) { lock.redirects = null; changed = true; }
+
+  // 4. Make the live lists match the lock exactly (puts back anything deleted or loosened)
+  const entries = Object.values(E).sort((a, b) => a.addedAt - b.addedAt);
+  const wantBlock = entries.filter(e => e.kind === 'block').map(e => ({ target: e.target }));
+  const wantLimits = entries.filter(e => e.kind === 'limit').map(e => ({ target: e.target, minutes: e.minutes }));
+  const out = {};
+  if (!sameJson(data[STORAGE_KEY_BLOCKLIST] || [], wantBlock)) out[STORAGE_KEY_BLOCKLIST] = wantBlock;
+  if (!sameJson(data[STORAGE_KEY_LIMITS] || [], wantLimits)) out[STORAGE_KEY_LIMITS] = wantLimits;
+  if (lock.redirects && !sameJson(data[STORAGE_KEY_REDIRECTS], lock.redirects)) out[STORAGE_KEY_REDIRECTS] = lock.redirects;
+  if (changed) {
+    lock.rev = (lock.rev || 0) + 1;
+    out[STORAGE_KEY_LOCK] = lock;
+    out[STORAGE_KEY_LOCK_MIRROR] = lock;
+  }
+  if (Object.keys(out).length) await chrome.storage.local.set(out);
+}
+function enforceLock() { return queueLock(doEnforceLock).catch(e => console.warn('enforceLock error:', e)); }
+
+// op: 'remove' | 'raise' | 'cancel'. Removal/raising only schedules a change; it applies after COOLOFF_MS.
+async function doLockRequest(m) {
+  await doEnforceLock();
+  const data = await chrome.storage.local.get([STORAGE_KEY_LOCK, STORAGE_KEY_LOCK_MIRROR]);
+  const now = Date.now();
+  const lock = pickLock(data[STORAGE_KEY_LOCK], data[STORAGE_KEY_LOCK_MIRROR], now);
+  const target = lockTarget(m.target);
+  const e = lock.entries[(m.kind === 'limit' ? 'limit' : 'block') + ':' + target];
+  if (!e) return { ok: false, error: 'Not found' };
+  if (m.op === 'cancel') {
+    if (!e.req) return { ok: true };
+    delete e.req;
+  } else if (m.op === 'remove') {
+    if (e.req) return { ok: false, error: 'A request is already waiting. Cancel it first.' };
+    e.req = { op: 'remove', requestedAt: now };
+  } else if (m.op === 'raise') {
+    const nm = Math.round(Number(m.minutes));
+    if (e.kind !== 'limit' || !(nm > e.minutes && nm <= 1440)) return { ok: false, error: 'Invalid new limit' };
+    if (e.req) return { ok: false, error: 'A request is already waiting. Cancel it first.' };
+    e.req = { op: 'raise', requestedAt: now, minutes: nm };
+  } else {
+    return { ok: false, error: 'Unknown request' };
+  }
+  lock.rev = (lock.rev || 0) + 1;
+  await chrome.storage.local.set({ [STORAGE_KEY_LOCK]: lock, [STORAGE_KEY_LOCK_MIRROR]: lock });
+  return { ok: true };
+}
+function lockRequest(m) { return queueLock(() => doLockRequest(m)).catch(e => ({ ok: false, error: String(e) })); }
 
 function makeRedirectRule(id, domain, reason) {
   return {
@@ -171,9 +379,10 @@ async function syncBlocking() {
   if (!chrome.declarativeNetRequest) return;
 
   try {
+    await enforceLock();
     const data = await chrome.storage.local.get([
       STORAGE_KEY_LIMITS, STORAGE_KEY_BLOCKLIST, STORAGE_KEY_STATS,
-      'm2028_custom_rules', STORAGE_KEY_LIMIT_CACHE, STORAGE_KEY_BLOCK_CACHE
+      'm2028_custom_rules', STORAGE_KEY_LIMIT_CACHE, STORAGE_KEY_BLOCK_CACHE, STORAGE_KEY_USAGE_TRACK
     ]);
 
     const limits = data[STORAGE_KEY_LIMITS] || [];
@@ -185,22 +394,33 @@ async function syncBlocking() {
 
     // 1. Permanent blocklist domains
     const blockedDomains = new Set();
+    let adultKeywords = false;
     for (const entry of blocklist) {
+      if (entry.target === 'category:adult') adultKeywords = true;
       expandTargetDomains(entry.target, customRules).forEach(d => blockedDomains.add(d));
     }
 
-    // 2. Domains over today's limit
+    // 2. Domains over today's limit. Usage is counted cumulatively so wiping the history
+    //    in the middle of the day cannot reset a limit.
+    let track = data[STORAGE_KEY_USAGE_TRACK];
+    if (!track || track.day !== today) track = { day: today, t: {} };
+    const usageOut = {};
     const overLimitDomains = new Set();
     for (const limit of limits) {
       const limitSeconds = (Number(limit.minutes) || 0) * 60;
       if (limitSeconds <= 0) continue;
       const domains = expandTargetDomains(limit.target, customRules);
-      let usedSeconds = 0;
+      let computed = 0;
       for (const d of domains) {
-        const rec = todayData.domains[d];
-        if (rec) usedSeconds += rec.seconds;
+        const rec = todayData.domains && todayData.domains[d];
+        if (rec) computed += rec.seconds;
       }
-      if (usedSeconds >= limitSeconds) domains.forEach(d => overLimitDomains.add(d));
+      const prev = track.t[limit.target] || { last: 0, cum: 0 };
+      prev.cum += computed >= prev.last ? computed - prev.last : computed;
+      prev.last = computed;
+      track.t[limit.target] = prev;
+      usageOut[limit.target] = prev.cum;
+      if (prev.cum >= limitSeconds) domains.forEach(d => overLimitDomains.add(d));
     }
     // Permanent blocks take priority — don't double-handle as a "limit" redirect
     for (const d of [...overLimitDomains]) {
@@ -212,10 +432,13 @@ async function syncBlocking() {
     const prevLimited = new Set(data[STORAGE_KEY_LIMIT_CACHE] || []);
     const newlyBlocked = [...blockedDomains].filter(d => !prevBlocked.has(d));
     const newlyLimited = [...overLimitDomains].filter(d => !prevLimited.has(d));
+    const newlyAdultKeywords = adultKeywords && !prevBlocked.has('#adult-keywords');
 
     await chrome.storage.local.set({
-      [STORAGE_KEY_BLOCK_CACHE]: [...blockedDomains],
-      [STORAGE_KEY_LIMIT_CACHE]: [...overLimitDomains]
+      [STORAGE_KEY_BLOCK_CACHE]: [...blockedDomains, ...(adultKeywords ? ['#adult-keywords'] : [])],
+      [STORAGE_KEY_LIMIT_CACHE]: [...overLimitDomains],
+      [STORAGE_KEY_USAGE_TRACK]: track,
+      [STORAGE_KEY_LIMIT_USAGE]: usageOut
     });
 
     // 4. Rebuild our managed dynamic rules
@@ -229,6 +452,21 @@ async function syncBlocking() {
     for (const domain of blockedDomains) addRules.push(makeRedirectRule(blockId++, domain, 'block'));
     let limitId = DNR_LIMIT_ID_BASE;
     for (const domain of overLimitDomains) addRules.push(makeRedirectRule(limitId++, domain, 'limit'));
+    if (adultKeywords) {
+      let ok = true;
+      try {
+        const sup = await chrome.declarativeNetRequest.isRegexSupported({ regex: ADULT_REGEX });
+        ok = !!(sup && sup.isSupported);
+      } catch (e) { ok = false; }
+      if (ok) {
+        addRules.push({
+          id: DNR_ADULT_KEYWORD_ID,
+          priority: 1,
+          action: { type: 'redirect', redirect: { extensionPath: '/blocked.html?reason=block&domain=' + encodeURIComponent('adult site') } },
+          condition: { regexFilter: ADULT_REGEX, resourceTypes: ['main_frame'] }
+        });
+      }
+    }
 
     if (removeRuleIds.length || addRules.length) {
       await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
@@ -240,6 +478,16 @@ async function syncBlocking() {
       ...newlyLimited.map(d => ({ d, reason: 'limit' }))
     ];
     if (toRedirect.length) await redirectOpenTabs(toRedirect);
+    if (adultKeywords && (newlyAdultKeywords || true)) {
+      try {
+        const tabs = await chrome.tabs.query({});
+        for (const tab of tabs) {
+          if (tab.url && tab.id && ADULT_RE_JS.test(tab.url)) {
+            chrome.tabs.update(tab.id, { url: chrome.runtime.getURL('blocked.html?reason=block&domain=' + encodeURIComponent('adult site')) }).catch(() => {});
+          }
+        }
+      } catch (e) {}
+    }
   } catch (err) {
     console.warn('syncBlocking error:', err);
   }
@@ -880,6 +1128,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
       }
 
+      case 'LOCK_REQUEST': {
+        const result = await lockRequest(message);
+        await syncBlocking();
+        sendResponse(result);
+        break;
+      }
       case 'GET_POMO_STATE': {
         const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
         sendResponse({ success: true, state: res.pom_state || res.m_pomLive || null });
@@ -900,7 +1154,8 @@ syncBlocking();
 // Sync storage changes with background alarms and extension badges
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes[STORAGE_KEY_LIMITS] || changes[STORAGE_KEY_BLOCKLIST] || changes[STORAGE_KEY_REDIRECTS]) {
+  if (changes[STORAGE_KEY_LIMITS] || changes[STORAGE_KEY_BLOCKLIST] || changes[STORAGE_KEY_REDIRECTS] ||
+      changes[STORAGE_KEY_LOCK] || changes[STORAGE_KEY_LOCK_MIRROR]) {
     syncBlocking();
   }
   if (changes.pom_state || changes.m_pomLive) {

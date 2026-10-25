@@ -67,6 +67,10 @@
           <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
           <span class="lbl">Search</span>
         </button>
+        <button class="nb" data-tab="block" role="tab" aria-selected="false" title="Block Sites & Limits">
+          <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
+          <span class="lbl">Block</span>
+        </button>
       </div>
     </nav>
 
@@ -345,6 +349,11 @@
         </div>
       </section>
 
+      <!-- BLOCK SITES & LIMITS TAB -->
+      <section class="vw" id="tab-block">
+        <div id="blkRoot"></div>
+      </section>
+
       <!-- 6. NOTES SCRATCHPAD TAB -->
       <section class="vw" id="tab-notes">
         <div class="wc">
@@ -520,6 +529,7 @@
     </div>
   </div>
 
+  <script src="block-ui.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

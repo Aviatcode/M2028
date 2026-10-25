@@ -24,16 +24,29 @@ if (reason === 'limit') {
   subEl.textContent = 'Redirecting you somewhere more fun…';
 }
 
+// Only http(s) destinations, and never one that is itself the blocked site (that would loop forever)
+function safeTarget(raw, fallback) {
+  try {
+    const u = new URL(String(raw || '').trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return fallback;
+    const host = u.hostname.toLowerCase().replace(/^www\./, '');
+    const blocked = String(domain || '').toLowerCase().replace(/^www\./, '');
+    if (blocked && (host === blocked || host.endsWith('.' + blocked))) return fallback;
+    return u.href;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 let went = false;
 function go() {
   if (went) return;
   went = true;
   chrome.storage.local.get(['m2028_redirect_settings'], (res) => {
     const settings = (res && res.m2028_redirect_settings) || {};
-    const url = reason === 'limit'
-      ? (settings.limitRedirectUrl || DEFAULTS.limit)
-      : (settings.blockRedirectUrl || DEFAULTS.block);
-    location.replace(url);
+    const fallback = reason === 'limit' ? DEFAULTS.limit : DEFAULTS.block;
+    const wanted = reason === 'limit' ? settings.limitRedirectUrl : settings.blockRedirectUrl;
+    location.replace(safeTarget(wanted, fallback));
   });
 }
 

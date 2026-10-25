@@ -448,36 +448,6 @@ html.haswp body.onwall::before{top:var(--wt,0px)!important;bottom:var(--wb,0px)!
 <div class="ph"><div class="ph-t">Block Sites</div><div class="ph-s">Block whole categories or single sites, and cap your daily minutes · locked in once added · needs the M2028 extension on desktop</div></div>
 <div id="extDlRoot"></div>
 <div id="blockTabRoot"></div>
-<div class="card" id="phoneBlockCard" style="margin-top:14px">
-<div class="ct">Block on your phone</div>
-<p style="font-size:12.5px;color:var(--m2);line-height:1.65;margin:0 0 10px">Mobile browsers cannot run Chrome extensions. The fallback is a private DNS filter (NextDNS or AdGuard DNS): copy or download the domain list below, then paste it into the provider's denylist.</p>
-<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-<input id="phoneBlockAdd" placeholder="Add a domain, e.g. instagram.com" autocomplete="off" style="flex:1;min-width:160px;padding:8px 10px;border-radius:9px;border:1px solid var(--b2);background:var(--s2);color:var(--tx);font:inherit;font-size:12px">
-<button class="btn b-gh sm" id="phoneBlockAddBtn" type="button">Add</button>
-</div>
-<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-<button class="btn b-ai sm" id="phoneBlockCopy" type="button">Copy domain list</button>
-<button class="btn b-gh sm" id="phoneBlockDownload" type="button">Download .txt</button>
-<button class="btn b-gh sm" id="phoneBlockRefresh" type="button">Refresh</button>
-</div>
-<textarea id="phoneBlockList" class="ta" readonly spellcheck="false" style="min-height:110px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px" placeholder="Your blocked domains will appear here."></textarea>
-<div id="phoneBlockStatus" style="font-size:11px;color:var(--m2);margin-top:6px"></div>
-<details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--m2)">Android steps</summary>
-<ol style="font-size:12px;color:var(--m2);line-height:1.7;margin:8px 0 0 18px;padding:0">
-<li>Create a free account at <b>nextdns.io</b> or <b>adguard-dns.io</b>.</li>
-<li>Paste the list into the provider's Denylist / Blocked domains section and save.</li>
-<li>Android 9+: Settings → Network &amp; Internet → Private DNS → enter the provider's hostname.</li>
-<li>Reopen Chrome on the phone; blocked domains now fail to load on every browser and app.</li>
-</ol></details>
-<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--m2)">iPhone / iPad steps</summary>
-<ol style="font-size:12px;color:var(--m2);line-height:1.7;margin:8px 0 0 18px;padding:0">
-<li>Create a free NextDNS or AdGuard DNS account and paste the list into its denylist.</li>
-<li>Install the provider's DNS configuration profile from its website.</li>
-<li>Enable it in Settings → General → VPN, DNS &amp; Device Management (or install the AdGuard app).</li>
-<li>Turn it on once; the same blocked domains apply in Safari, Chrome and other apps.</li>
-</ol></details>
-</div>
-</div>
 <div id="v-period" class="vw"></div>
 <div id="v-body" class="vw">
 <div class="ph"><div class="ph-t">Body Goals</div><div class="ph-s">18% → 15% body fat · 67–69 kg · Mon/Wed/Fri workouts</div></div>
@@ -3909,7 +3879,6 @@ if(window.__M2028_TEST__)window.__encTest={doSetup:doSetup,doUnlock:doUnlock,doR
 </script>
 <style id="m2028-layout">
 
-body:not(:has(#v-dash.on)) #reorderBtn{display:none!important}
 @media (max-width:480px){#reorderBtn{padding:4px 8px!important;font-size:11px!important}}
 
 
@@ -4661,7 +4630,10 @@ function post(){
   /* --ai-solid is a fill that is still visible against the page background. */
   var aiSolid=ai;
   if(cr(aiSolid,pageBg)<1.3)aiSolid=pageIsLight?mix(ai,[0,0,0],.55):mix(ai,[255,255,255],.22);
-  h.style.setProperty("--ai-text",rgb2hex(aiText));
+  var aiHex=rgb2hex(aiText);
+  h.style.setProperty("--ai",aiHex);
+  if(b)b.style.setProperty("--ai",aiHex);
+  h.style.setProperty("--ai-text",aiHex);
   h.style.setProperty("--ai-solid",rgb2hex(aiSolid));
   h.style.setProperty("--on-ai-solid",cr(aiSolid,[255,255,255])>=cr(aiSolid,[16,10,18])?"#fff":"#10101a");
   h.style.setProperty("--on-ai",cr(aiSolid,[255,255,255])>=cr(aiSolid,[16,10,18])?"#fff":"#10101a");
@@ -5311,7 +5283,7 @@ hook('showV',function(o,a){var r=o.apply(this,a);if(editing&&editing!==a[0])exit
 hook('showSchedSub',function(o,a){var r=o.apply(this,a);sch('sched');return r});
 hook('applyDashCfg',function(o,a){var r=o.apply(this,a);VIEWS.forEach(syncCustom);sch('dash');return r});
 hook('_syncCW',function(o,a){var r=o.apply(this,a);try{VIEWS.forEach(syncCustom)}catch(e){}return r});
-hook('toggleReorderMode',function(o,a){if(MQ()){editing?exitEdit():enterEdit('dash');return}return o.apply(this,a)});
+hook('toggleReorderMode',function(o,a){if(MQ()){if(editing){exitEdit();return}var v=curView();if(v==='wall')v='dash';enterEdit(v);return}return o.apply(this,a)});
 hook('reorderOrCustomize',function(o,a){
   if(!MQ())return o.apply(this,a);
   if(editing){exitEdit();return}
@@ -5827,7 +5799,6 @@ html body .tb #setBtn{display:inline-flex;align-items:center;justify-content:cen
 #acctBtn.av{padding:0!important;width:34px;height:34px;min-width:34px;border-radius:50%!important;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;line-height:1}
 #acctBtn.av img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
 @media (max-width:420px){#reorderBtn{padding:4px 8px!important;font-size:11px!important}}
-body:not(:has(#dashWidgets.reorder-on)) #reorderBtn{display:none!important}
 html body .tb .sp{display:none!important}
 
 
@@ -6082,6 +6053,10 @@ document.addEventListener("keydown",function(e){
   var p=$("profMo");if(p&&p.classList.contains("op"))closeMo("profMo")});
 /* Customize is reachable from every tab and opens one hub with wallpaper, colours, theme and layout */
 window.reorderOrCustomize=function(){
+  if(document.body.classList.contains("cv-edit")){try{window.__cv.exit()}catch(e){}return}
+  var on=document.querySelector(".vw.on"),v=on?on.id.replace("v-",""):"dash";
+  if(v==="wall")return;
+  if(v!=="dash"&&window.__cv){try{window.__cv.enter(v);return}catch(e){}}
   if(typeof _reorderMode!=="undefined"&&_reorderMode)toggleReorderMode();else openMo("profMo")};
 render(true);
 /* a photo changed on another device lands in local storage via sync; this cheap check picks it up */
@@ -7137,7 +7112,6 @@ document.addEventListener("click",function(e){
     last = d;
     window.m2028BlockState = last;
     if (listener) listener(d);
-    try { if (window.m2028PhoneBlockRefresh) window.m2028PhoneBlockRefresh(); } catch (e) {}
   });
   window.m2028BlockRender = function () {
     root = document.getElementById('blockTabRoot');
@@ -7148,118 +7122,6 @@ document.addEventListener("click",function(e){
     }
     transport.requestState();
   };
-})();
-</script>
-<script>
-/* Phone fallback: mobile browsers cannot run the extension, so export the blocklist for a private DNS filter. */
-(function () {
-  'use strict';
-  var CAT_DOMAINS = {
-    adult: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'xhamster.com', 'onlyfans.com', 'redtube.com', 'youporn.com', 'spankbang.com', 'chaturbate.com', 'stripchat.com', 'livejasmin.com'],
-    gambling: ['bet365.com', 'draftkings.com', 'fanduel.com', 'pokerstars.com', '888casino.com', 'betway.com', 'williamhill.com', 'bovada.lv', 'betfair.com', 'unibet.com'],
-    social: ['instagram.com', 'facebook.com', 'x.com', 'twitter.com', 'reddit.com', 'tiktok.com', 'snapchat.com', 'pinterest.com', 'tumblr.com', 'threads.net', 'linkedin.com'],
-    entertainment: ['youtube.com', 'youtu.be', 'netflix.com', 'twitch.tv', 'hulu.com', 'disneyplus.com', 'primevideo.com', 'max.com', 'spotify.com', 'vimeo.com', 'dailymotion.com'],
-    communication: ['whatsapp.com', 'web.whatsapp.com', 'telegram.org', 'web.telegram.org', 'discord.com', 'messenger.com', 'signal.org', 'slack.com', 'teams.microsoft.com']
-  };
-
-  var PHONE_KEY = 'm2028_phoneExtra';
-  function state() { return window.m2028BlockState || { blocklist: [] }; }
-  function normDomain(d) {
-    d = String(d || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '');
-    return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d) ? d : '';
-  }
-  function readExtra() {
-    try {
-      var v = JSON.parse(window.localStorage.getItem(PHONE_KEY) || '[]');
-      return Array.isArray(v) ? v.map(normDomain).filter(Boolean) : [];
-    } catch (e) { return []; }
-  }
-  function saveExtra(arr) {
-    try { window.localStorage.setItem(PHONE_KEY, JSON.stringify(arr)); } catch (e) {}
-  }
-  function buildDomains() {
-    var out = Object.create(null);
-    function add(d) {
-      d = normDomain(d);
-      if (!d) return;
-      out[d] = 1;
-      out['www.' + d] = 1;
-    }
-    (state().blocklist || []).forEach(function (b) {
-      var t = String((b && b.target) || '');
-      if (t.indexOf('category:') === 0) (CAT_DOMAINS[t.slice(9)] || []).forEach(add);
-      else add(t);
-    });
-    readExtra().forEach(add);
-    return Object.keys(out).sort();
-  }
-  function buildText() {
-    return buildDomains().join('\n');
-  }
-  function setStatus(msg) {
-    var el = document.getElementById('phoneBlockStatus');
-    if (el) el.textContent = msg;
-  }
-  function refresh() {
-    var ta = document.getElementById('phoneBlockList');
-    if (!ta) return;
-    var t = buildText();
-    ta.value = t;
-    setStatus(t ? t.split('\n').length + ' domains ready. Paste them into the NextDNS or AdGuard DNS denylist.' : 'No blocked websites yet. Add a domain above, or block sites on desktop with the extension.');
-  }
-  function addManual() {
-    var inp = document.getElementById('phoneBlockAdd');
-    var d = normDomain(inp && inp.value);
-    if (!d) { setStatus('Enter a valid domain like instagram.com.'); return; }
-    var arr = readExtra();
-    if (arr.indexOf(d) === -1) arr.push(d);
-    saveExtra(arr);
-    if (inp) inp.value = '';
-    refresh();
-    setStatus('Added ' + d + ' to the phone list.');
-  }
-  function copyList() {
-    var t = buildText();
-    if (!t) { setStatus('Nothing to copy yet.'); return; }
-    var done = function () { setStatus('Copied ' + t.split('\n').length + ' domains.'); };
-    var manual = function () {
-      var ta = document.getElementById('phoneBlockList');
-      if (ta) { ta.focus(); ta.select(); }
-      try { document.execCommand('copy'); done(); } catch (e) { setStatus('Select the list and copy it manually.'); }
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(t).then(done, manual);
-    } else manual();
-  }
-  function downloadList() {
-    var t = buildText();
-    if (!t) { setStatus('Nothing to download yet.'); return; }
-    var blob = new Blob([t + '\n'], { type: 'text/plain;charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'M2028-blocklist.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-    setStatus('Downloaded M2028-blocklist.txt.');
-  }
-  function bind() {
-    var c = document.getElementById('phoneBlockCopy');
-    var d = document.getElementById('phoneBlockDownload');
-    var r = document.getElementById('phoneBlockRefresh');
-    var ab = document.getElementById('phoneBlockAddBtn');
-    var ai = document.getElementById('phoneBlockAdd');
-    if (c) c.addEventListener('click', copyList);
-    if (d) d.addEventListener('click', downloadList);
-    if (r) r.addEventListener('click', function () { refresh(); setStatus('List refreshed.'); });
-    if (ab) ab.addEventListener('click', addManual);
-    if (ai) ai.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addManual(); } });
-    refresh();
-  }
-  window.m2028PhoneBlockRefresh = refresh;
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
-  else bind();
 })();
 </script>
 <script>

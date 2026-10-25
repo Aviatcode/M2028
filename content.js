@@ -209,18 +209,6 @@
           syncObj.customColors = cc;
           syncObj.m_customColors = cc;
         }
-        // Sync wallpaper & wpDim from page
-        const wp = window.localStorage.getItem('m_wallpaper') || window.localStorage.getItem('wallpaper');
-        if (wp) {
-          syncObj.wallpaper = wp;
-          syncObj.m_wallpaper = wp;
-        }
-        const wpDim = window.localStorage.getItem('m_wpDim') || window.localStorage.getItem('wpDim');
-        if (wpDim) {
-          syncObj.wpDim = wpDim;
-          syncObj.m_wpDim = wpDim;
-        }
-
         // Sync pomSubjects from page
         const pSubs = window.localStorage.getItem('m_pomSubjects') || window.localStorage.getItem('pomSubjects');
         if (pSubs) {
@@ -422,9 +410,7 @@
   }
 
   // 5. Mirror website-side changes into extension storage while a website tab is open.
-  //    (The website writes wallpaper / theme straight to localStorage and never announces it, so poll for changes.)
   const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors'];
-  const MIRROR_RAW = ['wallpaper', 'wpDim'];
   const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
   let mirrorFirstRun = true;
 
@@ -451,19 +437,6 @@
           setObj[k] = v;
           setObj['m_' + k] = v;
         } catch (e) {}
-      });
-
-      MIRROR_RAW.forEach(function (k) {
-        const raw = readPage(k);
-        const prev = mirrorSigs[k];
-        mirrorSigs[k] = raw;
-        if (first || raw === prev) return;
-        if (raw === null) {
-          rmKeys.push(k, 'm_' + k);
-        } else {
-          setObj[k] = raw;
-          setObj['m_' + k] = raw;
-        }
       });
 
       // Keep the extension's login token as fresh as the website's (the website refreshes it hourly)

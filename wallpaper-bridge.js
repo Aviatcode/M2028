@@ -1,10 +1,10 @@
 /**
  * M2028 wallpaper bridge (content script, runs on the website only).
  *
- * The website keeps the wallpaper only in its own localStorage (m_wallpaper = data URL,
- * m_wpDim = 0..0.8). The popup lives on a different origin and cannot see that, so this
- * script mirrors both values into chrome.storage.local, where the popup already looks.
- * It runs by itself: the popup does not need to be open, and no other script is involved.
+ * The website keeps the wallpaper in its own localStorage. This script mirrors it
+ * into chrome.storage.local under the logged-in account id, so the extension can
+ * show a wallpaper only for the account that actually has one. It never writes a
+ * global/default wallpaper.
  */
 (function () {
   'use strict';
@@ -12,10 +12,26 @@
   window.__m2028WpBridge = true;
 
   var lastSig = null;
+  var legacyCleared = false;
 
   function alive() {
     try { return !!(chrome && chrome.runtime && chrome.runtime.id && chrome.storage && chrome.storage.local); }
     catch (e) { return false; }
+  }
+
+  function readUid() {
+    try {
+      var raw = localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token');
+      if (raw) {
+        try {
+          var s = JSON.parse(raw);
+          if (s && s.user && s.user.id) return String(s.user.id);
+        } catch (e) {}
+      }
+      return localStorage.getItem('m2028_uid') || '';
+    } catch (e) {
+      return '';
+    }
   }
 
   function readPage() {
@@ -26,25 +42,38 @@
       if (wp && !/^data:image\//.test(wp)) wp = null;
       return { wp: wp || '', dim: dim };
     } catch (e) {
-      return null; // storage not readable: change nothing
+      return null;
     }
+  }
+
+  function clearLegacy() {
+    if (legacyCleared || !alive()) return;
+    legacyCleared = true;
+    try {
+      chrome.storage.local.remove(['m_wallpaper', 'wallpaper', 'm_wpDim', 'wpDim', 'm_wpSig']);
+    } catch (e) {}
   }
 
   function sync() {
     if (!alive()) { stop(); return; }
+    clearLegacy();
     var cur = readPage();
     if (!cur) return;
-    var sig = cur.wp ? cur.wp.length + ':' + cur.wp.slice(-48) + '|' + cur.dim : '|' + cur.dim;
+    var uid = readUid();
+    var sig = uid + '|' + (cur.wp ? cur.wp.length + ':' + cur.wp.slice(-48) : '') + '|' + cur.dim;
     if (sig === lastSig) return;
     lastSig = sig;
+    if (!uid) return;
+    var wpKey = 'm2028_wallpaper_' + uid;
+    var dimKey = 'm2028_wpDim_' + uid;
     try {
       if (cur.wp) {
-        chrome.storage.local.set({
-          m_wallpaper: cur.wp, wallpaper: cur.wp,
-          m_wpDim: cur.dim, wpDim: cur.dim
-        });
+        var obj = {};
+        obj[wpKey] = cur.wp;
+        obj[dimKey] = cur.dim;
+        chrome.storage.local.set(obj);
       } else {
-        chrome.storage.local.remove(['m_wallpaper', 'wallpaper', 'm_wpDim', 'wpDim', 'm_wpSig']);
+        chrome.storage.local.remove([wpKey, dimKey]);
       }
     } catch (e) {}
   }
@@ -57,6 +86,6 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
   window.addEventListener('focus', sync);
   window.addEventListener('storage', function (e) {
-    if (!e.key || e.key === 'm_wallpaper' || e.key === 'm_wpDim') sync();
+    if (!e.key || e.key === 'm_wallpaper' || e.key === 'm_wpDim' || e.key === 'm2028_uid' || e.key === 'sb-lvzcctsqcpikisdzztot-auth-token') sync();
   });
 })();

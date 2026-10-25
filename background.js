@@ -181,7 +181,12 @@ function lockUrl(u, fallback) {
   try { const x = new URL(String(u || '').trim()); if (x.protocol === 'http:' || x.protocol === 'https:') return x.href; } catch (e) {}
   return fallback;
 }
-function sameJson(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+function canonJson(v) {
+  if (Array.isArray(v)) return v.map(canonJson);
+  if (v && typeof v === 'object') { const o = {}; Object.keys(v).sort().forEach(k => { o[k] = canonJson(v[k]); }); return o; }
+  return v;
+}
+function sameJson(a, b) { return JSON.stringify(canonJson(a)) === JSON.stringify(canonJson(b)); }
 function emptyLock() { return { v: 1, rev: 0, entries: {}, redirects: null }; }
 
 function cleanLockObject(l, now) {

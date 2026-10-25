@@ -96,83 +96,6 @@
     }
   }
 
-  function mergeImportedStats(cur, imported) {
-    const out = Object.assign({}, imported || {}, cur || {});
-    Object.keys(imported || {}).forEach(function (day) {
-      const b = imported[day] || {};
-      const c = (cur && cur[day]) || null;
-      if (!c) { out[day] = b; return; }
-      const domains = Object.assign({}, b.domains || {});
-      Object.keys(c.domains || {}).forEach(function (d) {
-        const cd = c.domains[d] || {};
-        const bd = domains[d] || {};
-        domains[d] = Object.assign({}, bd, cd, {
-          seconds: Math.max(cd.seconds || 0, bd.seconds || 0),
-          title: cd.title || bd.title || '',
-          favicon: cd.favicon || bd.favicon || '',
-          category: cd.category || bd.category || 'other'
-        });
-      });
-      let total = 0;
-      Object.keys(domains).forEach(function (d) { total += domains[d].seconds || 0; });
-      out[day] = { totalSeconds: Math.max(c.totalSeconds || 0, b.totalSeconds || 0, total), domains: domains };
-    });
-    return out;
-  }
-
-  function mergeImportedTasks(cur, imported) {
-    if (!Array.isArray(imported)) return cur;
-    if (!Array.isArray(cur)) return imported;
-    const seen = {};
-    const out = [];
-    cur.concat(imported).forEach(function (t) {
-      if (!t || !t.id) return;
-      if (!seen[t.id]) { seen[t.id] = 1; out.push(t); }
-    });
-    return out;
-  }
-
-  function importExtensionBackup(file) {
-    if (!file) return;
-    if (file.size > 25 * 1024 * 1024) { alert('That backup file is too large.'); return; }
-    const reader = new FileReader();
-    reader.onload = function () {
-      let payload;
-      try {
-        payload = JSON.parse(reader.result);
-      } catch (e) {
-        alert('That file is not valid JSON.');
-        return;
-      }
-      if (!payload || payload.app !== 'M2028' || payload.type !== 'extension-backup' || !payload.data) {
-        alert('That is not an M2028 extension backup.');
-        return;
-      }
-      if (!confirm('Merge this backup into your current stats and Tasks of Today? Nothing is deleted.')) return;
-      const d = payload.data;
-      const keys = ['m2028_time_stats', 'm_extTasks'];
-      chrome.storage.local.get(keys, function (cur) {
-        const next = {};
-        if (d.m2028_time_stats && typeof d.m2028_time_stats === 'object') {
-          next.m2028_time_stats = mergeImportedStats(cur.m2028_time_stats, d.m2028_time_stats);
-        }
-        if (Array.isArray(d.m_extTasks)) {
-          next.m_extTasks = mergeImportedTasks(cur.m_extTasks, d.m_extTasks);
-          next.extTasks = next.m_extTasks;
-        }
-        if (!Object.keys(next).length) { alert('That backup has no stats or tasks to restore.'); return; }
-        chrome.storage.local.set(next, function () {
-          if (chrome.runtime.lastError) { alert('Restore failed: ' + chrome.runtime.lastError.message); return; }
-          renderTasks();
-          if (activeTabName === 'time') loadTrackerData();
-          alert('Backup restored. Stats and Tasks of Today were merged.');
-        });
-      });
-    };
-    reader.onerror = function () { alert('Could not read that file.'); };
-    reader.readAsText(file);
-  }
-
   function getTodayKey() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -652,19 +575,10 @@
     const openPlannerBtn = document.getElementById('openPlannerBtn');
     const openHubInsideBtn = document.getElementById('openHubInsideBtn');
     const exportDataBtn = document.getElementById('exportDataBtn');
-    const importDataBtn = document.getElementById('importDataBtn');
-    const importDataInput = document.getElementById('importDataInput');
     const extLogoBtn = document.getElementById('extLogoBtn');
     if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
     if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
     if (exportDataBtn) exportDataBtn.addEventListener('click', exportExtensionBackup);
-    if (importDataBtn && importDataInput) {
-      importDataBtn.addEventListener('click', function () { importDataInput.click(); });
-      importDataInput.addEventListener('change', function () {
-        importExtensionBackup(this.files && this.files[0]);
-        this.value = '';
-      });
-    }
     if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
 
     initNavTabsManagement();
@@ -2861,11 +2775,27 @@
   }
 
 
-  // --- Wallpaper: the website keeps it only in its own localStorage (key m_wallpaper) and never
-  // sends it to the extension, so copy it across by reading the open website tab. ---
+  // Wallpaper is per account and comes only from the website. The extension never keeps a
+  // global/default wallpaper, so signing out or switching accounts cannot show someone else's.
   let _wpPulling = false;
+  function wallpaperUid() {
+    const s = _authSession;
+    return s && s.user && s.user.id ? String(s.user.id) : '';
+  }
+  function wallpaperKey(uid, dim) {
+    return (dim ? 'm2028_wpDim_' : 'm2028_wallpaper_') + uid;
+  }
+  function clearLegacyWallpaper() {
+    try {
+      ['m_wallpaper', 'wallpaper', 'm_wpDim', 'wpDim', 'm_wpSig'].forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.remove(['m_wallpaper', 'wallpaper', 'm_wpDim', 'wpDim', 'm_wpSig']);
+    }
+  }
   function adoptWallpaperFromWebTab() {
-    if (_wpPulling) return;
+    const uid = wallpaperUid();
+    if (!uid || _wpPulling) return;
     if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query || !chrome.scripting || !chrome.scripting.executeScript) return;
     _wpPulling = true;
     const finish = function () { _wpPulling = false; };
@@ -2874,56 +2804,39 @@
       const tab = tabs.find(function (t) { return t.active; }) || tabs[0];
       const probe = function () {
         try {
-          const w = localStorage.getItem('m_wallpaper');
-          return { ok: true, len: w ? w.length : 0, tail: w ? w.slice(-48) : '', dim: localStorage.getItem('m_wpDim') };
+          const tokenRaw = localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token');
+          let pageUid = '';
+          if (tokenRaw) {
+            try { const s = JSON.parse(tokenRaw); if (s && s.user && s.user.id) pageUid = String(s.user.id); } catch (e) {}
+          }
+          if (!pageUid) pageUid = localStorage.getItem('m2028_uid') || '';
+          const wp = localStorage.getItem('m_wallpaper') || '';
+          return { ok: true, uid: pageUid, wp: /^data:image\//.test(wp) ? wp : '', dim: localStorage.getItem('m_wpDim') };
         } catch (e) { return { ok: false }; }
       };
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, func: probe }, function (r1) {
-        const p = !chrome.runtime.lastError && r1 && r1[0] && r1[0].result;
-        if (!p || !p.ok) return finish();
-        chrome.storage.local.get(['m_wallpaper', 'wallpaper', 'm_wpDim', 'm_wpSig'], function (cur) {
-          const have = cur.m_wallpaper || cur.wallpaper || '';
-          const dim = (p.dim === null || p.dim === undefined || isNaN(parseFloat(p.dim))) ? 0.3 : parseFloat(p.dim);
-          if (!p.len) {
-            // Website has no wallpaper: mirror that (only when we could really read the page).
-            if (have) chrome.storage.local.remove(['m_wallpaper', 'wallpaper', 'm_wpDim', 'wpDim', 'm_wpSig'], finish);
-            else finish();
-            return;
-          }
-          const sig = p.len + ':' + p.tail;
-          if (have && cur.m_wpSig === sig) {
-            if (cur.m_wpDim !== dim) chrome.storage.local.set({ m_wpDim: dim, wpDim: dim }, finish); else finish();
-            return;
-          }
-          const grab = function () {
-            try { return localStorage.getItem('m_wallpaper'); } catch (e) { return null; }
-          };
-          chrome.scripting.executeScript({ target: { tabId: tab.id }, func: grab }, function (r2) {
-            const wp = !chrome.runtime.lastError && r2 && r2[0] && r2[0].result;
-            if (typeof wp === 'string' && /^data:image\//.test(wp)) {
-              chrome.storage.local.set({ m_wallpaper: wp, wallpaper: wp, m_wpDim: dim, wpDim: dim, m_wpSig: sig }, finish);
-            } else {
-              finish();
-            }
-          });
-        });
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, func: probe }, function (r) {
+        const p = !chrome.runtime.lastError && r && r[0] && r[0].result;
+        if (!p || !p.ok || p.uid !== uid) return finish();
+        const dim = (p.dim === null || p.dim === undefined || isNaN(parseFloat(p.dim))) ? 0.3 : parseFloat(p.dim);
+        const keys = [wallpaperKey(uid), wallpaperKey(uid, true)];
+        if (!p.wp) { chrome.storage.local.remove(keys, finish); return; }
+        const obj = {};
+        obj[wallpaperKey(uid)] = p.wp;
+        obj[wallpaperKey(uid, true)] = dim;
+        chrome.storage.local.set(obj, finish);
       });
     });
   }
 
   function initWallpaperSync() {
-    S.get('wallpaper', null, function (wp) {
-      S.get('wpDim', 0.3, function (dim) {
-        if (!wp) {
-          try {
-            wp = localStorage.getItem('m_wallpaper') || localStorage.getItem('wallpaper');
-            dim = localStorage.getItem('m_wpDim') || localStorage.getItem('wpDim') || 0.3;
-          } catch (e) {}
-        }
-        applyWallpaperSync(wp, dim);
+    clearLegacyWallpaper();
+    const uid = wallpaperUid();
+    if (!uid) { applyWallpaperSync('', 0.3); return; }
+    S.get(wallpaperKey(uid), '', function (wp) {
+      S.get(wallpaperKey(uid, true), 0.3, function (dim) {
+        applyWallpaperSync(typeof wp === 'string' && wp ? wp : '', dim);
       });
     });
-
   }
 
   function initPomo() {
@@ -3031,7 +2944,7 @@
             renderPomSubList();
           }
         }
-        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim) {
+        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim || Object.keys(changes).some(function (k) { return k.indexOf('m2028_wallpaper_') === 0 || k.indexOf('m2028_wpDim_') === 0; })) {
           initWallpaperSync();
         }
       });
@@ -3053,7 +2966,7 @@
             renderPomSubList();
           }
         } catch (_) {}
-      } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim') {
+      } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim' || (e.key && (e.key.indexOf('m2028_wallpaper_') === 0 || e.key.indexOf('m2028_wpDim_') === 0))) {
         initWallpaperSync();
       }
     });
@@ -3525,6 +3438,8 @@
     }
     purgeSupabaseCopies();
     updateAuthUI();
+    try { initWallpaperSync(); } catch (e) {}
+    if (session) setTimeout(function () { try { adoptWallpaperFromWebTab(); } catch (e) {} }, 0);
   }
 
   function initAuth(callback) {
@@ -3541,6 +3456,7 @@
         if (sess && sess.user && sess.access_token) {
           _authSession = sess;
           updateAuthUI();
+          initWallpaperSync();
           pullCloudData(true);
         } else {
           // Check if an open web app tab already has an active login session
@@ -3559,6 +3475,7 @@
         }
       } catch (e) {}
       updateAuthUI();
+      initWallpaperSync();
       if (_authSession) pullCloudData(true);
       if (callback) callback();
     }
@@ -4318,7 +4235,7 @@
   window.addEventListener('storage', function (e) {
     if (e.key === 'm_theme' || e.key === 'm_customColors' || e.key === 'theme') {
       initTheme();
-    } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim') {
+    } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim' || (e.key && (e.key.indexOf('m2028_wallpaper_') === 0 || e.key.indexOf('m2028_wpDim_') === 0))) {
       initWallpaperSync();
     } else if (e.key === 'm_habs' || e.key === 'm_hd') {
       renderHabits();
@@ -4341,7 +4258,7 @@
         if (changes.m_theme || changes.theme || changes.m_customColors || changes.customColors) {
           initTheme();
         }
-        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim) {
+        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim || Object.keys(changes).some(function (k) { return k.indexOf('m2028_wallpaper_') === 0 || k.indexOf('m2028_wpDim_') === 0; })) {
           initWallpaperSync();
         }
         if (changes.m_habs || changes.m_hd) {
@@ -4362,6 +4279,7 @@
         if (changes.m_authSession) {
           _authSession = (changes.m_authSession && changes.m_authSession.newValue) || null;
           updateAuthUI();
+          initWallpaperSync();
           if (_authSession) pullCloudData(true);
         }
         if (changes.m_hubNotes || changes.hubNotes) {
@@ -4389,7 +4307,7 @@
     initStickers();
     initNav();
     initAuthListeners();
-    initAuth();
+    initAuth(function () { initWallpaperSync(); adoptWallpaperFromWebTab(); });
     adoptWebAppData();
     adoptWallpaperFromWebTab();
     setInterval(function () {

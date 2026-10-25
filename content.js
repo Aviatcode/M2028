@@ -7,10 +7,6 @@
 (function () {
   'use strict';
 
-  // Injected again after install/update? Only the first live copy runs.
-  try { if (window.__m2028CS && chrome.runtime && chrome.runtime.id) return; } catch (e) {}
-  window.__m2028CS = true;
-
   // Lets the website know the extension is installed (used by the "Open Hub" widget)
   try { document.documentElement.setAttribute('data-m2028-ext', '1'); } catch (e) {}
 
@@ -359,7 +355,13 @@
         m2028_limits: clean.limits,
         m2028_blocklist: clean.blocklist,
         m2028_redirect_settings: clean.redirects
-      }, function () { setTimeout(function () { pushBlockToPage(false); }, 400); });
+      }, function () {
+        // Ask the background worker to install the DNR rule right away.
+        try {
+          chrome.runtime.sendMessage({ type: 'SYNC_BLOCKING' }, function () { void chrome.runtime.lastError; });
+        } catch (e) {}
+        setTimeout(function () { pushBlockToPage(false); }, 400);
+      });
     } else if (event.data.type === 'BLOCK_LOCK') {
       // Removal / raise / cancel requests are handled (and delayed) by the background script
       try {
@@ -421,7 +423,7 @@
 
   // 5. Mirror website-side changes into extension storage while a website tab is open.
   //    (The website writes wallpaper / theme straight to localStorage and never announces it, so poll for changes.)
-  const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors', 'tasks', 'pd', 'plog', 'pomSessions', 'pomSubjects', 'cd', 'customWidgets', 'dashCfg'];
+  const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors'];
   const MIRROR_RAW = ['wallpaper', 'wpDim'];
   const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
   let mirrorFirstRun = true;
@@ -473,7 +475,7 @@
         if (!first && tokRaw !== prevTok) {
           try {
             const sess = JSON.parse(tokRaw);
-            if (sess && sess.access_token && sess.user) { setObj.m_authSession = safeSession(sess); setTimeout(announce, 400); }
+            if (sess && sess.access_token && sess.user) setObj.m_authSession = safeSession(sess);
           } catch (e) {}
         }
       }
@@ -484,118 +486,112 @@
 
     mirrorFirstRun = false;
     if (first) {
-      chrome.storage.local.get(['m_hd', 'hd', 'm_habs', 'habs', 'm_bestSt', 'bestSt', 'm_theme', 'theme', 'm_customColors', 'customColors', 'm_tasks', 'tasks', 'm_pd', 'pd', 'm_plog', 'plog', 'm_pomSessions', 'pomSessions', 'm_pomSubjects', 'pomSubjects', 'm_cd', 'cd', 'm_customWidgets', 'customWidgets', 'm_dashCfg', 'dashCfg'], run);
+      chrome.storage.local.get(['m_hd', 'hd', 'm_habs', 'habs', 'm_bestSt', 'bestSt', 'm_theme', 'theme', 'm_customColors', 'customColors'], run);
     } else {
       run(null);
     }
   }
 
-
-  // 7. Handshake, full data mirror, and edits made inside the extension -> website
-  //    Page -> extension : { from:'M2028_PAGE', type:'EXT_PING' }
-  //    Extension -> page : { from:'M2028_EXT',  type:'EXT_READY', version, loggedIn }
-  //    Extension -> page : { from:'M2028_EXT',  type:'EXT_DATA', key, value }   (edits made in the popup)
-  const BRIDGE_KEYS = ['habs', 'hd', 'tasks', 'pd', 'plog', 'bestSt', 'pomSessions', 'pomSubjects', 'cd', 'customWidgets', 'dashCfg'];
-  const FWD_ALWAYS = ['tasks', 'pomSubjects'];                                   // the website never sends these through the cloud
-  const FWD_UNSYNCED = ['habs', 'hd', 'cd', 'customWidgets', 'pd', 'pomSessions']; // only forwarded when the cloud is not carrying them
-
-  function storageOK() { return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local; }
-  function pageHasSession() { try { return !!window.localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token'); } catch (e) { return false; } }
-
-  function announce() {
-    if (!storageOK()) return;
-    chrome.storage.local.get(['m_authSession'], function (r) {
-      const s = r && r.m_authSession;
-      let version = '';
-      try { version = chrome.runtime.getManifest().version; } catch (e) {}
-      window.postMessage({ from: 'M2028_EXT', type: 'EXT_READY', version: version, loggedIn: !!(s && s.access_token && s.user) }, '*');
-    });
-  }
-
-  // The website is the source of truth at handshake time; if it has nothing for a key the extension still has, send that over.
-  function fullMirror() {
-    if (!storageOK()) return;
-    const want = ['m_authSession'];
-    BRIDGE_KEYS.forEach(function (k) { want.push('m_' + k, k, 'm_' + k + '_ets'); });
-    chrome.storage.local.get(want, function (res) {
-      const setObj = {};
-      let pageTs = {};
-      try { pageTs = JSON.parse(window.localStorage.getItem('m_sync_ts') || '{}') || {}; } catch (e) {}
-      const extAuthed = !!(res.m_authSession && res.m_authSession.access_token);
-      const pageAuthed = pageHasSession();
-      BRIDGE_KEYS.forEach(function (k) {
-        // An edit made in the extension while the website was closed is newer than the website's copy: send it over instead of overwriting it.
-        const extEdited = res['m_' + k + '_ets'] || 0;
-        const forwardable = FWD_ALWAYS.indexOf(k) > -1 || (FWD_UNSYNCED.indexOf(k) > -1 && !(extAuthed && pageAuthed));
-        const extNow = res['m_' + k] !== undefined ? res['m_' + k] : res[k];
-        if (forwardable && extEdited && extEdited > (pageTs[k] || 0) && extNow !== undefined) {
-          let r0 = null;
-          try { r0 = window.localStorage.getItem('m_' + k); } catch (e) {}
-          if (r0 !== JSON.stringify(extNow)) {
-            window.postMessage({ from: 'M2028_EXT', type: 'EXT_DATA', key: k, value: extNow }, '*');
-            return;
-          }
-        }
-        let raw = null;
-        try { raw = window.localStorage.getItem('m_' + k); } catch (e) {}
-        const extVal = res['m_' + k] !== undefined ? res['m_' + k] : res[k];
-        if (raw !== null && raw !== 'null') {
-          try {
-            const v = JSON.parse(raw);
-            if (JSON.stringify(v) !== JSON.stringify(extVal)) { setObj[k] = v; setObj['m_' + k] = v; }
-            mirrorSigs[k] = raw;
-          } catch (e) {}
-        } else if (FWD_ALWAYS.indexOf(k) > -1 && Array.isArray(extVal) && extVal.length) {
-          window.postMessage({ from: 'M2028_EXT', type: 'EXT_DATA', key: k, value: extVal }, '*');
-        }
-      });
-      if (Object.keys(setObj).length) chrome.storage.local.set(setObj);
-    });
-  }
-
-  window.addEventListener('message', function (event) {
-    if (!event.data || event.data.from !== 'M2028_PAGE' || event.data.type !== 'EXT_PING') return;
-    if (!storageOK()) return;
-    fullMirror();
-    announce();
-    pushBlockToPage(false);
-  });
-
-  if (storageOK() && chrome.storage.onChanged) {
-    chrome.storage.onChanged.addListener(function (changes, area) {
-      if (area !== 'local') return;
-      const cand = [];
-      Object.keys(changes).forEach(function (name) {
-        const k = name.replace(/^m_/, '');
-        if ((FWD_ALWAYS.indexOf(k) > -1 || FWD_UNSYNCED.indexOf(k) > -1) && cand.indexOf(k) < 0) cand.push(k);
-      });
-      if (!cand.length) return;
-      const want = ['m_authSession'];
-      cand.forEach(function (k) { want.push('m_' + k, k); });
-      chrome.storage.local.get(want, function (res) {
-        const extAuthed = !!(res.m_authSession && res.m_authSession.access_token);
-        const pageAuthed = pageHasSession();
-        cand.forEach(function (k) {
-          if (FWD_UNSYNCED.indexOf(k) > -1 && extAuthed && pageAuthed) return; // the cloud carries it
-          const v = res['m_' + k] !== undefined ? res['m_' + k] : res[k];
-          if (v === undefined) return;
-          let pageRaw = null;
-          try { pageRaw = window.localStorage.getItem('m_' + k); } catch (e) {}
-          const extRaw = JSON.stringify(v);
-          if (pageRaw === extRaw) return;
-          try { if (pageRaw !== null && JSON.stringify(JSON.parse(pageRaw)) === extRaw) return; } catch (e) {}
-          window.postMessage({ from: 'M2028_EXT', type: 'EXT_DATA', key: k, value: v }, '*');
-        });
-      });
-    });
-  }
-
-  // announce on load (and again once the website has restored its login)
-  setTimeout(function () { fullMirror(); announce(); }, 500);
-  setTimeout(function () { fullMirror(); announce(); }, 2500);
-
   setInterval(mirrorFromPage, 2000);
   mirrorFromPage();
+
+  // 7. Local backup so uninstalling/reinstalling the extension does not lose tracker history
+  // or "Tasks of Today". The copy lives in the website's localStorage, which Chrome keeps.
+  const BACKUP_KEY = 'm2028_extBackup';
+  const BACKUP_MARK = 'm2028_extBackupMark';
+  const BACKUP_KEYS = ['m2028_time_stats', 'm2028_active_session', 'm2028_stopwatch_state', 'm2028_timer_state', 'm_extTasks'];
+  let backupTimer = null;
+  let lastBackupJson = '';
+
+  function readExtBackup() {
+    try { return JSON.parse(window.localStorage.getItem(BACKUP_KEY) || 'null'); } catch (e) { return null; }
+  }
+  function mergeStats(cur, bak) {
+    const out = Object.assign({}, bak || {}, cur || {});
+    Object.keys(bak || {}).forEach(function (day) {
+      const b = bak[day] || {};
+      const c = (cur && cur[day]) || null;
+      if (!c) { out[day] = b; return; }
+      const domains = Object.assign({}, b.domains || {});
+      Object.keys(c.domains || {}).forEach(function (d) {
+        const cd = c.domains[d] || {};
+        const bd = domains[d] || {};
+        domains[d] = Object.assign({}, bd, cd, {
+          seconds: Math.max(cd.seconds || 0, bd.seconds || 0),
+          title: cd.title || bd.title || '',
+          favicon: cd.favicon || bd.favicon || '',
+          category: cd.category || bd.category || 'other'
+        });
+      });
+      let total = 0;
+      Object.keys(domains).forEach(function (d) { total += domains[d].seconds || 0; });
+      out[day] = { totalSeconds: Math.max(c.totalSeconds || 0, b.totalSeconds || 0, total), domains: domains };
+    });
+    return out;
+  }
+  function mergeTasks(cur, bak) {
+    if (!Array.isArray(bak)) return cur;
+    if (!Array.isArray(cur)) return bak;
+    const seen = {};
+    const out = [];
+    cur.concat(bak).forEach(function (t) {
+      if (!t || !t.id) return;
+      if (!seen[t.id]) { seen[t.id] = 1; out.push(t); }
+    });
+    return out;
+  }
+  function writeExtBackup(res) {
+    try {
+      const prev = readExtBackup() || {};
+      const data = Object.assign({}, (prev && prev.data) || {});
+      BACKUP_KEYS.forEach(function (k) { if (res[k] !== undefined) data[k] = res[k]; });
+      if (!Object.keys(data).length) return;
+      const dataJson = JSON.stringify(data);
+      if (dataJson === lastBackupJson) return;
+      window.localStorage.setItem(BACKUP_KEY, JSON.stringify({ v: 1, ts: Date.now(), data: data }));
+      lastBackupJson = dataJson;
+    } catch (e) {}
+  }
+  function backupTick() {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    chrome.storage.local.get(BACKUP_KEYS.concat([BACKUP_MARK]), function (res) {
+      const backup = readExtBackup();
+      if (!res[BACKUP_MARK] && backup && backup.data) {
+        // Only stats and Tasks of Today are restored. Timer/stopwatch state is
+        // intentionally left out: a stale running timer after a reinstall would
+        // show nonsense elapsed time.
+        const restore = {};
+        if (backup.data.m2028_time_stats !== undefined) {
+          restore.m2028_time_stats = mergeStats(res.m2028_time_stats, backup.data.m2028_time_stats);
+        }
+        if (backup.data.m_extTasks !== undefined) {
+          restore.m_extTasks = mergeTasks(res.m_extTasks, backup.data.m_extTasks);
+        }
+        if (Object.keys(restore).length) {
+          chrome.storage.local.set(restore, function () {
+            chrome.storage.local.set({ [BACKUP_MARK]: Date.now() });
+            chrome.storage.local.get(BACKUP_KEYS, function (r2) {
+              lastBackupJson = '';
+              writeExtBackup(r2);
+            });
+          });
+          return;
+        }
+      }
+      if (!res[BACKUP_MARK]) chrome.storage.local.set({ [BACKUP_MARK]: Date.now() });
+      writeExtBackup(res);
+    });
+  }
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (area !== 'local') return;
+      if (BACKUP_KEYS.some(function (k) { return changes[k]; })) {
+        clearTimeout(backupTimer);
+        backupTimer = setTimeout(backupTick, 1200);
+      }
+    });
+  }
+  backupTick();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialSync);

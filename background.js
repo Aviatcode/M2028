@@ -659,6 +659,23 @@ async function checkCurrentTab() {
   }
 }
 
+// Work out once whether the browser window is focused and the user is active,
+// so a service-worker restart never starts counting time in the background.
+async function initTrackingState() {
+  try {
+    const win = await chrome.windows.getLastFocused();
+    isWindowFocused = !!(win && win.focused);
+  } catch (e) {}
+  if (chrome.idle && chrome.idle.queryState) {
+    try {
+      const state = await chrome.idle.queryState(60);
+      isUserActive = state === 'active';
+    } catch (e) {}
+  }
+  await checkCurrentTab();
+  sessionStartTime = Date.now();
+}
+
 // Tab activated listener
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
@@ -678,10 +695,14 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // Window focus changed listener
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  await flushTime();
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    await flushTime();
     isWindowFocused = false;
+    sessionStartTime = Date.now();
   } else {
+    // Don't count the time the browser spent unfocused: reset the
+    // session clock before flushing/rebasing on the newly focused tab.
+    sessionStartTime = Date.now();
     isWindowFocused = true;
     await checkCurrentTab();
   }
@@ -691,8 +712,14 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 if (chrome.idle) {
   chrome.idle.setDetectionInterval(60); // 60 seconds
   chrome.idle.onStateChanged.addListener(async (newState) => {
-    await flushTime();
-    isUserActive = (newState === 'active');
+    if (newState === 'active') {
+      sessionStartTime = Date.now();
+      isUserActive = true;
+    } else {
+      await flushTime();
+      isUserActive = false;
+      sessionStartTime = Date.now();
+    }
   });
 }
 
@@ -789,6 +816,30 @@ async function playPomoSound(kind, phaseEnd) {
   }
 }
 
+// Pomodoro notifications arrive 2 minutes BEFORE a phase ends (a heads-up), never late.
+const POMO_NOTIFY_LEAD_MS = 2 * 60 * 1000;
+const POMO_ON_TIME_MS = 15 * 1000;
+
+async function schedulePomoAlarms(st) {
+  try {
+    await chrome.alarms.clear('m2028_pomo_alarm');
+    await chrome.alarms.clear('m2028_pomo_warn');
+    if (!st || !st.run || !st.endTs) return;
+    const now = Date.now();
+    const warnAt = st.endTs - POMO_NOTIFY_LEAD_MS;
+    if (warnAt > now + 2000) chrome.alarms.create('m2028_pomo_warn', { when: warnAt });
+    chrome.alarms.create('m2028_pomo_alarm', { when: Math.max(st.endTs, now + 1000) });
+  } catch (e) {}
+}
+
+// Chain the next phase from the phase's SCHEDULED end, not from "now" after a late alarm.
+// This removes the drift that made notifications fall minutes behind.
+function nextPomoPhaseEnd(phaseEnd, lenMs) {
+  const now = Date.now();
+  const next = (Number(phaseEnd) || now) + lenMs;
+  return next <= now + 1000 ? now + lenMs : next;
+}
+
 // Alarms: Heartbeat every 30 seconds to persist time continuously
 chrome.alarms.create('m2028_tracker_flush', { periodInMinutes: 0.5 });
 // Keeps the toolbar badge (minutes left) counting down while the popup is closed
@@ -796,6 +847,9 @@ chrome.alarms.create('m2028_pomo_tick', { periodInMinutes: 0.5 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'm2028_tracker_flush') {
+    // Re-read the active tab every heartbeat so the tracker can never stay
+    // stuck on a stale tab if a tab/window event was missed.
+    await checkCurrentTab();
     await flushTime();
     await syncBlocking();
   } else if (alarm.name === 'm2028_pomo_tick') {
@@ -803,6 +857,28 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
       updatePomoBadge(res.pom_state || res.m_pomLive || null);
     } catch (e) {}
+  } else if (alarm.name === 'm2028_pomo_warn') {
+    // Heads-up fired 2 minutes before the phase end.
+    try {
+      const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
+      const st = res.pom_state || res.m_pomLive;
+      if (!st || !st.run || !st.endTs) return;
+      const left = st.endTs - Date.now();
+      // Ignore stale warnings (phase already changed or restarted).
+      if (left < 3000 || left > POMO_NOTIFY_LEAD_MS + 8000) return;
+      chrome.notifications.create('m2028_pomo_warn_' + st.endTs, {
+        type: 'basic',
+        iconUrl: 'icon-192.png',
+        title: st.mode === 'focus' ? '⏳ Focus ends in 2 minutes' : '⏳ Break ends in 2 minutes',
+        message: st.mode === 'focus'
+          ? 'Wrap up what you are doing — your break starts soon.'
+          : 'Get ready — the next focus session starts soon.',
+        priority: 2,
+        requireInteraction: false
+      });
+    } catch (e) {
+      console.warn('Pomo warning error:', e);
+    }
   } else if (alarm.name === 'm2028_timer_alarm') {
     // Timer reached 0!
     try {
@@ -829,13 +905,14 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
       // Stale alarm: the popup or website already moved this timer to its next phase, so do nothing
       if (st.endTs && st.endTs - Date.now() > 2000) {
-        chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+        schedulePomoAlarms(st);
         updatePomoBadge(st);
         return;
       }
 
       const tot = st.tot || 4;
       const phaseEnd = st.endTs;
+      const onTime = !phaseEnd || Math.abs(Date.now() - phaseEnd) <= POMO_ON_TIME_MS;
       if (st.mode === 'focus') {
         st.cur = (st.cur || 0) + 1;
         await logPomoSession(st.sub || 'General', st.phaseLen || 3000);
@@ -845,41 +922,44 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 
         // Break sound: starts right away and plays alongside the phase change (it never delays it)
         playPomoSound('session', phaseEnd);
-        chrome.notifications.create('m2028_pomo_end_' + Date.now(), {
-          type: 'basic',
-          iconUrl: 'icon-192.png',
-          title: isLong ? `🏆 All ${tot} Sessions Complete!` : '✅ Focus Session Done!',
-          message: isLong ? 'Awesome work! Take a 30-min long break.' : `Take a ${breakLen / 60}-min break. Refresh and stretch!`,
-          priority: 2,
-          requireInteraction: true,
-          silent: CAN_PLAY_SOUND
-        });
+        if (onTime) {
+          chrome.notifications.create('m2028_pomo_end_' + Date.now(), {
+            type: 'basic',
+            iconUrl: 'icon-192.png',
+            title: isLong ? `🏆 All ${tot} Sessions Complete!` : '✅ Focus Session Done!',
+            message: isLong ? 'Awesome work! Take a 30-min long break.' : `Take a ${breakLen / 60}-min break. Refresh and stretch!`,
+            priority: 2,
+            requireInteraction: true,
+            silent: CAN_PLAY_SOUND
+          });
+        }
 
         st.mode = 'break';
         st.phaseLen = breakLen;
         st.rem = breakLen;
         st.run = true;
-        st.endTs = Date.now() + breakLen * 1000;
+        st.endTs = nextPomoPhaseEnd(phaseEnd, breakLen * 1000);
         st.u = Date.now();
         st.dev = 'extension';
 
-        await chrome.alarms.clear('m2028_pomo_alarm');
-        chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+        await schedulePomoAlarms(st);
         await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
         updatePomoBadge(st);
       } else {
         // Break over
         if (st.cur >= tot) {
           playPomoSound('end', phaseEnd);
-          chrome.notifications.create('m2028_pomo_cycle_' + Date.now(), {
-            type: 'basic',
-            iconUrl: 'icon-192.png',
-            title: '🎉 Daily Pomodoro Cycle Complete!',
-            message: 'All scheduled sessions finished! Great discipline today.',
-            priority: 2,
-            requireInteraction: true,
-            silent: CAN_PLAY_SOUND
-          });
+          if (onTime) {
+            chrome.notifications.create('m2028_pomo_cycle_' + Date.now(), {
+              type: 'basic',
+              iconUrl: 'icon-192.png',
+              title: '🎉 Daily Pomodoro Cycle Complete!',
+              message: 'All scheduled sessions finished! Great discipline today.',
+              priority: 2,
+              requireInteraction: true,
+              silent: CAN_PLAY_SOUND
+            });
+          }
 
           st.run = false;
           st.mode = 'focus';
@@ -890,31 +970,32 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
           st.u = Date.now();
           st.dev = 'extension';
 
-          await chrome.alarms.clear('m2028_pomo_alarm');
+          await schedulePomoAlarms(st);
           await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
           updatePomoBadge(st);
         } else {
           playPomoSound('end', phaseEnd);
-          chrome.notifications.create('m2028_pomo_next_' + Date.now(), {
-            type: 'basic',
-            iconUrl: 'icon-192.png',
-            title: '☕ Break Over!',
-            message: `Starting focus session ${(st.cur || 0) + 1} of ${tot}. Let's dive in!`,
-            priority: 2,
-            requireInteraction: true,
-            silent: CAN_PLAY_SOUND
-          });
+          if (onTime) {
+            chrome.notifications.create('m2028_pomo_next_' + Date.now(), {
+              type: 'basic',
+              iconUrl: 'icon-192.png',
+              title: '☕ Break Over!',
+              message: `Starting focus session ${(st.cur || 0) + 1} of ${tot}. Let's dive in!`,
+              priority: 2,
+              requireInteraction: true,
+              silent: CAN_PLAY_SOUND
+            });
+          }
 
           st.mode = 'focus';
           st.phaseLen = 3000;
           st.rem = 3000;
           st.run = true;
-          st.endTs = Date.now() + 3000 * 1000;
+          st.endTs = nextPomoPhaseEnd(phaseEnd, 3000 * 1000);
           st.u = Date.now();
           st.dev = 'extension';
 
-          await chrome.alarms.clear('m2028_pomo_alarm');
-          chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+          await schedulePomoAlarms(st);
           await chrome.storage.local.set({ pom_state: st, m_pomLive: st });
           updatePomoBadge(st);
         }
@@ -1098,8 +1179,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'START_POMO': {
         const st = message.state;
         if (st && st.run && st.endTs) {
-          await chrome.alarms.clear('m2028_pomo_alarm');
-          chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+          await schedulePomoAlarms(st);
           updatePomoBadge(st);
         }
         sendResponse({ success: true });
@@ -1108,7 +1188,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'PAUSE_POMO':
       case 'CLEAR_POMO': {
-        await chrome.alarms.clear('m2028_pomo_alarm');
+        await schedulePomoAlarms(null);
         updatePomoBadge(null);
         sendResponse({ success: true });
         break;
@@ -1116,14 +1196,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'POMO_STATE_CHANGED': {
         const st = message.state;
-        if (st && st.run && st.endTs) {
-          await chrome.alarms.clear('m2028_pomo_alarm');
-          chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
-          updatePomoBadge(st);
-        } else {
-          await chrome.alarms.clear('m2028_pomo_alarm');
-          updatePomoBadge(null);
-        }
+        await schedulePomoAlarms(st);
+        updatePomoBadge(st && st.run && st.endTs ? st : null);
         sendResponse({ success: true });
         break;
       }
@@ -1132,6 +1206,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const result = await lockRequest(message);
         await syncBlocking();
         sendResponse(result);
+        break;
+      }
+      case 'SYNC_BLOCKING': {
+        // Called right after a list save so the DNR rule exists immediately,
+        // instead of waiting for the 30-second tracker heartbeat.
+        await enforceLock();
+        await syncBlocking();
+        sendResponse({ success: true });
         break;
       }
       case 'GET_POMO_STATE': {
@@ -1148,7 +1230,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Initial boot check
-checkCurrentTab();
+initTrackingState();
 syncBlocking();
 
 // Sync storage changes with background alarms and extension badges
@@ -1162,12 +1244,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
     const st = (changes.pom_state && changes.pom_state.newValue) ||
                (changes.m_pomLive && changes.m_pomLive.newValue);
     if (st && st.run && st.endTs) {
-      chrome.alarms.clear('m2028_pomo_alarm').then(() => {
-        chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
-      });
+      schedulePomoAlarms(st);
       updatePomoBadge(st);
     } else {
-      chrome.alarms.clear('m2028_pomo_alarm');
+      schedulePomoAlarms(null);
       updatePomoBadge(null);
     }
   }
@@ -1178,24 +1258,6 @@ chrome.storage.local.get(['pom_state', 'm_pomLive'], (res) => {
   const st = res.pom_state || res.m_pomLive;
   if (st && st.run && st.endTs) {
     updatePomoBadge(st);
-    chrome.alarms.create('m2028_pomo_alarm', { when: st.endTs });
+    schedulePomoAlarms(st);
   }
 });
-
-// ============================================================
-// After install / update, attach the website bridge to website tabs that are already open,
-// so the website and the extension shake hands without a manual refresh.
-// ============================================================
-async function injectBridgeIntoOpenTabs() {
-  try {
-    const tabs = await chrome.tabs.query({ url: [
-      'http://localhost/*', 'http://127.0.0.1/*', 'http://localhost:*/*', 'http://127.0.0.1:*/*', 'https://aviatcode.github.io/M2028/*'
-    ] });
-    for (const tab of tabs) {
-      if (!tab.id) continue;
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] }).catch(() => {});
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['wallpaper-bridge.js'] }).catch(() => {});
-    }
-  } catch (e) {}
-}
-chrome.runtime.onInstalled.addListener(function () { injectBridgeIntoOpenTabs(); });

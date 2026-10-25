@@ -36,9 +36,20 @@
       </div>
     </header>
 
-    <!-- Navigation Tabs Bar (Unified Segmented Control Track) -->
-    <nav class="tnb" role="tablist" aria-label="M2028 Hub Tabs">
-      <div class="tnb-track">
+    <!-- Navigation Tabs Bar (Compact hamburger + current tab; all tabs in a menu) -->
+    <nav class="tnb" id="navBar" aria-label="M2028 Hub Tabs">
+      <button type="button" class="nav-toggle" id="navMenuBtn" aria-haspopup="true" aria-expanded="false" aria-controls="navMenu" aria-label="Open tabs menu">
+        <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="nav-now" aria-hidden="true">
+          <span class="nav-now-ic" id="navNowIcon"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect x="13" y="3.5" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="15" width="7.5" height="5.5" rx="2"/></svg></span>
+          <span class="nav-now-lbl" id="navNowLbl">Time</span>
+        </span>
+        <svg class="nav-caret" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button type="button" class="nav-cfg" id="navCfgBtn" aria-label="Customize navigation tabs" title="Customize navigation tabs">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h8M16 18h4"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+      </button>
+      <div class="tnb-track" id="navMenu" role="tablist" aria-orientation="vertical" aria-label="M2028 Hub Tabs">
         <button class="nb on" data-tab="time" role="tab" aria-selected="true" title="Screen Time & Hub">
           <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect x="13" y="3.5" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="15" width="7.5" height="5.5" rx="2"/></svg></span>
           <span class="lbl">Time</span>
@@ -47,9 +58,9 @@
           <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg></span>
           <span class="lbl">Habits</span>
         </button>
-        <button class="nb" data-tab="tasks" role="tab" aria-selected="false" title="Tasks & Todos">
+        <button class="nb" data-tab="tasks" role="tab" aria-selected="false" title="Tasks of Today (extension only)">
           <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg></span>
-          <span class="lbl">Tasks</span>
+          <span class="lbl">Today</span>
         </button>
         <button class="nb" data-tab="pomo" role="tab" aria-selected="false" title="Pomodoro Focus Timer">
           <span class="ic"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/></svg></span>
@@ -82,7 +93,12 @@
         <!-- Screen Time & Hub Card Header -->
         <div class="ct" style="margin-bottom:10px">
           <span style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/></svg> Screen Time</span>
-          <button class="btn b-ai sm" id="openHubInsideBtn" title="Open One-Stop Hub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg> Open Hub</button>
+          <span style="display:flex;align-items:center;gap:6px">
+            <button class="btn b-gh sm" id="importDataBtn" type="button" title="Restore a backup file from another browser or computer">Restore</button>
+            <input type="file" id="importDataInput" accept="application/json,.json" style="display:none">
+            <button class="btn b-gh sm" id="exportDataBtn" type="button" title="Download a backup of screen time and Tasks of Today">Backup</button>
+            <button class="btn b-ai sm" id="openHubInsideBtn" title="Open One-Stop Hub"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></svg> Open Hub</button>
+          </span>
         </div>
 
         <!-- Live Active Site Banner -->
@@ -190,11 +206,11 @@
         </div>
       </section>
 
-      <!-- 3. TASKS & CHECKLIST TAB (M2028) -->
+      <!-- 3. TASKS OF TODAY TAB (extension-only, decoupled from the website) -->
       <section class="vw" id="tab-tasks">
         <div class="wc">
           <div class="ct">
-            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>Tasks</span>
+            <span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:4px"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>Tasks of Today</span>
             <span id="tskCount" style="font-size:11px;font-weight:500;color:var(--mt)">0 to do</span>
           </div>
           <div class="tcompose">
@@ -412,7 +428,7 @@
       <div id="authSignedOutView">
         <div class="auth-brand-badge">
           <div class="auth-brand-name">Sign In to M2028</div>
-          <div class="auth-brand-sub">Sync habits, tasks, countdowns, pomo timer, and theme across your extension and website.</div>
+          <div class="auth-brand-sub">Sync habits, countdowns, pomo timer, and theme across your extension and website. Tasks of Today stay private to this extension.</div>
         </div>
 
         <div class="auth-fields">
@@ -491,7 +507,7 @@
       </p>
 
       <div class="nav-tabs-toggle-list" id="navTabsToggleList">
-        <!-- Dynamically populated toggle rows for Time, Habits, Tasks, Pomo, Count, Notes, Search -->
+        <!-- Dynamically populated toggle rows for Time, Habits, Today, Pomo, Count, Notes, Search -->
       </div>
 
       <div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--b)">

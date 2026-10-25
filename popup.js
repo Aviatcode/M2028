@@ -40,7 +40,6 @@
         obj['m_' + key] = val;
         obj[key] = val;
         if (key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
-        if (['tasks', 'pomSubjects', 'habs', 'hd', 'cd', 'customWidgets', 'pd', 'pomSessions'].indexOf(key) > -1) obj['m_' + key + '_ets'] = Date.now();
         chrome.storage.local.set(obj);
       }
       if (typeof pushCloudData === 'function') {
@@ -67,6 +66,111 @@
     } else {
       window.open(APP_URL, '_blank');
     }
+  }
+
+  function exportExtensionBackup() {
+    const keys = ['m2028_time_stats', 'm2028_active_session', 'm2028_stopwatch_state', 'm2028_timer_state', 'm_extTasks'];
+    const save = function (data) {
+      const version = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '2.2.0';
+      const payload = {
+        app: 'M2028',
+        type: 'extension-backup',
+        version: version,
+        exportedAt: new Date().toISOString(),
+        data: data
+      };
+      const stamp = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'M2028-extension-backup-' + stamp + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    };
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(keys, save);
+    } else {
+      save({});
+    }
+  }
+
+  function mergeImportedStats(cur, imported) {
+    const out = Object.assign({}, imported || {}, cur || {});
+    Object.keys(imported || {}).forEach(function (day) {
+      const b = imported[day] || {};
+      const c = (cur && cur[day]) || null;
+      if (!c) { out[day] = b; return; }
+      const domains = Object.assign({}, b.domains || {});
+      Object.keys(c.domains || {}).forEach(function (d) {
+        const cd = c.domains[d] || {};
+        const bd = domains[d] || {};
+        domains[d] = Object.assign({}, bd, cd, {
+          seconds: Math.max(cd.seconds || 0, bd.seconds || 0),
+          title: cd.title || bd.title || '',
+          favicon: cd.favicon || bd.favicon || '',
+          category: cd.category || bd.category || 'other'
+        });
+      });
+      let total = 0;
+      Object.keys(domains).forEach(function (d) { total += domains[d].seconds || 0; });
+      out[day] = { totalSeconds: Math.max(c.totalSeconds || 0, b.totalSeconds || 0, total), domains: domains };
+    });
+    return out;
+  }
+
+  function mergeImportedTasks(cur, imported) {
+    if (!Array.isArray(imported)) return cur;
+    if (!Array.isArray(cur)) return imported;
+    const seen = {};
+    const out = [];
+    cur.concat(imported).forEach(function (t) {
+      if (!t || !t.id) return;
+      if (!seen[t.id]) { seen[t.id] = 1; out.push(t); }
+    });
+    return out;
+  }
+
+  function importExtensionBackup(file) {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { alert('That backup file is too large.'); return; }
+    const reader = new FileReader();
+    reader.onload = function () {
+      let payload;
+      try {
+        payload = JSON.parse(reader.result);
+      } catch (e) {
+        alert('That file is not valid JSON.');
+        return;
+      }
+      if (!payload || payload.app !== 'M2028' || payload.type !== 'extension-backup' || !payload.data) {
+        alert('That is not an M2028 extension backup.');
+        return;
+      }
+      if (!confirm('Merge this backup into your current stats and Tasks of Today? Nothing is deleted.')) return;
+      const d = payload.data;
+      const keys = ['m2028_time_stats', 'm_extTasks'];
+      chrome.storage.local.get(keys, function (cur) {
+        const next = {};
+        if (d.m2028_time_stats && typeof d.m2028_time_stats === 'object') {
+          next.m2028_time_stats = mergeImportedStats(cur.m2028_time_stats, d.m2028_time_stats);
+        }
+        if (Array.isArray(d.m_extTasks)) {
+          next.m_extTasks = mergeImportedTasks(cur.m_extTasks, d.m_extTasks);
+          next.extTasks = next.m_extTasks;
+        }
+        if (!Object.keys(next).length) { alert('That backup has no stats or tasks to restore.'); return; }
+        chrome.storage.local.set(next, function () {
+          if (chrome.runtime.lastError) { alert('Restore failed: ' + chrome.runtime.lastError.message); return; }
+          renderTasks();
+          if (activeTabName === 'time') loadTrackerData();
+          alert('Backup restored. Stats and Tasks of Today were merged.');
+        });
+      });
+    };
+    reader.onerror = function () { alert('Could not read that file.'); };
+    reader.readAsText(file);
   }
 
   function getTodayKey() {
@@ -107,7 +211,7 @@
 
   // ---------------------------------------------------------------------
   // Stable list rendering: lists that refresh on a timer or on storage events
-  // (Time tab every 2s, habits, tasks, countdowns) used to be rebuilt with
+  // (Time tab every 2s, habits, Today, countdowns) used to be rebuilt with
   // innerHTML every time. That reset the scroll position of the page and of the
   // list itself, which looked like an abrupt jump when scrolled to the bottom.
   // Now: identical content is skipped, and real changes restore scroll offsets.
@@ -191,7 +295,21 @@
     const s2 = dk ? M(s, d, 0.09) : M(s, d, 0.04);
     const s3 = dk ? M(s, d, 0.15) : M(s, d, 0.11);
     const ac = P(colors.ac || (theme === 'pink' ? '#ff6eb4' : theme === 'light' ? '#fd2a1f' : '#c42018'));
-    const pillTx = L(ac) > 0.4 ? '#0b0f1a' : '#ffffff';
+    const CR = (a, b) => {
+      const x = L(a), y = L(b);
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    };
+    const pageIsLight = L(s) >= 0.25;
+    // Keep the accent readable as TEXT against the popup background.
+    let aiText = ac;
+    for (let i = 0; CR(aiText, s) < (pageIsLight ? 4.5 : 3) && i < 60; i++) {
+      aiText = M(aiText, pageIsLight ? [0, 0, 0] : [255, 255, 255], 0.06);
+    }
+    // Keep a solid accent fill visible even when accent === background (e.g. white).
+    let aiSolid = ac;
+    if (CR(aiSolid, s) < 1.3) aiSolid = pageIsLight ? M(ac, [0, 0, 0], 0.55) : M(ac, [255, 255, 255], 0.22);
+    const onAiSolid = L(aiSolid) > 0.4 ? '#0b0f1a' : '#ffffff';
+    const pillTx = onAiSolid;
 
     // Boosted vibrant accent for category breakdown productive bar
     const segProd = dk ? (L(ac) < 0.25 ? M(ac, [255, 255, 255], 0.35) : ac) : (L(ac) > 0.65 ? M(ac, [0, 0, 0], 0.3) : ac);
@@ -207,14 +325,17 @@
         --mt: ${R(M(d, s, 0.5))} !important;
         --b: ${A(d, 0.12)} !important;
         --b2: ${A(d, 0.24)} !important;
-        --ai: ${R(ac)} !important;
-        --a2: ${A(ac, 0.18)} !important;
-        --dn: ${R(ac)} !important;
-        --card-bg: ${dk ? `linear-gradient(135deg, ${A(ac, 0.24)} 0%, ${R(s1)} 38%, ${R(s)} 100%)` : '#ffffff'} !important;
-        --card-bd: ${A(ac, 0.35)} !important;
-        --card-sh: 0 14px 44px rgba(0,0,0,0.65), 0 0 32px ${A(ac, 0.2)} !important;
-        --pill-bg: ${R(ac)} !important;
-        --pill-tx: ${pillTx} !important;
+        --ai: ${R(aiText)} !important;
+        --ai-text: ${R(aiText)} !important;
+        --ai-solid: ${R(aiSolid)} !important;
+        --on-ai-solid: ${onAiSolid} !important;
+        --a2: ${A(aiSolid, 0.18)} !important;
+        --dn: ${R(aiText)} !important;
+        --card-bg: ${dk ? `linear-gradient(135deg, ${A(aiSolid, 0.24)} 0%, ${R(s1)} 38%, ${R(s)} 100%)` : '#ffffff'} !important;
+        --card-bd: ${A(aiSolid, 0.35)} !important;
+        --card-sh: 0 14px 44px rgba(0,0,0,0.65), 0 0 32px ${A(aiSolid, 0.2)} !important;
+        --pill-bg: ${R(aiSolid)} !important;
+        --pill-tx: ${onAiSolid} !important;
         --seg-prod: ${R(segProd)} !important;
       }
       body { background: ${R(s)} !important; color: ${R(d)} !important; }
@@ -226,42 +347,57 @@
       }
       body::before {
         background-image:
-          radial-gradient(55% 45% at 10% 8%, ${A(ac, dk ? 0.24 : 0.16)}, transparent 70%),
-          radial-gradient(50% 45% at 90% 92%, ${A(ac, dk ? 0.18 : 0.12)}, transparent 70%),
+          radial-gradient(55% 45% at 10% 8%, ${A(aiSolid, dk ? 0.24 : 0.16)}, transparent 70%),
+          radial-gradient(50% 45% at 90% 92%, ${A(aiSolid, dk ? 0.18 : 0.12)}, transparent 70%),
           linear-gradient(180deg, ${A(s, 0.7)} 0%, ${R(s)} 100%) !important;
       }
-      .btn.b-ai {
-        background: ${R(ac)} !important;
-        color: ${pillTx} !important;
-        box-shadow: 0 4px 14px ${A(ac, 0.28)} !important;
+      .btn.b-ai, #pomBtn.pomo-primary:not(.is-run), .pomo-main-btn:not(.is-run) {
+        background: ${R(aiSolid)} !important;
+        color: ${onAiSolid} !important;
+        box-shadow: 0 4px 14px ${A(aiSolid, 0.28)} !important;
+      }
+      body.light .btn.b-ai, body.pink .btn.b-ai,
+      body.pink #pomBtn.pomo-primary:not(.is-run) {
+        background: ${R(aiSolid)} !important;
+        color: ${onAiSolid} !important;
+      }
+      .pomo-main-btn.is-run {
+        color: ${R(aiText)} !important;
+        background: ${A(aiSolid, 0.14)} !important;
+        border: 1px solid ${A(aiText, 0.45)} !important;
+      }
+      #pomBtn.pomo-primary.is-run {
+        background: ${A(aiSolid, 0.14)} !important;
+        color: ${R(aiText)} !important;
+        border-color: ${A(aiText, 0.45)} !important;
       }
       .nb.on {
-        background: ${A(ac, 0.16)} !important;
-        color: ${R(ac)} !important;
-        border: 1px solid ${A(ac, 0.45)} !important;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 10px ${A(ac, 0.25)} !important;
+        background: ${A(aiSolid, 0.16)} !important;
+        color: ${R(aiText)} !important;
+        border: 1px solid ${A(aiText, 0.45)} !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 10px ${A(aiSolid, 0.25)} !important;
         font-weight: 650 !important;
       }
       .range-btn.active, .time-sub-btn.active, .pomo-chip.on {
-        background: ${R(ac)} !important;
-        color: ${pillTx} !important;
-        border-color: ${R(ac)} !important;
+        background: ${R(aiSolid)} !important;
+        color: ${onAiSolid} !important;
+        border-color: ${R(aiSolid)} !important;
       }
       .pomo-btn.primary, #pomoStartBtn:not(.is-run) {
-        background: ${R(ac)} !important;
-        color: ${pillTx} !important;
-        box-shadow: 0 4px 16px ${A(ac, 0.3)} !important;
+        background: ${R(aiSolid)} !important;
+        color: ${onAiSolid} !important;
+        box-shadow: 0 4px 16px ${A(aiSolid, 0.3)} !important;
       }
       .pf, #habProgressFill, #taskProgressFill, .cd-bar-fill {
-        background: ${R(ac)} !important;
+        background: ${R(aiSolid)} !important;
       }
       .hc.ck, .rck.on {
-        background: ${R(ac)} !important;
-        border-color: ${R(ac)} !important;
-        color: ${pillTx} !important;
+        background: ${R(aiSolid)} !important;
+        border-color: ${R(aiSolid)} !important;
+        color: ${onAiSolid} !important;
       }
       #pomoProgressCircle {
-        stroke: ${R(ac)} !important;
+        stroke: ${R(aiSolid)} !important;
       }
       .cat-seg.seg-prod {
         background: ${R(segProd)} !important;
@@ -485,14 +621,50 @@
       });
     });
 
+    const navMenuBtn = document.getElementById('navMenuBtn');
+    const navCfgBtn = document.getElementById('navCfgBtn');
+    const navBar = document.getElementById('navBar');
+    if (navMenuBtn) {
+      navMenuBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleNavMenu();
+      });
+    }
+    if (navCfgBtn) {
+      navCfgBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeNavMenu();
+        openNavTabsModal();
+      });
+    }
+    document.addEventListener('click', function (e) {
+      if (navBar && navBar.classList.contains('open') && !navBar.contains(e.target)) {
+        closeNavMenu();
+      }
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeNavMenu();
+    });
+
     const themeBtn = document.getElementById('themeToggleBtn');
     if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
     const openPlannerBtn = document.getElementById('openPlannerBtn');
     const openHubInsideBtn = document.getElementById('openHubInsideBtn');
+    const exportDataBtn = document.getElementById('exportDataBtn');
+    const importDataBtn = document.getElementById('importDataBtn');
+    const importDataInput = document.getElementById('importDataInput');
     const extLogoBtn = document.getElementById('extLogoBtn');
     if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
     if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
+    if (exportDataBtn) exportDataBtn.addEventListener('click', exportExtensionBackup);
+    if (importDataBtn && importDataInput) {
+      importDataBtn.addEventListener('click', function () { importDataInput.click(); });
+      importDataInput.addEventListener('change', function () {
+        importExtensionBackup(this.files && this.files[0]);
+        this.value = '';
+      });
+    }
     if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
 
     initNavTabsManagement();
@@ -528,6 +700,11 @@
     saveLists(s) {
       chrome.storage.local.set({
         m2028_limits: s.limits, m2028_blocklist: s.blocklist, m2028_redirect_settings: s.redirects
+      }, function () {
+        // Make the rule live now, not on the next alarm tick.
+        try {
+          chrome.runtime.sendMessage({ type: 'SYNC_BLOCKING' }, function () { void chrome.runtime.lastError; });
+        } catch (e) {}
       });
     },
     lockRequest(req) {
@@ -573,13 +750,16 @@
     else if (tab === 'notes') initNotes();
     else if (tab === 'search') loadOpenTabs();
     else if (tab === 'block') renderBlockTab();
+
+    syncNavMenu();
+    closeNavMenu();
   }
 
   // --- Navigation Tabs Visibility Management (Customizable via DP button) ---
   const ALL_TABS = [
     { id: 'time', name: 'Time', desc: 'Screen Time & Hub', icon: '<rect x="3.5" y="3.5" width="7.5" height="9" rx="2"/><rect x="13" y="3.5" width="7.5" height="5" rx="2"/><rect x="13" y="11" width="7.5" height="9.5" rx="2"/><rect x="3.5" y="15" width="7.5" height="5.5" rx="2"/>' },
     { id: 'habits', name: 'Habits', desc: 'Daily Habits & Streaks', icon: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.5"/>' },
-    { id: 'tasks', name: 'Tasks', desc: 'Tasks & Checklists', icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/>' },
+    { id: 'tasks', name: 'Tasks of Today', desc: 'Extension-only daily tasks', icon: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l2.8 2.8L16 9.5"/>' },
     { id: 'pomo', name: 'Pomo', desc: 'Pomodoro Focus Timer', icon: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 3h5M12 3v2"/>' },
     { id: 'countdown', name: 'Count', desc: 'Target Countdowns', icon: '<path d="M7 3.5h10M7 20.5h10M8 3.5c0 5 8 5 8 8.5s-8 3.5-8 8.5M16 3.5c0 5-8 5-8 8.5s8 3.5 8 8.5"/>' },
     { id: 'notes', name: 'Notes', desc: 'Quick Scratchpad', icon: '<path d="M6 3.5h9l3.5 3.5v13.5H6zM14.5 3.5V7.5h4M9 12h6M9 16h6"/>' },
@@ -632,6 +812,43 @@
     if (!currentIsVisible && firstVisibleTab) {
       switchTab(firstVisibleTab);
     }
+    syncNavMenu();
+  }
+
+  function closeNavMenu() {
+    const bar = document.getElementById('navBar');
+    const btn = document.getElementById('navMenuBtn');
+    if (bar) bar.classList.remove('open');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function openNavMenu() {
+    const bar = document.getElementById('navBar');
+    const btn = document.getElementById('navMenuBtn');
+    if (bar) bar.classList.add('open');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  }
+
+  function toggleNavMenu() {
+    const bar = document.getElementById('navBar');
+    if (!bar) return;
+    if (bar.classList.contains('open')) closeNavMenu();
+    else openNavMenu();
+  }
+
+  function syncNavMenu() {
+    const activeBtn = document.querySelector('.tnb .nb.on');
+    const icon = document.getElementById('navNowIcon');
+    const label = document.getElementById('navNowLbl');
+    const menuBtn = document.getElementById('navMenuBtn');
+    if (!activeBtn) return;
+
+    const activeIcon = activeBtn.querySelector('.ic svg');
+    const activeLabel = activeBtn.querySelector('.lbl');
+    const name = activeLabel ? activeLabel.textContent.trim() : '';
+    if (icon) icon.innerHTML = activeIcon ? activeIcon.outerHTML : '';
+    if (label) label.textContent = name;
+    if (menuBtn && name) menuBtn.setAttribute('aria-label', 'Tabs menu, current tab: ' + name);
   }
 
   function openNavTabsModal() {
@@ -783,31 +1000,17 @@
     }
   }
 
+  // Never invent browsing data: if the background worker cannot answer,
+  // show an honest empty state instead of fake sites/time.
   function getMockTrackerData() {
-    const today = getTodayKey();
     return {
       success: true,
-      today: today,
-      todayTotal: 8640,
-      todayDomains: {
-        'github.com': { seconds: 4320, title: 'M2028 - Master Planner', favicon: 'https://github.githubassets.com/favicons/favicon.svg', category: 'productive' },
-        'youtube.com': { seconds: 2160, title: 'Lofi Girl - Relaxing Beats', favicon: 'https://www.youtube.com/s/desktop/99cbfa75/img/favicon.ico', category: 'entertainment' },
-        'localhost:8080': { seconds: 1440, title: 'M2028 Web Dashboard', favicon: 'favicon-32.png', category: 'productive' },
-        'reddit.com': { seconds: 720, title: 'Reddit: Dive into anything', favicon: 'https://www.redditstatic.com/shreddit/assets/favicon/192x192.png', category: 'social' }
-      },
-      active: {
-        domain: 'localhost:8080',
-        category: 'productive',
-        favicon: 'favicon-32.png',
-        todayTotal: 1440
-      },
-      weekTotal: 46800,
-      weekDomains: {
-        'github.com': { seconds: 21000, category: 'productive' },
-        'youtube.com': { seconds: 12000, category: 'entertainment' },
-        'localhost:8080': { seconds: 8000, category: 'productive' },
-        'reddit.com': { seconds: 5800, category: 'social' }
-      }
+      today: getTodayKey(),
+      todayTotal: 0,
+      todayDomains: {},
+      active: null,
+      weekTotal: 0,
+      weekDomains: {}
     };
   }
 
@@ -882,9 +1085,45 @@
     }
   }
 
+  // The popup can always read the real active tab directly; don't rely only on
+  // the background copy, which can be stale if an event was missed.
+  function withLiveActiveTab(resp, done) {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.tabs.query) {
+        return done(resp);
+      }
+      chrome.tabs.query({ active: true, lastFocusedWindow: true }, function (tabs) {
+        let tab = tabs && tabs[0];
+        if (chrome.runtime.lastError) tab = null;
+        if (!tab || !tab.url) {
+          resp.active = null;
+          return done(resp);
+        }
+        const domain = getDomainFromUrl(tab.url);
+        if (!domain) {
+          resp.active = null;
+          return done(resp);
+        }
+        const known = (resp.todayDomains && resp.todayDomains[domain]) || null;
+        resp.active = {
+          domain: domain,
+          title: tab.title || (known && known.title) || '',
+          favicon: tab.favIconUrl || (known && known.favicon) || '',
+          category: (known && known.category) || (resp.active && resp.active.domain === domain ? resp.active.category : '') || 'other',
+          todayTotal: known ? (known.seconds || 0) : 0,
+          startedAt: Date.now()
+        };
+        done(resp);
+      });
+    } catch (e) {
+      done(resp);
+    }
+  }
+
   function loadTrackerData() {
     sendBgMessage({ type: 'GET_TRACKER_DATA' }, function (resp) {
       if (!resp || !resp.success) return;
+      withLiveActiveTab(resp, function (resp) {
 
       const isToday = trackerRange === 'today';
       const totalSec = isToday ? resp.todayTotal : resp.weekTotal;
@@ -1047,6 +1286,7 @@
 
       // 5. Update Open Tabs List with Live Time Breakdown
       loadOpenTabsTimeBreakdown();
+      });
     });
   }
 
@@ -1066,15 +1306,8 @@
         renderOpenTabsTimeRows(tabs, listEl);
       });
     } else {
-      // Mock open tabs for web preview
-      const mockTabs = [
-        { id: 1, windowId: 1, title: 'M2028 Web Workspace & Hub', url: 'http://localhost:8080/index.html', favIconUrl: 'favicon-32.png', active: true },
-        { id: 2, windowId: 1, title: 'GitHub - Aviatcode/M2028: Master Productivity', url: 'https://github.com/Aviatcode/M2028', favIconUrl: 'https://github.githubassets.com/favicons/favicon.svg', active: false },
-        { id: 3, windowId: 1, title: 'YouTube - Lofi Hip Hop Beats to Relax/Study to', url: 'https://youtube.com', favIconUrl: 'https://www.youtube.com/s/desktop/99cbfa75/img/favicon.ico', active: false },
-        { id: 4, windowId: 1, title: 'Reddit: The front page of the internet', url: 'https://reddit.com', favIconUrl: 'https://www.redditstatic.com/shreddit/assets/favicon/192x192.png', active: false }
-      ];
-      if (countEl) countEl.textContent = mockTabs.length;
-      renderOpenTabsTimeRows(mockTabs, listEl);
+      stableHtml(listEl).html = '<div class="empty-state">Open tabs are unavailable in this preview.</div>';
+      if (countEl) countEl.textContent = '0';
     }
   }
 
@@ -1334,12 +1567,12 @@
   // =====================================================================
   // 5. Tasks & Checklist Controller (M2028 Core with Due Chips)
   // =====================================================================
+  // "Tasks of Today" live only in the extension. They deliberately use a
+  // separate key so the website's task list can never overwrite them.
+  const TASKS_KEY = 'extTasks';
+
   function renderTasks() {
-    S.get('tasks', [
-      { id: '1', text: 'Daily Planning & Calendar Review', done: true, created: new Date().toISOString() },
-      { id: '2', text: 'Deep Work: 2x Pomodoro sessions', done: false, created: new Date().toISOString() },
-      { id: '3', text: 'Review lecture notes & flashcards', done: false, created: new Date().toISOString() }
-    ], function (tasks) {
+    S.get(TASKS_KEY, [], function (tasks) {
       const today = getTodayKey();
       const pending = tasks.filter(t => !t.done);
       const completed = tasks.filter(t => t.done);
@@ -1423,30 +1656,30 @@
   }
 
   function toggleTask(id) {
-    S.get('tasks', [], function (tasks) {
+    S.get(TASKS_KEY, [], function (tasks) {
       const item = tasks.find(t => t.id === id);
       if (item) {
         item.done = !item.done;
-        S.set('tasks', tasks);
+        S.set(TASKS_KEY, tasks);
         renderTasks();
       }
     });
   }
 
   function deleteTask(id) {
-    S.get('tasks', [], function (tasks) {
+    S.get(TASKS_KEY, [], function (tasks) {
       const filtered = tasks.filter(t => t.id !== id);
-      S.set('tasks', filtered);
+      S.set(TASKS_KEY, filtered);
       renderTasks();
     });
   }
 
   function updateTaskText(id, newText) {
-    S.get('tasks', [], function (tasks) {
+    S.get(TASKS_KEY, [], function (tasks) {
       const item = tasks.find(t => t.id === id);
       if (item) {
         item.text = newText;
-        S.set('tasks', tasks);
+        S.set(TASKS_KEY, tasks);
       }
     });
   }
@@ -1457,14 +1690,14 @@
     if (!tskInp) return;
     const txt = tskInp.value.trim();
     if (!txt) return;
-    S.get('tasks', [], function (tasks) {
+    S.get(TASKS_KEY, [], function (tasks) {
       tasks.unshift({
         id: Date.now().toString(),
         text: txt,
         done: false,
         created: new Date().toISOString()
       });
-      S.set('tasks', tasks);
+      S.set(TASKS_KEY, tasks);
       tskInp.value = '';
       renderTasks();
     });
@@ -1495,7 +1728,15 @@
   const PF = 3000;
   const PB = 600;
   const PLB = 1800;
+  const POMO_ON_TIME_MS = 15 * 1000;
   const POM_KEY = 'pom_state';
+
+  // Chain the next phase from its scheduled end so late ticks never push the timer behind.
+  function nextPomoEnd(phaseEnd, lenSec) {
+    const now = Date.now();
+    const next = (Number(phaseEnd) || now) + lenSec * 1000;
+    return next <= now + 1000 ? now + lenSec * 1000 : next;
+  }
   const POM_ICO = {
     play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.5-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z"/></svg>',
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.4"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.4"/></svg>'
@@ -1877,28 +2118,34 @@
   }
 
   function handlePomoCompletion(st) {
-    claimAndPlayPomoSound(st.endTs);
+    const phaseEnd = st.endTs || Date.now();
+    // If the popup was closed and this phase ended minutes ago, don't pop a stale "done"
+    // notification — the background's 2-minute heads-up already covered it.
+    const onTime = Math.abs(Date.now() - phaseEnd) <= POMO_ON_TIME_MS;
+    claimAndPlayPomoSound(phaseEnd);
     st.tot = st.tot || 4;
 
     if (st.mode === 'focus') {
       st.cur = (st.cur || 0) + 1;
-      logPomoSessionLocal(st.sub || 'General', PF, false, st.endTs || Date.now());
+      logPomoSessionLocal(st.sub || 'General', PF, false, phaseEnd);
       pomFlash('#4fd8a0');
 
       const isLong = st.cur % st.tot === 0;
       const breakLen = isLong ? PLB : PB;
-      showChromeNotification(
-        '✅ Session done!',
-        isLong
-          ? `All ${st.tot} sessions complete — take a ${breakLen / 60}-min break.`
-          : `Take a ${breakLen / 60}-min break.`
-      );
+      if (onTime) {
+        showChromeNotification(
+          '✅ Session done!',
+          isLong
+            ? `All ${st.tot} sessions complete — take a ${breakLen / 60}-min break.`
+            : `Take a ${breakLen / 60}-min break.`
+        );
+      }
 
       st.mode = 'break';
       st.phaseLen = breakLen;
       st.rem = breakLen;
       st.run = true;
-      st.endTs = Date.now() + breakLen * 1000;
+      st.endTs = nextPomoEnd(phaseEnd, breakLen);
       st.pausedAt = null;
       savePomoState(st);
       startPomoInterval();
@@ -1908,7 +2155,7 @@
 
     pomFlash('#e8965a');
     if ((st.cur || 0) >= st.tot) {
-      showChromeNotification('🎉 All sessions complete!', 'Great work today.');
+      if (onTime) showChromeNotification('🎉 All sessions complete!', 'Great work today.');
       st.run = false;
       st.mode = 'focus';
       st.phaseLen = PF;
@@ -1920,12 +2167,12 @@
       clearInterval(pomoInterval);
       updatePomoDisplay(st);
     } else {
-      showChromeNotification('☕ Break over!', 'Starting your next focus session.');
+      if (onTime) showChromeNotification('☕ Break over!', 'Starting your next focus session.');
       st.mode = 'focus';
       st.phaseLen = PF;
       st.rem = PF;
       st.run = true;
-      st.endTs = Date.now() + PF * 1000;
+      st.endTs = nextPomoEnd(phaseEnd, PF);
       st.pausedAt = null;
       savePomoState(st);
       startPomoInterval();
@@ -3225,7 +3472,7 @@
       // Offline / Guest mode
       if (authBtn) {
         authBtn.classList.remove('logged-in');
-        authBtn.title = 'Sign In to sync habits, tasks, countdowns, pomo & theme';
+        authBtn.title = 'Sign In to sync habits, countdowns, pomo & theme';
       }
       if (authLiveDot) authLiveDot.style.display = 'none';
       if (authBtnText) authBtnText.textContent = '';
@@ -4075,7 +4322,7 @@
       initWallpaperSync();
     } else if (e.key === 'm_habs' || e.key === 'm_hd') {
       renderHabits();
-    } else if (e.key === 'm_tasks') {
+    } else if (e.key === 'm_extTasks' || e.key === 'extTasks') {
       renderTasks();
     } else if (e.key === 'm_customWidgets') {
       renderCountdowns();
@@ -4100,7 +4347,7 @@
         if (changes.m_habs || changes.m_hd) {
           renderHabits();
         }
-        if (changes.m_tasks) {
+        if (changes.m_extTasks || changes.extTasks) {
           renderTasks();
         }
         if (changes.m_customWidgets) {

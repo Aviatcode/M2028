@@ -6807,7 +6807,11 @@ document.addEventListener("click",function(e){
     '.mbk-adv summary .sum-sub{display:block;font-size:10.5px;font-weight:500;color:var(--m2,#8a8f98);margin-top:1px}' +
     '.mbk-adv summary .chev{color:var(--m2,#8a8f98);transition:transform .2s}' +
     '.mbk-adv[open] summary .chev{transform:rotate(90deg)}' +
-    '.mbk-adv-b{padding:0 14px 14px}';
+    '.mbk-adv summary{border:0!important;box-shadow:none!important;outline:0!important;margin:0}' +
+    '.mbk-adv summary:focus-visible .mbk-ico{box-shadow:0 0 0 2px var(--ai,#4fd8a0)}' +
+    '.mbk-adv-b{padding:12px 14px 14px;margin:0;border-top:1px solid var(--b,rgba(128,128,128,.28))!important}' +
+    '.mbk-note{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;background:var(--s2,rgba(128,128,128,.08));border:1px solid var(--b,rgba(128,128,128,.24));font-size:11.5px;line-height:1.45;color:var(--m2,#8a8f98)}' +
+    '.mbk-note svg{width:15px;height:15px;margin-top:1px;color:var(--ai-text,var(--ai,#4fd8a0))}';
 
   function injectStyle() {
     if (document.getElementById('mbk-style')) return;
@@ -6850,6 +6854,9 @@ document.addEventListener("click",function(e){
     var state = { limits: [], blocklist: [], redirects: {}, lock: null, usage: {} };
     var ready = false;
     var ui = { confirm: null };
+    var lastSig = '';          // what the screen currently shows (usage rounded to minutes)
+    var pendingRender = false; // a refresh arrived while the user was mid-click / typing
+    var pressAt = 0;           // when the pointer last went down inside this tab
 
     function entry(kind, target) {
       var E = state.lock && state.lock.entries;
@@ -6869,6 +6876,20 @@ document.addEventListener("click",function(e){
     function typing() {
       var a = document.activeElement;
       return !!(a && root.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName));
+    }
+
+    function pressing() { return pressAt && Date.now() - pressAt < 1500; }
+    // Background refreshes must never rebuild the screen under the user's finger: a rebuild between
+    // mouse-down and mouse-up swallows the click, and a rebuild while typing/selecting loses focus.
+    function softRender() {
+      if (typing() || pressing()) { pendingRender = true; return; }
+      pendingRender = false;
+      render();
+    }
+    function viewSig(s) {
+      var u = {};
+      Object.keys(s.usage || {}).forEach(function (k) { u[k] = Math.floor((Number(s.usage[k]) || 0) / 60); });
+      return JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, u]);
     }
 
     function statusChip(e, r) {
@@ -6922,6 +6943,7 @@ document.addEventListener("click",function(e){
         root.innerHTML = '<div class="mbk"><div class="mbk-msg">Connecting to the extension…</div></div>';
         return;
       }
+      var advWasOpen = !!root.querySelector('.mbk-adv[open]');
       var keep = {};
       ['mbkBlockDom', 'mbkLimType', 'mbkLimDom', 'mbkLimCat', 'mbkLimMin'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -6965,7 +6987,7 @@ document.addEventListener("click",function(e){
 
       var redirect;
       if (hasLockedItems()) {
-        redirect = '<div class="mbk-sub" style="margin:0">Redirect pages are locked together with your blocks, so they cannot be pointed somewhere else.</div>';
+        redirect = '<div class="mbk-note">' + svg('lock') + '<span>Redirect pages are locked together with your blocks, so they cannot be pointed somewhere else.</span></div>';
       } else {
         var r0 = state.redirects || {};
         redirect = '<p class="mbk-sub" style="margin-top:0">You can change these only until your first block or limit is added.</p>' +
@@ -6994,6 +7016,7 @@ document.addEventListener("click",function(e){
         '</div>';
 
       Object.keys(keep).forEach(function (id) { var el = document.getElementById(id); if (el) el.value = keep[id]; });
+      if (advWasOpen) { var adv = root.querySelector('.mbk-adv'); if (adv) adv.open = true; }
       syncLimTypeUi();
       if (ui.confirm && ui.confirm.fresh) {
         ui.confirm.fresh = false;
@@ -7113,6 +7136,16 @@ document.addEventListener("click",function(e){
       if (ev.target && ev.target.id === 'mbkLimType') syncLimTypeUi();
     });
 
+    root.addEventListener('pointerdown', function () { pressAt = Date.now(); }, true);
+    function released() {
+      pressAt = 0;
+      // run after the click event has been delivered
+      setTimeout(function () { if (pendingRender) softRender(); }, 0);
+    }
+    document.addEventListener('pointerup', released, true);
+    document.addEventListener('pointercancel', released, true);
+    root.addEventListener('focusout', function () { setTimeout(function () { if (pendingRender) softRender(); }, 0); });
+
     transport.onState(function (s) {
       state = {
         limits: Array.isArray(s.limits) ? s.limits : [],
@@ -7121,11 +7154,14 @@ document.addEventListener("click",function(e){
         lock: s.lock || null,
         usage: s.usage || {}
       };
+      var wasReady = ready;
       ready = true;
-      if (!typing()) render();
+      var sig = viewSig(state);
+      if (!wasReady || sig !== lastSig) { lastSig = sig; softRender(); }
     });
 
-    setInterval(function () { if (root.isConnected && !typing()) render(); }, 30000);
+    // countdown labels ("Removed in 71h 59m") need a periodic refresh
+    setInterval(function () { if (root.isConnected) { lastSig = viewSig(state); softRender(); } }, 30000);
 
     render();
     return { refresh: function () { transport.requestState(); render(); } };
@@ -7498,5 +7534,29 @@ document.addEventListener("click",function(e){
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 </script>
+<style id="m2028-noflicker">
+/* ---------------------------------------------------------------------------------------------
+   Scroll flicker fix (same approach as the extension popup)
+   1. No live backdrop blur on widgets. Blurring what is behind a card has to be redrawn on every
+      frame while the page scrolls over the fixed wallpaper. Earlier rules already did this for
+      phones and for "no wallpaper"; this extends it to desktop, wallpaper mode and the pink theme.
+      (The fixed top / tab / bottom bars keep their blur: they are single elements.)
+   2. Buttons and chips no longer move up on hover. When the page scrolls under a still mouse, a
+      moving element toggles :hover on and off at its edge = flicker.
+   3. With the blur gone, cards over a wallpaper get a slightly more opaque background so text
+      stays readable (custom-colour red theme and pink theme keep their own backgrounds).
+   --------------------------------------------------------------------------------------------- */
+html body:not(.x):not(.xx):not(.xxx):not(.xxxx) :is(.card,.wc,.st,.hero,.hero-streak,.mo,.ov,.dash-w,.ssr,.ssr-chip,.cv-item,.dragHandle,.resizeHandle,.lnkbtn,.chip,.bi,.ci,.hr,.sp){
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+@media (hover:hover){
+  html body :is(.btn,.lnkbtn,.chip,.hc,.nb,.ract,.sj,.hero-streak,.pomo-primary,.pomo-change,.pomo-end,.pomo-step):hover:not(:active){transform:none!important}
+}
+html.haswp:not(.redx):not(.ucolors) body:not(.x):not(.xx):not(.xxx):not(.light):not(.pink){
+  --card-bg:linear-gradient(145deg,rgba(26,28,48,.9),rgba(14,16,30,.86) 60%,rgba(12,22,32,.86))!important}
+html.haswp:not(.redx):not(.ucolors) body.light:not(.x):not(.xx):not(.xxx){
+  --card-bg:linear-gradient(160deg,rgba(255,255,255,.94),rgba(255,255,255,.88))!important}
+html.haswp.ucolors:not(.redx) body:not(.x):not(.xx):not(.xxx):not(.pink){
+  --card-bg:linear-gradient(145deg,color-mix(in srgb,var(--s1) 90%,transparent),color-mix(in srgb,var(--s1) 84%,transparent))!important}
+</style>
 </body>
 </html>

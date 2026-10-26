@@ -114,7 +114,8 @@
     '.mbk-adv summary .sum-sub{display:block;font-size:10.5px;font-weight:500;color:var(--m2,#8a8f98);margin-top:1px}' +
     '.mbk-adv summary .chev{color:var(--m2,#8a8f98);transition:transform .2s}' +
     '.mbk-adv[open] summary .chev{transform:rotate(90deg)}' +
-    '.mbk-adv summary{border:0!important;box-shadow:none!important;background:transparent!important;margin:0}' +
+    '.mbk-adv summary{border:0!important;box-shadow:none!important;outline:0!important;margin:0}' +
+    '.mbk-adv summary:focus-visible .mbk-ico{box-shadow:0 0 0 2px var(--ai,#4fd8a0)}' +
     '.mbk-adv-b{padding:12px 14px 14px;margin:0;border-top:1px solid var(--b,rgba(128,128,128,.28))!important}' +
     '.mbk-note{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-radius:12px;background:var(--s2,rgba(128,128,128,.08));border:1px solid var(--b,rgba(128,128,128,.24));font-size:11.5px;line-height:1.45;color:var(--m2,#8a8f98)}' +
     '.mbk-note svg{width:15px;height:15px;margin-top:1px;color:var(--ai-text,var(--ai,#4fd8a0))}';

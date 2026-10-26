@@ -83,9 +83,9 @@ body.light .tb {
   border-bottom: none !important;
 }
 body.light .tnb {
-  background: rgba(255, 246, 244, 0.96) !important;
-  border-bottom: 1px solid rgba(210, 32, 24, 0.18) !important;
-  box-shadow: 0 4px 14px rgba(110, 25, 20, 0.05) !important;
+  background: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
 }
 body.light .tnb-track {
   background: rgba(0, 0, 0, 0.04) !important;
@@ -189,8 +189,8 @@ body.pink .tb {
   border-bottom: none !important;
 }
 body.pink .tnb {
-  background: rgba(255, 183, 206, 0.95) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.6) !important;
+  background: none !important;
+  border-bottom: none !important;
 }
 body.pink .tnb-track {
   background: rgba(255, 255, 255, 0.45) !important;
@@ -374,13 +374,22 @@ body.pink::after {
   border-bottom: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8px;
   padding: 0 12px;
   box-sizing: border-box;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
-  z-index: 10;
+  z-index: 30;
+}
+
+/* Hamburger/current-tab button now lives in the header, right after the logo */
+.tb .nav-toggle {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px;
+  margin: 0;
 }
 
 .logo {
@@ -497,14 +506,12 @@ body.pink::after {
    Tabs Navigation (compact hamburger menu + current tab)
    ===================================================================== */
 .tnb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 38px;
-  background: var(--nav-bg);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--b);
-  padding: 0 8px 6px;
+  display: block;
+  height: 0;
+  background: none;
+  border-bottom: none;
+  padding: 0;
+  margin: 0;
   flex-shrink: 0;
   position: relative;
   z-index: 20;

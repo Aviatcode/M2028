@@ -755,20 +755,65 @@ async function logPomoSession(sub, dur) {
 }
 
 // Pomodoro Helper: update extension action badge
+// Default accent (focus) and break colors per M2028 theme, matching popup.css
+const POMO_THEME_AI = { dark: '#c42018', light: '#fd2a1f', pink: '#ff6eb4' };
+const POMO_THEME_BD = { dark: '#e8854f', light: '#e8854f', pink: '#ff9de0' };
+
+function pomoBadgeColors(theme, custom) {
+  const t = (theme === 'light' || theme === 'pink') ? theme : 'dark';
+  const ai = (custom && typeof custom === 'object' && custom.ac) || POMO_THEME_AI[t];
+  const bd = POMO_THEME_BD[t];
+  return { focus: ai, breakC: bd };
+}
+
+// Picks readable badge text (dark or light) for a given badge background color
+function pomoBadgeTextColor(bgHex) {
+  try {
+    let hex = (bgHex || '').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    const n = parseInt(hex, 16);
+    if (isNaN(n)) return '#ffffff';
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    return L > 0.42 ? '#2b0b09' : '#ffffff';
+  } catch (e) {
+    return '#ffffff';
+  }
+}
+
 function updatePomoBadge(st) {
   try {
     if (!chrome.action) return;
-    if (st && st.run && st.endTs) {
-      const remSec = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
-      // Badge runs 2 minutes ahead: 36 min left shows 34m
-      const min = Math.ceil(Math.max(0, remSec - 120) / 60);
-      chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : '0m' });
-      chrome.action.setBadgeBackgroundColor({
-        color: st.mode === 'focus' ? '#4fd8a0' : '#e8965a'
-      });
-    } else {
+    if (!st || !st.run || !st.endTs) {
       chrome.action.setBadgeText({ text: '' });
+      return;
     }
+    const remSec = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
+    // Same remaining time the popup and website show — no offset, so they always agree.
+    const min = Math.ceil(remSec / 60);
+    chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : '0m' });
+
+    chrome.storage.local.get(['theme', 'm_theme', 'customColors', 'm_customColors'], (res) => {
+      try {
+        const theme = res.theme || res.m_theme || 'dark';
+        let custom = res.customColors !== undefined ? res.customColors : res.m_customColors;
+        if (typeof custom === 'string') { try { custom = JSON.parse(custom); } catch (e) { custom = null; } }
+        // customColors may be per-theme ({dark:{...}, light:{...}, pink:{...}}) or a flat {bg,tx,ac}
+        let cfg = null;
+        if (custom && (custom.bg || custom.tx || custom.ac)) {
+          if (!custom.t || custom.t === theme) cfg = custom;
+        } else if (custom && custom[theme]) {
+          cfg = custom[theme];
+        }
+        const colors = pomoBadgeColors(theme, cfg);
+        const bg = st.mode === 'focus' ? colors.focus : colors.breakC;
+        chrome.action.setBadgeBackgroundColor({ color: bg });
+        if (chrome.action.setBadgeTextColor) {
+          chrome.action.setBadgeTextColor({ color: pomoBadgeTextColor(bg) });
+        }
+      } catch (e) {}
+    });
   } catch (e) {}
 }
 
@@ -1256,6 +1301,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
       schedulePomoAlarms(null);
       updatePomoBadge(null);
     }
+  }
+  if (changes.theme || changes.m_theme || changes.customColors || changes.m_customColors) {
+    chrome.storage.local.get(['pom_state', 'm_pomLive'], (res) => {
+      const st = res.pom_state || res.m_pomLive;
+      if (st && st.run && st.endTs) updatePomoBadge(st);
+    });
   }
 });
 

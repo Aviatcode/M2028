@@ -760,7 +760,8 @@ function updatePomoBadge(st) {
     if (!chrome.action) return;
     if (st && st.run && st.endTs) {
       const remSec = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
-      const min = Math.ceil(remSec / 60);
+      // Badge runs 2 minutes ahead: 36 min left shows 34m
+      const min = Math.ceil(Math.max(0, remSec - 120) / 60);
       chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : '0m' });
       chrome.action.setBadgeBackgroundColor({
         color: st.mode === 'focus' ? '#4fd8a0' : '#e8965a'

@@ -157,6 +157,9 @@
     var state = { limits: [], blocklist: [], redirects: {}, lock: null, usage: {} };
     var ready = false;
     var ui = { confirm: null };
+    var lastSig = '';          // what the screen currently shows (usage rounded to minutes)
+    var pendingRender = false; // a refresh arrived while the user was mid-click / typing
+    var pressAt = 0;           // when the pointer last went down inside this tab
 
     function entry(kind, target) {
       var E = state.lock && state.lock.entries;
@@ -176,6 +179,20 @@
     function typing() {
       var a = document.activeElement;
       return !!(a && root.contains(a) && /INPUT|SELECT|TEXTAREA/.test(a.tagName));
+    }
+
+    function pressing() { return pressAt && Date.now() - pressAt < 1500; }
+    // Background refreshes must never rebuild the screen under the user's finger: a rebuild between
+    // mouse-down and mouse-up swallows the click, and a rebuild while typing/selecting loses focus.
+    function softRender() {
+      if (typing() || pressing()) { pendingRender = true; return; }
+      pendingRender = false;
+      render();
+    }
+    function viewSig(s) {
+      var u = {};
+      Object.keys(s.usage || {}).forEach(function (k) { u[k] = Math.floor((Number(s.usage[k]) || 0) / 60); });
+      return JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, u]);
     }
 
     function statusChip(e, r) {
@@ -229,6 +246,7 @@
         root.innerHTML = '<div class="mbk"><div class="mbk-msg">Connecting to the extension…</div></div>';
         return;
       }
+      var advWasOpen = !!root.querySelector('.mbk-adv[open]');
       var keep = {};
       ['mbkBlockDom', 'mbkLimType', 'mbkLimDom', 'mbkLimCat', 'mbkLimMin'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -301,6 +319,7 @@
         '</div>';
 
       Object.keys(keep).forEach(function (id) { var el = document.getElementById(id); if (el) el.value = keep[id]; });
+      if (advWasOpen) { var adv = root.querySelector('.mbk-adv'); if (adv) adv.open = true; }
       syncLimTypeUi();
       if (ui.confirm && ui.confirm.fresh) {
         ui.confirm.fresh = false;
@@ -420,6 +439,16 @@
       if (ev.target && ev.target.id === 'mbkLimType') syncLimTypeUi();
     });
 
+    root.addEventListener('pointerdown', function () { pressAt = Date.now(); }, true);
+    function released() {
+      pressAt = 0;
+      // run after the click event has been delivered
+      setTimeout(function () { if (pendingRender) softRender(); }, 0);
+    }
+    document.addEventListener('pointerup', released, true);
+    document.addEventListener('pointercancel', released, true);
+    root.addEventListener('focusout', function () { setTimeout(function () { if (pendingRender) softRender(); }, 0); });
+
     transport.onState(function (s) {
       state = {
         limits: Array.isArray(s.limits) ? s.limits : [],
@@ -428,11 +457,14 @@
         lock: s.lock || null,
         usage: s.usage || {}
       };
+      var wasReady = ready;
       ready = true;
-      if (!typing()) render();
+      var sig = viewSig(state);
+      if (!wasReady || sig !== lastSig) { lastSig = sig; softRender(); }
     });
 
-    setInterval(function () { if (root.isConnected && !typing()) render(); }, 30000);
+    // countdown labels ("Removed in 71h 59m") need a periodic refresh
+    setInterval(function () { if (root.isConnected) { lastSig = viewSig(state); softRender(); } }, 30000);
 
     render();
     return { refresh: function () { transport.requestState(); render(); } };

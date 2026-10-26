@@ -597,11 +597,17 @@
   const BLK_KEYS = ['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock', 'm2028_limit_usage'];
   let blkMounted = false;
   let blkListener = null;
+  let blkPullTimer = null;
+  function blkHasChrome() {
+    return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local;
+  }
   const blkTransport = {
     onState(fn) { blkListener = fn; },
     requestState() {
-      if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local || !blkListener) return;
+      if (!blkHasChrome() || !blkListener) return;
       chrome.storage.local.get(BLK_KEYS, function (res) {
+        void chrome.runtime.lastError;
+        res = res || {};
         blkListener({
           limits: res.m2028_limits || [],
           blocklist: res.m2028_blocklist || [],
@@ -612,9 +618,11 @@
       });
     },
     saveLists(s) {
+      if (!blkHasChrome()) return;
       chrome.storage.local.set({
         m2028_limits: s.limits, m2028_blocklist: s.blocklist, m2028_redirect_settings: s.redirects
       }, function () {
+        void chrome.runtime.lastError;
         // Make the rule live now, not on the next alarm tick.
         try {
           chrome.runtime.sendMessage({ type: 'SYNC_BLOCKING' }, function () { void chrome.runtime.lastError; });
@@ -622,10 +630,12 @@
       });
     },
     lockRequest(req) {
-      chrome.runtime.sendMessage(Object.assign({ type: 'LOCK_REQUEST' }, req), function () {
-        void chrome.runtime.lastError;
-        blkTransport.requestState();
-      });
+      try {
+        chrome.runtime.sendMessage(Object.assign({ type: 'LOCK_REQUEST' }, req), function () {
+          void chrome.runtime.lastError;
+          blkTransport.requestState();
+        });
+      } catch (e) {}
     }
   };
   function renderBlockTab() {
@@ -634,10 +644,13 @@
     if (!blkMounted) {
       blkMounted = true;
       window.M2028BlockUI.mount(root, blkTransport, {});
-      if (chrome.storage && chrome.storage.onChanged) {
+      if (blkHasChrome() && chrome.storage.onChanged) {
         chrome.storage.onChanged.addListener(function (changes, area) {
           if (area !== 'local') return;
-          if (BLK_KEYS.some(function (k) { return changes[k]; })) blkTransport.requestState();
+          if (!BLK_KEYS.some(function (k) { return changes[k]; })) return;
+          // The usage counter ticks often: batch bursts of changes into one refresh.
+          clearTimeout(blkPullTimer);
+          blkPullTimer = setTimeout(function () { blkTransport.requestState(); }, 150);
         });
       }
     }
@@ -739,7 +752,10 @@
   function openNavMenu() {
     const bar = document.getElementById('navBar');
     const btn = document.getElementById('navMenuBtn');
-    if (bar) bar.classList.add('open');
+    if (bar) {
+      bar.classList.add('open');
+      try { document.documentElement.style.setProperty('--nav-menu-top', Math.round(bar.getBoundingClientRect().bottom + 4) + 'px'); } catch (e) {}
+    }
     if (btn) btn.setAttribute('aria-expanded', 'true');
   }
 
@@ -1542,13 +1558,13 @@
         if (completed.length > 0) {
           doneTog.style.display = 'flex';
           doneLabel.textContent = 'Completed (' + completed.length + ')';
-          doneList.innerHTML = completed.map(t => `
+          setHtmlStable(doneList, completed.map(t => `
             <div class="row is-done" data-tid="${t.id}">
               <button class="rck on" data-tid="${t.id}" title="Mark undone">✓</button>
               <span class="rtext">${escapeHtml(t.text)}</span>
               <button class="ract del" data-tid="${t.id}" title="Delete task">✕</button>
             </div>
-          `).join('');
+          `).join(''));
           procEmojiNodes(doneList);
 
           doneList.querySelectorAll('.rck').forEach(btn => {
@@ -1630,8 +1646,14 @@
       const doneList = document.getElementById('tskDoneList');
       if (doneList) {
         const isOpen = doneList.style.display !== 'none';
+        // remember every scroll offset so opening/closing never throws the view back to the top
+        const saved = [];
+        for (let n = taskDoneToggle; n; n = n.parentElement) { if (n.scrollTop > 0) saved.push([n, n.scrollTop]); }
+        const wy = window.scrollY;
         doneList.style.display = isOpen ? 'none' : 'flex';
         taskDoneToggle.classList.toggle('open', !isOpen);
+        saved.forEach(function (p) { p[0].scrollTop = p[1]; });
+        if (window.scrollY !== wy) window.scrollTo(0, wy);
       }
     });
   }

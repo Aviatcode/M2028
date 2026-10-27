@@ -846,9 +846,11 @@ function updatePomoBadge(st) {
       return;
     }
     const remSec = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
-    // Same remaining time the popup and website show — no offset, so they always agree.
-    const min = Math.ceil(remSec / 60);
-    chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : '0m' });
+    // Same remaining time the popup and website show (they use Math.floor) — no offset, so they always agree.
+    // (Math.ceil used to round UP to the next whole minute, making the badge read ~1 min high;
+    // combined with the badge only refreshing on the 30s/1min tick, it could sit ~2 min ahead of reality.)
+    const min = Math.floor(remSec / 60);
+    chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : remSec > 0 ? '<1m' : '0m' });
 
     chrome.storage.local.get(['theme', 'm_theme', 'customColors', 'm_customColors'], (res) => {
       try {
@@ -936,6 +938,10 @@ async function schedulePomoAlarms(st) {
     await Promise.all(
       existing.filter((a) => a.name.indexOf('m2028_pomo_ping_') === 0).map((a) => chrome.alarms.clear(a.name))
     );
+    // Clear any previously-scheduled per-minute badge-refresh alarms
+    await Promise.all(
+      existing.filter((a) => a.name.indexOf('m2028_pomo_badge_') === 0).map((a) => chrome.alarms.clear(a.name))
+    );
     if (!st || !st.run || !st.endTs) return;
     const now = Date.now();
     const warnAt = st.endTs - POMO_NOTIFY_LEAD_MS;
@@ -954,6 +960,16 @@ async function schedulePomoAlarms(st) {
       t += step;
       if (t >= st.endTs - 60 * 1000) break; // leave the final minute to the warn/end alarms
       if (t > now + 2000) chrome.alarms.create('m2028_pomo_ping_' + (idx++), { when: t });
+    }
+
+    // Badge-refresh alarms fired exactly on every whole-minute boundary between now and endTs, so the
+    // toolbar badge updates the instant the true remaining time ticks over to a new minute instead of
+    // waiting for the next periodic poll (which could leave it showing a stale, too-high number).
+    let bt = Math.floor(st.endTs / 60000) * 60000; // the next minute boundary at or before endTs
+    let bidx = 0;
+    while (bt > now + 1000 && bidx < 240) {
+      chrome.alarms.create('m2028_pomo_badge_' + (bidx++), { when: bt });
+      bt -= 60000;
     }
   } catch (e) {}
 }
@@ -979,6 +995,12 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await flushTime();
     await syncBlocking();
   } else if (alarm.name === 'm2028_pomo_tick') {
+    try {
+      const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
+      updatePomoBadge(res.pom_state || res.m_pomLive || null);
+    } catch (e) {}
+  } else if (alarm.name.indexOf('m2028_pomo_badge_') === 0) {
+    // Fires exactly on a minute boundary — refresh the badge right now instead of waiting for the next poll.
     try {
       const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
       updatePomoBadge(res.pom_state || res.m_pomLive || null);

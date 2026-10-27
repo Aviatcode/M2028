@@ -239,9 +239,13 @@ async function loadBlockingSettings() {
   currentLimits = Array.isArray(data.m2028_limits) ? data.m2028_limits : [];
   currentBlocklist = Array.isArray(data.m2028_blocklist) ? data.m2028_blocklist : [];
   const redirects = data.m2028_redirect_settings || {};
+  const limitUrls = (redirects.limitRedirectUrls && redirects.limitRedirectUrls.length) ? redirects.limitRedirectUrls : (redirects.limitRedirectUrl ? [redirects.limitRedirectUrl] : []);
+  const blockUrls = (redirects.blockRedirectUrls && redirects.blockRedirectUrls.length) ? redirects.blockRedirectUrls : (redirects.blockRedirectUrl ? [redirects.blockRedirectUrl] : []);
 
-  document.getElementById('limitRedirectUrl').value = redirects.limitRedirectUrl || DEFAULT_LIMIT_REDIRECT;
-  document.getElementById('blockRedirectUrl').value = redirects.blockRedirectUrl || DEFAULT_BLOCK_REDIRECT;
+  document.getElementById('limitRedirectUrl').value = limitUrls[0] || DEFAULT_LIMIT_REDIRECT;
+  document.getElementById('limitRedirectUrl2').value = limitUrls[1] || '';
+  document.getElementById('blockRedirectUrl').value = blockUrls[0] || DEFAULT_BLOCK_REDIRECT;
+  document.getElementById('blockRedirectUrl2').value = blockUrls[1] || '';
 
   populateCategorySelects();
   renderLimitsTable();
@@ -306,7 +310,7 @@ function renderBlocklistTable() {
 // Redirect pages are locked once anything is locked, so they cannot be pointed somewhere else
 function applyLockUi() {
   const locked = !!(currentLock && currentLock.entries && Object.keys(currentLock.entries).length);
-  ['limitRedirectUrl', 'blockRedirectUrl'].forEach(id => {
+  ['limitRedirectUrl', 'limitRedirectUrl2', 'blockRedirectUrl', 'blockRedirectUrl2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.disabled = locked; el.title = locked ? 'Locked together with your blocks and limits' : ''; }
   });
@@ -316,11 +320,34 @@ function applyLockUi() {
 async function saveLimits() { await Storage.set({ m2028_limits: currentLimits }); }
 async function saveBlocklist() { await Storage.set({ m2028_blocklist: currentBlocklist }); }
 
+function hostOf(raw) {
+  try { return new URL(String(raw || '').trim()).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; }
+}
+function domainMatches(a, b) { return !!a && !!b && (a === b || a.slice(-(b.length + 1)) === '.' + b); }
+function redirectLoopsToBlocklist(url) {
+  const h = hostOf(url);
+  if (!h) return false;
+  return currentBlocklist.some(b => b.target && b.target.indexOf('category:') !== 0 && (domainMatches(h, b.target) || domainMatches(b.target, h)));
+}
+
 async function saveRedirectSettings() {
+  const l1 = document.getElementById('limitRedirectUrl').value.trim();
+  const l2 = document.getElementById('limitRedirectUrl2').value.trim();
+  const b1 = document.getElementById('blockRedirectUrl').value.trim();
+  const b2 = document.getElementById('blockRedirectUrl2').value.trim();
+  for (const u of [l1, l2, b1, b2].filter(Boolean)) {
+    if (redirectLoopsToBlocklist(u)) {
+      alert('That redirect points at a site you\'ve blocked — it would just send you back into a loop. Choose a different site.');
+      return;
+    }
+  }
+  const limitRedirectUrls = [l1, l2].filter(Boolean);
+  const blockRedirectUrls = [b1, b2].filter(Boolean);
   await Storage.set({
     m2028_redirect_settings: {
-      limitRedirectUrl: document.getElementById('limitRedirectUrl').value.trim() || DEFAULT_LIMIT_REDIRECT,
-      blockRedirectUrl: document.getElementById('blockRedirectUrl').value.trim() || DEFAULT_BLOCK_REDIRECT
+      limitRedirectUrls, blockRedirectUrls,
+      limitRedirectUrl: limitRedirectUrls[0] || DEFAULT_LIMIT_REDIRECT,
+      blockRedirectUrl: blockRedirectUrls[0] || DEFAULT_BLOCK_REDIRECT
     }
   });
 }
@@ -402,6 +429,14 @@ function initBlockingUI() {
       if (!target) { alert('Enter a website domain.'); return; }
     }
     if (currentBlocklist.some(b => b.target === target)) { alert('Already on the blocklist.'); return; }
+    if (type !== 'category') {
+      const l1 = document.getElementById('limitRedirectUrl').value.trim();
+      const l2 = document.getElementById('limitRedirectUrl2').value.trim();
+      const b1 = document.getElementById('blockRedirectUrl').value.trim();
+      const b2 = document.getElementById('blockRedirectUrl2').value.trim();
+      const usedAsRedirect = [l1, l2, b1, b2].some(u => u && domainMatches(hostOf(u), target));
+      if (usedAsRedirect) { alert('You\'re using that site as a redirect destination — blocking it would create a loop. Change your redirect first.'); return; }
+    }
 
     if (!confirm('Block ' + targetLabel(target) + '?\n\nYou will not be able to remove it for at least ' + LOCK_HOURS + ' hours.')) return;
     currentBlocklist.push({ target });
@@ -411,7 +446,9 @@ function initBlockingUI() {
   });
 
   document.getElementById('limitRedirectUrl').addEventListener('change', saveRedirectSettings);
+  document.getElementById('limitRedirectUrl2').addEventListener('change', saveRedirectSettings);
   document.getElementById('blockRedirectUrl').addEventListener('change', saveRedirectSettings);
+  document.getElementById('blockRedirectUrl2').addEventListener('change', saveRedirectSettings);
 
   document.querySelectorAll('[data-preset-limit]').forEach(btn => {
     btn.addEventListener('click', () => {

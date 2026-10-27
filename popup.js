@@ -373,19 +373,19 @@
     }
     }
 
-    const themeBtns = themeChanged ? ['themeToggleBtnUser', 'themeToggleBtnGuest'].map(id => document.getElementById(id)).filter(Boolean) : [];
-    themeBtns.forEach(function (themeBtn) {
+    const themeBtn = themeChanged ? document.getElementById('themeToggleBtn') : null;
+    if (themeBtn) {
       if (validTheme === 'light') {
         themeBtn.title = 'Current: Light (Click for Girl Mode)';
-        themeBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Girl mode" style="margin-right:6px"></span>' + 'Toggle Theme';
+        themeBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Girl mode"></span>';
       } else if (validTheme === 'pink') {
         themeBtn.title = 'Current: Girl Mode (Click for Dark Mode)';
-        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>Toggle Theme';
+        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
       } else {
         themeBtn.title = 'Current: Dark (Click for Light Mode)';
-        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>Toggle Theme';
+        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>';
       }
-    });
+    }
 
     // Check account holder's custom palette
     S.get('customColors', null, function (custom) {
@@ -569,15 +569,15 @@
       if (e.key === 'Escape') closeNavMenu();
     });
 
-    ['themeToggleBtnUser', 'themeToggleBtnGuest'].forEach(function (id) {
-      const themeBtn = document.getElementById(id);
-      if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
-    });
+    const themeBtn = document.getElementById('themeToggleBtn');
+    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
     const openPlannerBtn = document.getElementById('openPlannerBtn');
+    const openHubInsideBtn = document.getElementById('openHubInsideBtn');
     const exportDataBtn = document.getElementById('exportDataBtn');
     const extLogoBtn = document.getElementById('extLogoBtn');
     if (openPlannerBtn) openPlannerBtn.addEventListener('click', openFullApp);
+    if (openHubInsideBtn) openHubInsideBtn.addEventListener('click', openFullApp);
     if (exportDataBtn) exportDataBtn.addEventListener('click', exportExtensionBackup);
     if (extLogoBtn) extLogoBtn.addEventListener('click', openFullApp);
 
@@ -619,8 +619,22 @@
     },
     saveLists(s) {
       if (!blkHasChrome()) return;
+      const hostOf = (u) => { try { return new URL(String(u || '').trim()).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; } };
+      const matches = (a, b) => !!a && !!b && (a === b || a.slice(-(b.length + 1)) === '.' + b);
+      const blocklist = s.blocklist || [];
+      const dropLooping = (urls) => (urls || []).filter((u) => {
+        const h = hostOf(u);
+        return h && !blocklist.some((b) => b.target && b.target.indexOf('category:') !== 0 && (matches(h, b.target) || matches(b.target, h)));
+      });
+      const r = s.redirects || {};
+      const limitUrls = dropLooping(r.limitRedirectUrls && r.limitRedirectUrls.length ? r.limitRedirectUrls : (r.limitRedirectUrl ? [r.limitRedirectUrl] : [])).slice(0, 2);
+      const blockUrls = dropLooping(r.blockRedirectUrls && r.blockRedirectUrls.length ? r.blockRedirectUrls : (r.blockRedirectUrl ? [r.blockRedirectUrl] : [])).slice(0, 2);
+      const cleanRedirects = {
+        limitRedirectUrls: limitUrls, blockRedirectUrls: blockUrls,
+        limitRedirectUrl: limitUrls[0] || '', blockRedirectUrl: blockUrls[0] || ''
+      };
       chrome.storage.local.set({
-        m2028_limits: s.limits, m2028_blocklist: s.blocklist, m2028_redirect_settings: s.redirects
+        m2028_limits: s.limits, m2028_blocklist: s.blocklist, m2028_redirect_settings: cleanRedirects
       }, function () {
         void chrome.runtime.lastError;
         // Make the rule live now, not on the next alarm tick.

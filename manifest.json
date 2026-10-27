@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqVMdYoS8eCin6LKKMezaRqWuUndNjCTz3LhemirzeJZtijo/uroL2EvFPB1+evJqWGsjBCg9q7KGvesBQh494JLXzseGEfDPgX+IpxnOljmimumPza3cvYV/NiQmnq2sWx2HFljEafDrent+uL2Tkna6f8e+41BXCrZqBONUOsl9UiG3SuCKMB7Xc8uqayY2P5mpabg86zX/QG7Bq1rXLCN/17GccRw39CGFsatbLFng+Z8lZHqXv0BsjOHYsnZojmx6Gajf1CorNObR4GV3SOD4oimI5deJAYp6hpVY6bVlLtXTxcqdYrT3/PHk4ib1EbGcjg2we3ed18NEQnJtIwIDAQAB",
   "name": "M2028 - Productivity Hub & Screen Time Tracker",
   "short_name": "M2028",
   "version": "2.3.0",

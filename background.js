@@ -290,9 +290,15 @@ async function doEnforceLock() {
   if (Object.keys(E).length) {
     if (!lock.redirects) {
       const r = data[STORAGE_KEY_REDIRECTS] || {};
+      const lLock = ((r.limitRedirectUrls && r.limitRedirectUrls.length) ? r.limitRedirectUrls : (r.limitRedirectUrl ? [r.limitRedirectUrl] : []))
+        .map((u) => lockUrl(u, '')).filter(Boolean).slice(0, 2);
+      const bLock = ((r.blockRedirectUrls && r.blockRedirectUrls.length) ? r.blockRedirectUrls : (r.blockRedirectUrl ? [r.blockRedirectUrl] : []))
+        .map((u) => lockUrl(u, '')).filter(Boolean).slice(0, 2);
       lock.redirects = {
-        limitRedirectUrl: lockUrl(r.limitRedirectUrl, DEFAULT_LIMIT_REDIRECT),
-        blockRedirectUrl: lockUrl(r.blockRedirectUrl, DEFAULT_BLOCK_REDIRECT)
+        limitRedirectUrls: lLock.length ? lLock : [DEFAULT_LIMIT_REDIRECT],
+        blockRedirectUrls: bLock.length ? bLock : [DEFAULT_BLOCK_REDIRECT],
+        limitRedirectUrl: lLock[0] || DEFAULT_LIMIT_REDIRECT,
+        blockRedirectUrl: bLock[0] || DEFAULT_BLOCK_REDIRECT
       };
       changed = true;
     }
@@ -875,11 +881,30 @@ async function schedulePomoAlarms(st) {
   try {
     await chrome.alarms.clear('m2028_pomo_alarm');
     await chrome.alarms.clear('m2028_pomo_warn');
+    // Clear any previously-scheduled periodic "time left" pings
+    const existing = await chrome.alarms.getAll();
+    await Promise.all(
+      existing.filter((a) => a.name.indexOf('m2028_pomo_ping_') === 0).map((a) => chrome.alarms.clear(a.name))
+    );
     if (!st || !st.run || !st.endTs) return;
     const now = Date.now();
     const warnAt = st.endTs - POMO_NOTIFY_LEAD_MS;
     if (warnAt > now + 2000) chrome.alarms.create('m2028_pomo_warn', { when: warnAt });
     chrome.alarms.create('m2028_pomo_alarm', { when: Math.max(st.endTs, now + 1000) });
+
+    // Periodic reminders: every 10 min while more than 10 min remain, every 2 min inside the final 10.
+    // Scheduled as real chrome.alarms (not a page setTimeout loop), so they fire on time even if no
+    // tab is open or the browser is backgrounded — this is what was making the 10-min ones run late.
+    const startTs = st.endTs - (st.phaseLen || 0) * 1000;
+    let t = Math.max(startTs, now);
+    let idx = 0;
+    while (true) {
+      const remMs = st.endTs - t;
+      const step = remMs > 10 * 60 * 1000 ? 10 * 60 * 1000 : 2 * 60 * 1000;
+      t += step;
+      if (t >= st.endTs - 60 * 1000) break; // leave the final minute to the warn/end alarms
+      if (t > now + 2000) chrome.alarms.create('m2028_pomo_ping_' + (idx++), { when: t });
+    }
   } catch (e) {}
 }
 
@@ -930,6 +955,22 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     } catch (e) {
       console.warn('Pomo warning error:', e);
     }
+  } else if (alarm.name.indexOf('m2028_pomo_ping_') === 0) {
+    try {
+      const res = await chrome.storage.local.get(['pom_state', 'm_pomLive']);
+      const st = res.pom_state || res.m_pomLive;
+      if (!st || !st.run || !st.endTs) return;
+      const remMs = st.endTs - Date.now();
+      if (remMs < 60 * 1000) return; // too close to the end — the warn/end alarms already cover this
+      const remMin = Math.round(remMs / 60000);
+      chrome.notifications.create('m2028_pomo_ping_' + Date.now(), {
+        type: 'basic',
+        iconUrl: 'icon-192.png',
+        title: `⏳ ~${remMin} min left — ${st.mode === 'focus' ? 'Focus' : 'Break'}`,
+        message: 'Ends ' + new Date(st.endTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        priority: 1
+      });
+    } catch (e) {}
   } else if (alarm.name === 'm2028_timer_alarm') {
     // Timer reached 0!
     try {

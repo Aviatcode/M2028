@@ -154,6 +154,28 @@
     if (d.indexOf('www.') === 0) d = d.slice(4);
     return /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(d) ? d : '';
   }
+  // Loop prevention: a redirect page must never point at a site that's also blocked —
+  // that would just bounce the person straight back to the block screen.
+  function hostnameOf(raw) {
+    try { return new URL(String(raw || '').trim()).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; }
+  }
+  function domainMatches(host, domain) {
+    if (!host || !domain) return false;
+    return host === domain || host.slice(-(domain.length + 1)) === '.' + domain;
+  }
+  function redirectConflictsWithBlocklist(url, blocklist) {
+    var h = hostnameOf(url);
+    if (!h) return false;
+    return (blocklist || []).some(function (b) {
+      var t = b && b.target;
+      if (!t || t.indexOf('category:') === 0) return false;
+      return domainMatches(h, t) || domainMatches(t, h);
+    });
+  }
+  function redirectTargetsHost(r, domain) {
+    var urls = [].concat(r.limitRedirectUrls || [], r.blockRedirectUrls || [], r.limitRedirectUrl ? [r.limitRedirectUrl] : [], r.blockRedirectUrl ? [r.blockRedirectUrl] : []);
+    return urls.some(function (u) { var h = hostnameOf(u); return domainMatches(h, domain) || domainMatches(domain, h); });
+  }
 
   function mount(root, transport, opts) {
     opts = opts || {};
@@ -297,9 +319,13 @@
         redirect = '<div class="mbk-note">' + svg('lock') + '<span>Redirect pages are locked together with your blocks, so they cannot be pointed somewhere else.</span></div>';
       } else {
         var r0 = state.redirects || {};
-        redirect = '<p class="mbk-sub" style="margin-top:0">You can change these only until your first block or limit is added.</p>' +
-          '<div class="mbk-form"><div class="mbk-input-wrap">' + svg('compass') + '<input id="mbkRdLimit" class="mbk-in" type="url" placeholder="After a limit: https://en.wikipedia.org/wiki/Special:Random" value="' + esc(r0.limitRedirectUrl || '') + '"></div></div>' +
-          '<div class="mbk-form"><div class="mbk-input-wrap">' + svg('compass') + '<input id="mbkRdBlock" class="mbk-in" type="url" placeholder="Blocked site: https://theuselessweb.com" value="' + esc(r0.blockRedirectUrl || '') + '"></div>' +
+        var rl = (r0.limitRedirectUrls && r0.limitRedirectUrls.length) ? r0.limitRedirectUrls : (r0.limitRedirectUrl ? [r0.limitRedirectUrl] : []);
+        var rb = (r0.blockRedirectUrls && r0.blockRedirectUrls.length) ? r0.blockRedirectUrls : (r0.blockRedirectUrl ? [r0.blockRedirectUrl] : []);
+        redirect = '<p class="mbk-sub" style="margin-top:0">Add up to 2 for each — they alternate every time. You can change these only until your first block or limit is added.</p>' +
+          '<div class="mbk-form"><div class="mbk-input-wrap">' + svg('compass') + '<input id="mbkRdLimit" class="mbk-in" type="url" placeholder="After a limit — site 1: https://en.wikipedia.org/wiki/Special:Random" value="' + esc(rl[0] || '') + '"></div></div>' +
+          '<div class="mbk-form"><div class="mbk-input-wrap">' + svg('compass') + '<input id="mbkRdLimit2" class="mbk-in" type="url" placeholder="After a limit — site 2 (optional)" value="' + esc(rl[1] || '') + '"></div></div>' +
+          '<div class="mbk-form"><div class="mbk-input-wrap">' + svg('compass') + '<input id="mbkRdBlock" class="mbk-in" type="url" placeholder="Blocked site — site 1: https://theuselessweb.com" value="' + esc(rb[0] || '') + '"></div></div>' +
+          '<div class="mbk-form"><div class="mbk-input-wrap">' + svg('compass') + '<input id="mbkRdBlock2" class="mbk-in" type="url" placeholder="Blocked site — site 2 (optional)" value="' + esc(rb[1] || '') + '"></div>' +
           '<button class="mbk-btn" data-act="save-redirects">Save</button></div>';
       }
 
@@ -395,9 +421,22 @@
       if (act === 'cancel') { transport.lockRequest({ op: 'cancel', kind: kind, target: target }); return; }
       if (act === 'confirm-no') { ui.confirm = null; render(); return; }
       if (act === 'save-redirects') {
+        var l1 = document.getElementById('mbkRdLimit').value.trim();
+        var l2el = document.getElementById('mbkRdLimit2'), l2 = l2el ? l2el.value.trim() : '';
+        var b1 = document.getElementById('mbkRdBlock').value.trim();
+        var b2el = document.getElementById('mbkRdBlock2'), b2 = b2el ? b2el.value.trim() : '';
+        var urls = [l1, l2, b1, b2].filter(Boolean);
+        for (var ui_i = 0; ui_i < urls.length; ui_i++) {
+          if (redirectConflictsWithBlocklist(urls[ui_i], state.blocklist)) {
+            global.alert('That redirect points at a site you\'ve blocked — it would just send you back into a loop. Choose a different site.');
+            return;
+          }
+        }
         state.redirects = {
-          limitRedirectUrl: document.getElementById('mbkRdLimit').value.trim(),
-          blockRedirectUrl: document.getElementById('mbkRdBlock').value.trim()
+          limitRedirectUrls: [l1, l2].filter(Boolean),
+          blockRedirectUrls: [b1, b2].filter(Boolean),
+          limitRedirectUrl: l1,
+          blockRedirectUrl: b1
         };
         saveLists();
         return;
@@ -413,6 +452,10 @@
         if (typed !== PHRASE.toLowerCase()) { global.alert('Type the sentence exactly: ' + PHRASE); return; }
       }
       if (c.op === 'add-block') {
+        if (c.target.indexOf('category:') !== 0 && redirectTargetsHost(state.redirects || {}, c.target)) {
+          global.alert('You\'re using that site as a redirect destination — blocking it would create a loop. Change your redirect first.');
+          return;
+        }
         if (!isBlocked(c.target)) state.blocklist = state.blocklist.concat([{ target: c.target }]);
         saveLists();
         var blockInput = document.getElementById('mbkBlockDom');

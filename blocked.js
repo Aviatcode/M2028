@@ -38,15 +38,34 @@ function safeTarget(raw, fallback) {
   }
 }
 
+function hostOf(raw) {
+  try { return new URL(String(raw || '').trim()).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; }
+}
+function domainMatches(a, b) { return !!a && !!b && (a === b || a.slice(-(b.length + 1)) === '.' + b); }
+
 let went = false;
 function go() {
   if (went) return;
   went = true;
-  chrome.storage.local.get(['m2028_redirect_settings'], (res) => {
+  chrome.storage.local.get(['m2028_redirect_settings', 'm2028_blocklist', 'm2028_redirect_rr'], (res) => {
     const settings = (res && res.m2028_redirect_settings) || {};
+    const blocklist = (res && res.m2028_blocklist) || [];
     const fallback = reason === 'limit' ? DEFAULTS.limit : DEFAULTS.block;
-    const wanted = reason === 'limit' ? settings.limitRedirectUrl : settings.blockRedirectUrl;
-    location.replace(safeTarget(wanted, fallback));
+    let candidates = reason === 'limit'
+      ? (settings.limitRedirectUrls && settings.limitRedirectUrls.length ? settings.limitRedirectUrls : (settings.limitRedirectUrl ? [settings.limitRedirectUrl] : []))
+      : (settings.blockRedirectUrls && settings.blockRedirectUrls.length ? settings.blockRedirectUrls : (settings.blockRedirectUrl ? [settings.blockRedirectUrl] : []));
+    // Last line of defense: never land on something that's currently blocked, however it got saved.
+    candidates = candidates.filter((u) => {
+      const h = hostOf(u);
+      if (!h) return false;
+      return !blocklist.some((b) => b.target && b.target.indexOf('category:') !== 0 && (domainMatches(h, b.target) || domainMatches(b.target, h)));
+    });
+    if (!candidates.length) { location.replace(safeTarget(null, fallback)); return; }
+    const rrKey = reason === 'limit' ? 'limit' : 'block';
+    const rr = (res && res.m2028_redirect_rr) || {};
+    const idx = (Number(rr[rrKey]) || 0) % candidates.length;
+    chrome.storage.local.set({ m2028_redirect_rr: Object.assign({}, rr, { [rrKey]: idx + 1 }) });
+    location.replace(safeTarget(candidates[idx], fallback));
   });
 }
 

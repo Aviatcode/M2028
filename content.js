@@ -45,6 +45,11 @@
         }).catch(() => {});
       }
     } else if (event.data.type === 'DATA_UPDATE' && event.data.key && event.data.value !== undefined) {
+      // The website has its own, separate "hide a nav tab" / tab-order / tab-label system, with a
+      // different set of tab IDs than the extension's own tabs. Relaying these would silently
+      // overwrite the extension's own tab visibility/order with incompatible website data.
+      const WEBSITE_ONLY_KEYS = ['navHidden', 'navOrder', 'navLabels', 'dashCfg'];
+      if (WEBSITE_ONLY_KEYS.indexOf(event.data.key) >= 0) return;
       // Sync other M2028 keys (habits, tasks, pd, pomSessions)
       if (event.data.key === 'hubNotes') {
         if (event.data.value === lastNotes) return;
@@ -209,6 +214,18 @@
           syncObj.customColors = cc;
           syncObj.m_customColors = cc;
         }
+        // Sync wallpaper & wpDim from page
+        const wp = window.localStorage.getItem('m_wallpaper') || window.localStorage.getItem('wallpaper');
+        if (wp) {
+          syncObj.wallpaper = wp;
+          syncObj.m_wallpaper = wp;
+        }
+        const wpDim = window.localStorage.getItem('m_wpDim') || window.localStorage.getItem('wpDim');
+        if (wpDim) {
+          syncObj.wpDim = wpDim;
+          syncObj.m_wpDim = wpDim;
+        }
+
         // Sync pomSubjects from page
         const pSubs = window.localStorage.getItem('m_pomSubjects') || window.localStorage.getItem('pomSubjects');
         if (pSubs) {
@@ -297,12 +314,27 @@
       if (t && !seenB[t] && blocklist.length < BLOCK_MAX) { seenB[t] = 1; blocklist.push({ target: t }); }
     });
     const r = p.redirects || {};
+    function hostOf(u) { try { return new URL(String(u || '').trim()).hostname.toLowerCase().replace(/^www\./, ''); } catch (e) { return ''; } }
+    function matches(a, b) { return !!a && !!b && (a === b || a.slice(-(b.length + 1)) === '.' + b); }
+    function dropLooping(urls) {
+      return urls.filter(function (u) {
+        const h = hostOf(u);
+        if (!h) return false;
+        return !blocklist.some(function (b) { return b.target.indexOf('category:') !== 0 && (matches(h, b.target) || matches(b.target, h)); });
+      });
+    }
+    const rawLimitUrls = Array.isArray(r.limitRedirectUrls) ? r.limitRedirectUrls : (r.limitRedirectUrl ? [r.limitRedirectUrl] : []);
+    const rawBlockUrls = Array.isArray(r.blockRedirectUrls) ? r.blockRedirectUrls : (r.blockRedirectUrl ? [r.blockRedirectUrl] : []);
+    const limitUrls = dropLooping(rawLimitUrls.map((u) => cleanUrl(u, '')).filter(Boolean)).slice(0, 2);
+    const blockUrls = dropLooping(rawBlockUrls.map((u) => cleanUrl(u, '')).filter(Boolean)).slice(0, 2);
     return {
       limits: limits,
       blocklist: blocklist,
       redirects: {
-        limitRedirectUrl: cleanUrl(r.limitRedirectUrl, DEF_LIMIT_REDIRECT),
-        blockRedirectUrl: cleanUrl(r.blockRedirectUrl, DEF_BLOCK_REDIRECT)
+        limitRedirectUrls: limitUrls.length ? limitUrls : [DEF_LIMIT_REDIRECT],
+        blockRedirectUrls: blockUrls.length ? blockUrls : [DEF_BLOCK_REDIRECT],
+        limitRedirectUrl: limitUrls[0] || DEF_LIMIT_REDIRECT,
+        blockRedirectUrl: blockUrls[0] || DEF_BLOCK_REDIRECT
       }
     };
   }
@@ -410,7 +442,9 @@
   }
 
   // 5. Mirror website-side changes into extension storage while a website tab is open.
+  //    (The website writes wallpaper / theme straight to localStorage and never announces it, so poll for changes.)
   const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors'];
+  const MIRROR_RAW = ['wallpaper', 'wpDim'];
   const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
   let mirrorFirstRun = true;
 
@@ -437,6 +471,19 @@
           setObj[k] = v;
           setObj['m_' + k] = v;
         } catch (e) {}
+      });
+
+      MIRROR_RAW.forEach(function (k) {
+        const raw = readPage(k);
+        const prev = mirrorSigs[k];
+        mirrorSigs[k] = raw;
+        if (first || raw === prev) return;
+        if (raw === null) {
+          rmKeys.push(k, 'm_' + k);
+        } else {
+          setObj[k] = raw;
+          setObj['m_' + k] = raw;
+        }
       });
 
       // Keep the extension's login token as fresh as the website's (the website refreshes it hourly)

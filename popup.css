@@ -4379,3 +4379,50 @@ html.haswp body.pink .card, html.haswp body.pink .wc, html.haswp body.pink .st, 
 #navBar.open #navMenu .nb.on{background:color-mix(in srgb,var(--ai,#4fd8a0) 22%,transparent)!important;color:var(--ai-text,var(--ai,#4fd8a0))!important;-webkit-text-fill-color:currentColor!important}
 #navBar.open #navMenu .nb.on .ic{color:currentColor}
 @keyframes navMenuInLeft{from{opacity:0;transform:translateX(-14px) scale(.98)}to{opacity:1;transform:none}}
+
+
+/* =====================================================================
+   v2.4 - Switched-off tabs, theme-adaptive toggle switches, ghost buttons
+   ===================================================================== */
+/* A tab that is switched off stays hidden even while the hamburger menu is open
+   (the menu rule above uses !important, which used to beat the inline display:none). */
+#navBar #navMenu .nb.nav-off[data-tab],
+#navBar.open #navMenu .nb.nav-off[data-tab] { display: none !important; }
+.main-content .vw.nav-off { display: none !important; }
+
+/* Toggle switch: every colour is derived from the theme's own text / accent colours,
+   so the knob can never blend into the track (dark, white, girl mode and custom colours). */
+.tab-switch-slider {
+  background-color: color-mix(in srgb, var(--tx) 16%, var(--s2, transparent));
+  border: 1px solid color-mix(in srgb, var(--tx) 32%, transparent);
+  box-shadow: none;
+}
+.tab-switch-slider::before {
+  background-color: color-mix(in srgb, var(--tx) 58%, var(--bg, #fff));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.tab-switch input:checked + .tab-switch-slider {
+  background: var(--ai-solid, var(--ai));
+  border-color: var(--ai-solid, var(--ai));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ai-solid, var(--ai)) 40%, transparent);
+}
+.tab-switch input:checked + .tab-switch-slider::before {
+  background-color: var(--on-ai-solid, #ffffff);
+  transform: translateX(19px);
+}
+.tab-switch input:focus-visible + .tab-switch-slider {
+  outline: 2px solid var(--ai-text, var(--ai));
+  outline-offset: 2px;
+}
+
+/* Ghost buttons: always a visible fill + border derived from the text colour, so a white button
+   on a white page (or a pink one on pink) never disappears. */
+body .btn.b-gh {
+  background: color-mix(in srgb, var(--tx) 7%, var(--bg, transparent)) !important;
+  color: var(--tx) !important;
+  border: 1px solid color-mix(in srgb, var(--tx) 26%, transparent) !important;
+}
+body .btn.b-gh:hover, body .btn.b-gh:focus-visible {
+  background: color-mix(in srgb, var(--tx) 13%, var(--bg, transparent)) !important;
+  border-color: color-mix(in srgb, var(--tx) 42%, transparent) !important;
+}

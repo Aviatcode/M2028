@@ -583,10 +583,36 @@
 
     initNavTabsManagement();
 
+    let _explicitTab = false;
     try {
       const p = new URLSearchParams(window.location.search);
       const t = p.get('tab') || window.location.hash.replace('#', '');
-      if (t) switchTab(t);
+      if (t) { _explicitTab = true; switchTab(t); }
+    } catch (e) {}
+    // Pomodoro is running: reopen the extension straight on the Pomodoro tab.
+    if (!_explicitTab) openPomoIfRunning();
+  }
+
+  function openPomoIfRunning() {
+    const check = function (copies) {
+      const st = freshestPomo(copies);
+      if (!st || !st.run) return;
+      if (getHiddenNavTabs().includes('pomo')) return;
+      if (activeTabName !== 'pomo') switchTab('pomo');
+    };
+    const local = function () {
+      return ['pom_state', 'm_pomLive', 'm_pom_state'].map(function (k) {
+        try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; }
+      });
+    };
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pom_state'], function (res) {
+          check([res && res.pom_state, res && res.m_pomLive, res && res.m_pom_state].concat(local()));
+        });
+      } else {
+        check(local());
+      }
     } catch (e) {}
   }
 
@@ -672,6 +698,13 @@
   }
 
   function switchTab(tab) {
+    // A tab that is switched off can never be opened (menu, ?tab= link, Pomodoro auto-open, anything).
+    const _off = getHiddenNavTabs();
+    if (_off.includes(tab)) {
+      const _first = ALL_TABS.map(function (t) { return t.id; }).find(function (id) { return !_off.includes(id); });
+      if (!_first) return;
+      tab = _first;
+    }
     activeTabName = tab;
     document.querySelectorAll('.tnb .nb').forEach(b => {
       const match = b.getAttribute('data-tab') === tab;
@@ -744,6 +777,12 @@
       const t = btn.getAttribute('data-tab');
       const isHidden = hidden.includes(t);
       btn.style.display = isHidden ? 'none' : '';
+      btn.classList.toggle('nav-off', isHidden);
+      btn.hidden = isHidden;
+      btn.setAttribute('aria-hidden', isHidden ? 'true' : 'false');
+      btn.tabIndex = isHidden ? -1 : 0;
+      const _panel = document.getElementById('tab-' + t);
+      if (_panel) _panel.classList.toggle('nav-off', isHidden);
       if (!isHidden) {
         if (!firstVisibleTab) firstVisibleTab = t;
         if (t === activeTabName) currentIsVisible = true;
@@ -906,6 +945,13 @@
       chrome.storage.onChanged.addListener(function (changes, area) {
         if (area !== 'local') return;
         if (changes.m_navHidden || changes.navHidden) {
+          const _nv = (changes.m_navHidden && changes.m_navHidden.newValue) || (changes.navHidden && changes.navHidden.newValue);
+          if (Array.isArray(_nv)) {
+            try {
+              localStorage.setItem('m_navHidden', JSON.stringify(_nv));
+              localStorage.setItem('navHidden', JSON.stringify(_nv));
+            } catch (_) {}
+          }
           applyNavTabsVisibility();
           renderNavTabsToggleList();
         }

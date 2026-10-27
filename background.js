@@ -687,12 +687,61 @@ async function initTrackingState() {
   sessionStartTime = Date.now();
 }
 
+// ============================================================
+// BlockSite-style instant guard.
+// The declarativeNetRequest redirect rules above only fire for sites the extension has host access to
+// (manifest.json now grants <all_urls>). This listener is a second, independent safety net: the moment any
+// tab starts navigating to a blocked / over-limit site it is sent to blocked.html, with no 30-second wait.
+// ============================================================
+async function guardTab(tabId, url) {
+  try {
+    if (!url || tabId == null || tabId < 0) return;
+    if (url.indexOf(chrome.runtime.getURL('')) === 0) return;       // never touch our own pages
+    const d = extractDomain(url);
+    if (!d || d === 'local-file' || d.indexOf('chrome://') === 0) return;
+    const data = await chrome.storage.local.get([STORAGE_KEY_BLOCK_CACHE, STORAGE_KEY_LIMIT_CACHE]);
+    const blocked = data[STORAGE_KEY_BLOCK_CACHE] || [];
+    const limited = data[STORAGE_KEY_LIMIT_CACHE] || [];
+    const hit = (list) => list.some((x) => x && x.charAt(0) !== '#' && (d === x || d.endsWith('.' + x)));
+    let reason = null;
+    let label = d;
+    if (hit(blocked)) reason = 'block';
+    else if (hit(limited)) reason = 'limit';
+    else if (blocked.indexOf('#adult-keywords') !== -1 && ADULT_RE_JS.test(url)) { reason = 'block'; label = 'adult site'; }
+    if (!reason) return;
+    await chrome.tabs.update(tabId, {
+      url: chrome.runtime.getURL('blocked.html?reason=' + reason + '&domain=' + encodeURIComponent(label))
+    });
+  } catch (e) {}
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === 'loading') guardTab(tabId, changeInfo.url || (tab && tab.url));
+});
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab && (tab.pendingUrl || tab.url)) guardTab(tab.id, tab.pendingUrl || tab.url);
+});
+
+// Daily limits: re-check shortly after every tab switch / navigation instead of waiting for the 30 s heartbeat.
+let _limitCheckT = null;
+function scheduleLimitCheck() {
+  clearTimeout(_limitCheckT);
+  _limitCheckT = setTimeout(async () => {
+    try {
+      const r = await chrome.storage.local.get(STORAGE_KEY_LIMITS);
+      if ((r[STORAGE_KEY_LIMITS] || []).length) { await flushTime(); await syncBlocking(); }
+    } catch (e) {}
+  }, 2500);
+}
+
 // Tab activated listener
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     if (tab && tab.url) {
       await updateActiveTarget(tab.url, tab.title, tab.favIconUrl);
+      guardTab(tab.id, tab.url);
+      scheduleLimitCheck();
     }
   } catch (e) {}
 });
@@ -701,6 +750,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (tab && tab.active && (changeInfo.url || changeInfo.title || changeInfo.favIconUrl)) {
     await updateActiveTarget(tab.url, tab.title, tab.favIconUrl);
+    if (changeInfo.url) scheduleLimitCheck();
   }
 });
 

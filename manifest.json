@@ -44,8 +44,7 @@
     "http://localhost:*/*",
     "http://127.0.0.1:*/*",
     "https://aviatcode.github.io/M2028/*",
-    "https://*.supabase.co/*",
-    "<all_urls>"
+    "https://*.supabase.co/*"
   ],
   "content_scripts": [
     {
@@ -56,7 +55,9 @@
         "http://127.0.0.1:*/*",
         "https://aviatcode.github.io/M2028/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     },
     {
@@ -67,7 +68,9 @@
         "http://127.0.0.1:*/*",
         "https://aviatcode.github.io/M2028/*"
       ],
-      "js": ["wallpaper-bridge.js"],
+      "js": [
+        "wallpaper-bridge.js"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -109,7 +112,9 @@
         "favicon-32.png",
         "apple-touch-icon.png"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

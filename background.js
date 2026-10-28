@@ -212,9 +212,13 @@ function cleanLockObject(l, now) {
     out.entries[ne.kind + ':' + ne.target] = ne;
   }
   if (l.redirects && typeof l.redirects === 'object') {
+    const cleanUrls = (arr) => (Array.isArray(arr) ? arr : []).map((u) => lockUrl(u, '')).filter(Boolean).slice(0, 2);
+    const lu = cleanUrls(l.redirects.limitRedirectUrls), bu = cleanUrls(l.redirects.blockRedirectUrls);
     out.redirects = {
-      limitRedirectUrl: lockUrl(l.redirects.limitRedirectUrl, DEFAULT_LIMIT_REDIRECT),
-      blockRedirectUrl: lockUrl(l.redirects.blockRedirectUrl, DEFAULT_BLOCK_REDIRECT)
+      limitRedirectUrls: lu.length ? lu : [lockUrl(l.redirects.limitRedirectUrl, DEFAULT_LIMIT_REDIRECT)],
+      blockRedirectUrls: bu.length ? bu : [lockUrl(l.redirects.blockRedirectUrl, DEFAULT_BLOCK_REDIRECT)],
+      limitRedirectUrl: lockUrl(l.redirects.limitRedirectUrl, lu[0] || DEFAULT_LIMIT_REDIRECT),
+      blockRedirectUrl: lockUrl(l.redirects.blockRedirectUrl, bu[0] || DEFAULT_BLOCK_REDIRECT)
     };
   }
   return out;
@@ -386,7 +390,13 @@ async function redirectOpenTabs(entries) {
 // Recompute the full blocking picture (permanent blocklist + today's over-limit sites)
 // and sync it to declarativeNetRequest. Dynamic DNR rules work at the network layer,
 // so once a rule exists, Chrome enforces it instantly even if this service worker is asleep.
-async function syncBlocking() {
+let syncQueue = Promise.resolve();
+function syncBlocking() {
+  const run = syncQueue.then(doSyncBlocking, doSyncBlocking);
+  syncQueue = run.catch(() => {});
+  return run;
+}
+async function doSyncBlocking() {
   if (!chrome.declarativeNetRequest) return;
 
   try {
@@ -480,7 +490,20 @@ async function syncBlocking() {
     }
 
     if (removeRuleIds.length || addRules.length) {
-      await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
+      try {
+        await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
+      } catch (bulkErr) {
+        // One invalid rule makes Chrome reject the whole batch, which left NOTHING blocked.
+        // Clear ours, then add the rules one at a time so a single bad domain cannot disable the rest.
+        console.warn('Bulk rule install failed, retrying one by one:', bulkErr);
+        const live = await chrome.declarativeNetRequest.getDynamicRules();
+        const clearIds = live.map(r => r.id).filter(id => id >= DNR_BLOCK_ID_BASE && id <= DNR_MANAGED_MAX_ID);
+        if (clearIds.length) await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: clearIds });
+        for (const rule of addRules) {
+          try { await chrome.declarativeNetRequest.updateDynamicRules({ addRules: [rule] }); }
+          catch (oneErr) { console.warn('Skipped bad rule', rule.condition, oneErr); }
+        }
+      }
     }
 
     // 5. Boot any tab already sitting on something that just got blocked
@@ -700,8 +723,18 @@ async function guardTab(tabId, url) {
     const d = extractDomain(url);
     if (!d || d === 'local-file' || d.indexOf('chrome://') === 0) return;
     const data = await chrome.storage.local.get([STORAGE_KEY_BLOCK_CACHE, STORAGE_KEY_LIMIT_CACHE]);
-    const blocked = data[STORAGE_KEY_BLOCK_CACHE] || [];
+    let blocked = data[STORAGE_KEY_BLOCK_CACHE] || [];
     const limited = data[STORAGE_KEY_LIMIT_CACHE] || [];
+    if (!blocked.length) {
+      // Cache not built yet (service worker just woke up): read the real blocklist so nothing slips through
+      const live = await chrome.storage.local.get([STORAGE_KEY_BLOCKLIST, 'm2028_custom_rules']);
+      const set = new Set();
+      for (const b of (live[STORAGE_KEY_BLOCKLIST] || [])) {
+        expandTargetDomains(b.target, live.m2028_custom_rules || {}).forEach(x => set.add(x));
+        if (b.target === 'category:adult') set.add('#adult-keywords');
+      }
+      blocked = [...set];
+    }
     const hit = (list) => list.some((x) => x && x.charAt(0) !== '#' && (d === x || d.endsWith('.' + x)));
     let reason = null;
     let label = d;

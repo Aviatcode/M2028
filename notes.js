@@ -107,10 +107,12 @@ async function W(path, opt) {
   const r = await fetch(CFG.workerUrl.replace(/\/$/, '') + path, Object.assign({}, opt, { headers: Object.assign({ authorization: 'Bearer ' + t }, (opt && opt.headers) || {}) }));
   return r;
 }
-async function refreshQuota() {
+let quotaAt = 0, lastPullAt = 0;
+async function refreshQuota(force) {
+  if (!force && st.quota && Date.now() - quotaAt < 60000) { paintBar(); return; }
   st.quotaErr = '';
   if (!canCloud() || !hasWorker()) { st.quota = null; return; }
-  try { const r = await W('/quota'); if (!r.ok) throw new Error('quota ' + r.status); st.quota = await r.json(); }
+  try { const r = await W('/quota'); if (!r.ok) throw new Error('quota ' + r.status); st.quota = await r.json(); quotaAt = Date.now(); }
   catch (e) { st.quota = null; st.quotaErr = 'Could not read cloud usage (' + (e.message || 'offline') + ').'; }
   paintBar();
 }
@@ -138,15 +140,15 @@ let syncing = false, syncQ = false;
 function queueSync() { if (syncQ) return; syncQ = true; setTimeout(() => { syncQ = false; sync(); }, 600); }
 const stripNote = n => { const c = JSON.parse(JSON.stringify(n)); c.sync = 'synced'; c.err = ''; c.attachments.forEach(a => { a.local = false; a.state = a.remote ? 'synced' : a.state; }); return c; };
 async function sync() {
-  if (syncing || !canCloud() || !navigator.onLine) return; syncing = true;
+  if (syncing || !canCloud() || !navigator.onLine) return; syncing = true; let worked = false;
   try {
     const pf = (await meta.get('pfiles')) || [];
-    if (pf.length && hasWorker()) { const left = []; for (const id of pf) { try { const r = await W('/file/' + encodeURIComponent(id), { method: 'DELETE' }); if (!r.ok) left.push(id); } catch (e) { left.push(id); } } await meta.set('pfiles', left); }
+    if (pf.length && hasWorker()) { worked = true; const left = []; for (const id of pf) { try { const r = await W('/file/' + encodeURIComponent(id), { method: 'DELETE' }); if (!r.ok) left.push(id); } catch (e) { left.push(id); } } await meta.set('pfiles', left); }
     for (const n of st.notes.filter(x => x.dest === 'cloud' && x.sync !== 'synced')) {
       try {
         for (const a of n.attachments.filter(a => !a.remote)) {
           if (!hasWorker()) { const e = new Error('File cloud storage is not configured for this app yet — files stay on this device.'); e.fatal = true; throw e; }
-          try { await uploadAtt(n, a); } catch (e) { a.state = 'error'; a.err = e.message; st.up = null; throw e; }
+          try { worked = true; await uploadAtt(n, a); } catch (e) { a.state = 'error'; a.err = e.message; st.up = null; throw e; }
           await idb.put('notes', n);
         }
         const { error } = await supa.from('notes').upsert({ id: n.id, data: stripNote(n), updated_at: new Date(n.updated).toISOString(), deleted: false });
@@ -158,17 +160,21 @@ async function sync() {
     if (settings().cloudOn) await syncMeta();
     const pd = (await meta.get('pdel')) || [];
     if (pd.length) { const left = []; for (const id of pd) { const { error } = await supa.from('notes').update({ deleted: true, data: {} }).eq('id', id); if (error) left.push(id); } await meta.set('pdel', left); }
-    if (settings().cloudOn) await pull();
+    if (settings().cloudOn && Date.now() - lastPullAt > 60000) await pull();   // incoming changes: at most once a minute
   } catch (e) { /* local data is never touched on failure */ }
-  syncing = false; await refreshQuota(); render();
+  syncing = false; if (worked) await refreshQuota(true); render();
 }
+let metaSig = '';
 async function syncMeta() {
+  const sig = JSON.stringify([st.folders, st.labels]); if (sig === metaSig) return;   // nothing changed since last push
+  metaSig = sig;
   for (const [tbl, list] of [['note_folders', st.folders], ['note_labels', st.labels]]) {
     if (!list.length) continue;
     await supa.from(tbl).upsert(list.map(x => ({ id: x.id, data: x, updated_at: new Date(x.updated || x.created).toISOString(), deleted: !!x.deleted })));
   }
 }
 async function pull() {
+  lastPullAt = Date.now();
   const last = (await meta.get('lastPull')) || '1970-01-01T00:00:00Z'; let newest = last;
   const { data, error } = await supa.from('notes').select('*').gt('updated_at', last); if (error) return;
   for (const row of data || []) {
@@ -183,8 +189,8 @@ async function pull() {
       r.attachments.forEach(a => a.local = !!keep.get(a.id)); Object.assign(l, r, { dest: 'cloud', sync: 'synced' }); await idb.put('notes', l);
     }
   }
-  const fl = await supa.from('note_folders').select('*'); if (fl.data) for (const row of fl.data) { if (row.deleted) { st.folders = st.folders.filter(f => f.id !== row.id); await idb.del('folders', row.id); } else if (!st.folders.some(f => f.id === row.id)) { st.folders.push(row.data); await idb.put('folders', row.data); } }
-  const ll = await supa.from('note_labels').select('*'); if (ll.data) for (const row of ll.data) { if (row.deleted) { st.labels = st.labels.filter(f => f.id !== row.id); await idb.del('labels', row.id); } else if (!st.labels.some(f => f.id === row.id)) { st.labels.push(row.data); await idb.put('labels', row.data); } }
+  const fl = await supa.from('note_folders').select('*').gt('updated_at', last); if (fl.data) for (const row of fl.data) { if (row.deleted) { st.folders = st.folders.filter(f => f.id !== row.id); await idb.del('folders', row.id); } else if (!st.folders.some(f => f.id === row.id)) { st.folders.push(row.data); await idb.put('folders', row.data); } }
+  const ll = await supa.from('note_labels').select('*').gt('updated_at', last); if (ll.data) for (const row of ll.data) { if (row.deleted) { st.labels = st.labels.filter(f => f.id !== row.id); await idb.del('labels', row.id); } else if (!st.labels.some(f => f.id === row.id)) { st.labels.push(row.data); await idb.put('labels', row.data); } }
   await meta.set('lastPull', newest);
 }
 async function downloadAtt(a) {
@@ -205,7 +211,7 @@ async function setDest(ids, dest, quiet) {
   const needFiles = ns.some(n => n.attachments.some(a => !a.remote));
   if (needFiles && !hasWorker()) { toast('File cloud storage is not set up in this deployment. Notes can sync, files stay local.'); return false; }
   if (needFiles) {
-    await refreshQuota();
+    await refreshQuota(true);
     const seen = new Set(); let need = 0; ns.forEach(n => n.attachments.forEach(a => { if (!a.remote && !seen.has(a.id)) { seen.add(a.id); need += a.size; } }));
     if (!st.quota) { toast(st.quotaErr || 'Cloud usage unavailable right now. Nothing was uploaded.'); return false; }
     if (need > st.quota.remaining) return await noSpace(need, ids);
@@ -221,7 +227,7 @@ async function unCloud(ns) {
     try { if (canCloud()) await supa.from('notes').update({ deleted: true, data: {} }).eq('id', n.id); } catch (e) {}
     n.dest = 'local'; n.sync = 'local'; await idb.put('notes', n);
   }
-  await refreshQuota(); return true;
+  await refreshQuota(true); return true;
 }
 function noSpace(need, ids) {
   return new Promise(res => {
@@ -438,7 +444,7 @@ function openEditor(n, isNew) {
 }
 async function dropRemote(a) {
   if (!a || !a.remote || st.notes.some(n => n.attachments.some(y => y.id === a.id))) return;
-  try { if (!canCloud() || !hasWorker()) throw 0; const r = await W('/file/' + encodeURIComponent(a.id), { method: 'DELETE' }); if (!r.ok) throw 0; refreshQuota(); }
+  try { if (!canCloud() || !hasWorker()) throw 0; const r = await W('/file/' + encodeURIComponent(a.id), { method: 'DELETE' }); if (!r.ok) throw 0; refreshQuota(true); }
   catch (e) { const pf = (await meta.get('pfiles')) || []; if (!pf.includes(a.id)) { pf.push(a.id); await meta.set('pfiles', pf); } }
 }
 async function dropBlobIfUnused(a) { if (!a) return; if (st.notes.some(n => n.attachments.some(x => x.id === a.id))) return; await idb.del('blobs', a.id); const u = urls.get(a.id); if (u) { URL.revokeObjectURL(u); urls.delete(a.id); } }
@@ -493,7 +499,7 @@ function openPending() {
 
 /* ---------- settings / cloud management ---------- */
 function openSettings() {
-  refreshQuota();
+  refreshQuota(true);
   const s = settings(); const cloud = st.notes.filter(n => n.dest === 'cloud' && !n.trashed);
   const files = cloud.flatMap(n => n.attachments.filter(a => a.remote).map(a => ({ n, a })));
   const o = dlg('<h3>Notes storage</h3><div class="nt-bar nt-barx" data-full="1"></div>' +
@@ -651,11 +657,11 @@ function promptOnce() { if (st.promptShown) return; if (settings().defaultDest !
 async function boot() {
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { const o = [...document.querySelectorAll('.nt-ov')].pop(); if (o && o.close) o.close(); } });
-  integrate(); bind(); await loadAll(); hideHomeNotes((await meta.get('mig')) || null); await migrateHome(); await drainShares(); render(); setInterval(migrateHome, 5000);
-  window.addEventListener('online', queueSync); setInterval(() => { if (st.notes.some(n => n.dest === 'cloud' && n.sync !== 'synced')) sync(); }, 60000);
+  integrate(); bind(); await loadAll(); hideHomeNotes((await meta.get('mig')) || null); await migrateHome(); await drainShares(); render(); setInterval(() => { if (!document.hidden) migrateHome(); }, 10000);
+  window.addEventListener('online', queueSync); setInterval(() => { if (!document.hidden && st.notes.some(n => n.dest === 'cloud' && n.sync === 'dirty')) sync(); }, 60000); setInterval(() => { if (!document.hidden && st.notes.some(n => n.dest === 'cloud' && n.sync === 'error')) sync(); }, 600000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { drainShares(); queueSync(); } });
   if (canCloud() && settings().cloudOn) { queueSync(); }
-  setTimeout(() => { if (canCloud()) refreshQuota(); }, 2500);
+  setTimeout(() => { if (canCloud() && settings().cloudOn) refreshQuota(); }, 2500);
 }
 window.M2028Notes = { ingest, sync, refreshQuota, state: st, open: () => showV('notes') };
 const go = () => boot().catch(e => { console.error('Notes failed to start', e); const r = $('#nt-root'); if (r) r.innerHTML = '<div class="nt-empty">Notes could not open local storage in this browser (private browsing or blocked site data?). Allow site data for this page and reload — nothing has been lost.</div>'; });

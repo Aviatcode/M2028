@@ -8129,6 +8129,7 @@ function render() {
   root.querySelectorAll('img[data-aid]').forEach(async im => { const a = st.notes.flatMap(n => n.attachments).find(x => x.id === im.dataset.aid); const u = a && await blobURL(a); if (u) im.src = u; else im.remove(); });
 }
 async function newChecklist() { const n = mk({ listStyle: 'check', items: [{ id: uid(), text: '', done: false, due: '' }], folderId: curFolder() }); n.dest = defDest(); openEditor(n, true); }
+async function newTextNote() { const n = mk({ listStyle: 'none', folderId: curFolder() }); n.dest = defDest(); openEditor(n, true); }
 
 /* ---------- editor ---------- */
 function openEditor(n, isNew) {
@@ -8286,7 +8287,7 @@ function openMenu(kind) {
   const so = settings().sort, lv = settings().view; const live = st.notes.filter(n => !n.trashed);
   const it = (k, label, on, n) => '<button class="nt-mi" data-m="' + k + '"><span>' + label + '</span><span style="color:var(--m2)">' + (on ? '✓' : (n != null ? n : '')) + '</span></button>';
   let h;
-  if (kind === 'add') h = '<h3>Add</h3>' + it('newlist', 'New checklist') + it('newfile', 'Note with photo or file');
+  if (kind === 'add') h = '<h3>Add</h3>' + it('newnote', 'New note') + it('newlist', 'New checklist') + it('newfile', 'Note with photo or file');
   else if (kind === 'bulk') h = '<h3>' + st.sel.size + ' selected</h3>' + it('b:pin', 'Pin / unpin') + it('b:star', 'Star / unstar') + it('b:move', 'Move to folder…') + it('b:local', 'Keep on this device') + it('b:cloud', 'Upload to cloud');
   else h = '<h3>Notes</h3>' + it('v:all', 'All notes', st.view === 'all') + it('v:inbox', 'Inbox', st.view === 'inbox', live.filter(n => n.folderId === 'inbox' && !n.archived).length || '') + it('v:starred', 'Starred', st.view === 'starred') + it('v:reminders', 'Reminders', st.view === 'reminders') +
     (st.folders.length ? '<div class="nt-sec">Folders</div>' + st.folders.map(f => it('v:f:' + f.id, '📁 ' + esc(f.name), st.view === 'f:' + f.id)).join('') : '') +
@@ -8300,7 +8301,7 @@ function openMenu(kind) {
     else if (m.startsWith('b:')) bulk(m.slice(2));
     else if (m === 'layout') { setSetting('view', settings().view === 'grid' ? 'list' : 'grid'); render(); }
     else if (m === 'selmode') { st.selMode = !st.selMode; st.sel.clear(); render(); }
-    else if (m === 'newlist') newChecklist(); else if (m === 'newfile') $('#nt-file').click();
+    else if (m === 'newnote') newTextNote(); else if (m === 'newlist') newChecklist(); else if (m === 'newfile') $('#nt-file').click();
     else if (m === 'folders') manage('folders'); else if (m === 'labels') manage('labels'); else if (m === 'settings') openSettings(); };
 }
 
@@ -8431,5 +8432,6 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 })();
 
 </script>
+<script src="ios-share.js"></script>
 </body>
 </html>

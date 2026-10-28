@@ -1,0 +1,24 @@
+<!-- Merge inside <application> of android/app/src/main/AndroidManifest.xml -->
+<activity
+    android:name=".ShareReceiverActivity"
+    android:exported="true"
+    android:label="Save to Notes"
+    android:theme="@android:style/Theme.Translucent.NoTitleBar"
+    android:excludeFromRecents="true"
+    android:taskAffinity=""
+    android:launchMode="singleTask">
+    <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/*" />
+        <data android:mimeType="image/*" />
+        <data android:mimeType="application/pdf" />
+        <data android:mimeType="application/*" />
+    </intent-filter>
+    <intent-filter>
+        <action android:name="android.intent.action.SEND_MULTIPLE" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="image/*" />
+        <data android:mimeType="application/*" />
+    </intent-filter>
+</activity>

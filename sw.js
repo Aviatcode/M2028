@@ -25,6 +25,10 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 //    medicine reminders the page sends and shows them when the browser wakes
 //    the worker (Periodic Background Sync or Web Push), even with the app closed.
 //
+// 6) SHARE TARGET: the manifest POSTs shared text/links/files to ./share-receive. handleShare()
+//    (bottom of this file) saves them to the 'm2028_share_inbox' IndexedDB that notes.js already
+//    drains, and answers with a tiny "Saved" page that closes itself.
+//
 // Never cached: Supabase / any API calls (always live data), audio and other
 // range requests, non-GET requests.
 //
@@ -33,7 +37,7 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 // it only shows what the page last told it to. If the browser suspends the
 // page for a long time the notification stops updating until the app reopens.
 
-const VERSION = 'v10';
+const VERSION = 'v11';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
 const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'app.webmanifest', 'icon-192.png', 'apple-touch-icon.png', 'push.js', 'leaf-icons.css', 'pom-duo.webp'];
@@ -108,6 +112,11 @@ async function staleWhileRevalidate(event, cacheName, cacheKey) {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+  if (req.method === 'POST') {
+    const pu = new URL(req.url);
+    if (pu.origin === self.location.origin && /\/share-receive$/.test(pu.pathname)) event.respondWith(handleShare(req));
+    return;
+  }
   if (req.method !== 'GET') return;
   if (req.headers.has('range')) return; // audio/video seeking must hit the network
 
@@ -245,3 +254,57 @@ async function flushOutbox() {
 self.addEventListener('sync', (event) => {
   if (event.tag === 'm2028-sync') event.waitUntil(flushOutbox());
 });
+
+// ---------------------------------------------------------------------------
+// Share target: save what another app shared, then show a self-closing page.
+// ---------------------------------------------------------------------------
+const SHARE_MAX = 25000000; // same cap as notes.js (maxFile)
+
+function shareDB() {
+  return new Promise((ok, no) => {
+    const r = indexedDB.open('m2028_share_inbox', 1); // same name + schema notes.js drainShares() uses
+    r.onupgradeneeded = () => r.result.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => no(r.error);
+  });
+}
+
+function sharePage(msg, good) {
+  const html = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Notes</title><style>html,body{height:100%;margin:0;background:#000;color:#fff;font:600 18px system-ui,sans-serif}' +
+    'body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px}' +
+    'a{color:#8ab4f8;font-weight:500;font-size:15px;display:none}</style></head><body>' +
+    '<div>' + (good ? '\u2713 ' : '') + msg + '</div><a id="o" href="./index.html">Open Notes</a>' +
+    '<script>setTimeout(function(){try{window.close()}catch(e){}},' + (good ? 700 : 2200) + ');' +
+    'setTimeout(function(){document.getElementById("o").style.display="block"},1300);</script></body></html>';
+  return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+}
+
+async function handleShare(request) {
+  try {
+    const f = await request.formData();
+    const str = (k) => { const v = f.get(k); return typeof v === 'string' ? v : ''; };
+    const title = str('title'), text = str('text'), url = str('url');
+    const all = f.getAll('media').filter((x) => x && typeof x !== 'string' && x.size > 0);
+    const files = all.filter((x) => x.size <= SHARE_MAX);
+    const rejected = all.length - files.length;
+    const recs = [];
+    if (files.length) {
+      // title/text/url go on the first note only, so a multi-file share doesn't repeat them on every note
+      files.forEach((x, i) => recs.push({ title: i ? '' : title, text: i ? '' : text, url: i ? '' : url, blob: x, name: x.name || 'shared', type: x.type || '' }));
+    } else if (title || text || url) {
+      recs.push({ title, text, url });
+    }
+    if (!recs.length) return sharePage(rejected ? 'File too large (25 MB max)' : 'Nothing to save', false);
+    const db = await shareDB();
+    await new Promise((ok, no) => {
+      const tx = db.transaction('items', 'readwrite');
+      recs.forEach((r) => tx.objectStore('items').add(r));
+      tx.oncomplete = () => { db.close(); ok(); };
+      tx.onerror = tx.onabort = () => no(tx.error);
+    });
+    return sharePage('Saved to Notes' + (rejected ? ' (' + rejected + ' too large)' : ''), true);
+  } catch (e) {
+    return sharePage('Could not save', false);
+  }
+}

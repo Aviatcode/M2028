@@ -7555,7 +7555,7 @@ document.addEventListener("click",function(e){
     '</ol>';
 
   // ---------- popup (opened from the Extension button on the main page) ----------
-  var SETUP_EXE = 'M2028-Setup.exe', latest = null, popOpen = false;
+  var latest = null, popOpen = false;
   // Paste your store links here once the extension is published; the popup then offers a one-click store install with automatic updates.
   var STORE_URLS = { edge: '', chrome: '' };   // e.g. edge: 'https://microsoftedge.microsoft.com/addons/detail/...'
   var UA = navigator.userAgent;
@@ -7609,9 +7609,9 @@ document.addEventListener("click",function(e){
       h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and click the <b>reload \u27f3</b> arrow on the M2028 card.</li>';
       h += '<li>Refresh this page. This notice disappears once the new version is detected.</li>';
     } else {
-      h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and switch on <b>Developer mode</b> (top right).</li>';
-      h += '<li>Click <b>Load unpacked</b>, paste <code>' + path + '</code>' + cpBtn(path) + ' into the folder box' + (!isWin ? ' (press <b>Cmd+Shift+G</b> first)' : '') + ', press Enter, then click <b>Select Folder</b>. This is the folder the installer made, not the .exe. Only needed once.</li>';
-      h += '<li>Optional: in the extension\u2019s <b>Details</b>, switch on <b>Allow in Incognito</b>.</li>';
+      h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and switch on <b>Developer mode</b> (' + (BR === 'edge' ? 'left sidebar' : 'top right') + ').</li>';
+      h += '<li>Click <b>Load unpacked</b>, paste <code>' + path + '</code>' + cpBtn(path) + ' into the folder box' + (isMac ? ' (press <b>Cmd+Shift+G</b> first)' : !isWin ? ' (press <b>Ctrl+L</b> first)' : '') + ', press Enter, then click <b>Select Folder</b>. This is the folder the installer made. Only needed once.</li>';
+      h += '<li>Optional: in the extension\u2019s <b>Details</b>, switch on <b>Allow ' + (BR === 'edge' ? 'in InPrivate' : 'in Incognito') + '</b>.</li>';
       h += '<li>Refresh this page. This notice disappears once the extension is detected.</li>';
     }
     return h + '</ol>';
@@ -7658,7 +7658,6 @@ document.addEventListener("click",function(e){
     var box = document.getElementById('xdlBox'); if (!box) return;
     box.innerHTML = body();
     var b = document.getElementById('xdlBtn'); if (b) b.onclick = function () { markPend(); build(); };
-    var x = document.getElementById('xdlExe'); if (x) x.addEventListener('click', afterGo);
     var m = document.getElementById('xdlMac'); if (m) m.addEventListener('click', afterGo);
     bindCopy(box);
     box.querySelector('[data-x]').onclick = close;
@@ -7716,7 +7715,7 @@ document.addEventListener("click",function(e){
       dot(); corner();
       var installed = document.documentElement.hasAttribute('data-m2028-ext'), seen = false;
       try { seen = localStorage.getItem('m2028_ext_offer') === '1'; } catch (e) {}
-      if (!installed && !seen && /Chrome|Edg/.test(navigator.userAgent) && !/Mobile|Android/i.test(navigator.userAgent) && window.innerWidth >= 900) {
+      if (!installed && !seen && /Chrome|Edg/.test(navigator.userAgent) && !/Mobile|Android/i.test(navigator.userAgent) && window.innerWidth >= 900 && (!window.__m2028AutoOfferOK || window.__m2028AutoOfferOK())) {
         try { localStorage.setItem('m2028_ext_offer', '1'); } catch (e) {}
         window.m2028ExtOpen();
       }
@@ -8573,8 +8572,8 @@ function integrate() {
   try {
     if (!NAV_TABS.some(t => t.id === 'notes')) NAV_TABS.splice(2, 0, { id: 'notes', label: 'Notes', icon: svg('notes').replace('<svg ', '<svg width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-.2em" '), group: 'Today', primary: true, shortLabel: 'Notes' });
     const sv = window.showV; if (!sv.__nt) { const w = function (id) { const vn = document.getElementById('v-notes'); if (id === 'notes' && vn && vn.classList.contains('on')) { render(); return; } /* already open: re-running the app's view switch would restart its fade animation (visible flicker) */ const r = sv.apply(this, arguments); if (id === 'notes') { render(); refreshQuota(); promptOnce(); } return r; }; w.__nt = 1; window.showV = w; }
-    // Minimal defaults for first-time guests: Home, Pomodoro, Calendar only (everything else is opt-in in tab settings)
-    const gm = window.guestMode; if (typeof gm === 'function' && !gm.__nt) { const w = function () { const fresh = localStorage.getItem('m_navHidden') === null; const r = gm.apply(this, arguments); if (fresh && localStorage.getItem('m_navInit') === null) { const h = {}; NAV_TABS.forEach(t => { if (!['dash', 'pomo', 'sched'].includes(t.id)) h[t.id] = true; }); S.s('navHidden', h); S.s('navInit', true); try { renderNavAll(); } catch (e) {} } return r; }; w.__nt = 1; window.guestMode = w; }
+    // Minimal defaults for first-time guests: Home, Pomodoro, Notes, Block Sites only (everything else is opt-in in tab settings)
+    const gm = window.guestMode; if (typeof gm === 'function' && !gm.__nt) { const w = function () { const fresh = localStorage.getItem('m_navHidden') === null; const r = gm.apply(this, arguments); if (fresh && localStorage.getItem('m_navInit') === null) { const h = {}; NAV_TABS.forEach(t => { if (!['dash', 'pomo', 'notes', 'block'].includes(t.id)) h[t.id] = true; }); S.s('navHidden', h); S.s('navInit', true); try { renderNavAll(); } catch (e) {} } return r; }; w.__nt = 1; window.guestMode = w; }
     const oh = window.openExtensionHubModal; if (typeof oh === 'function' && !oh.__nt) { const w = function (t) { if (t === 'notes') { showV('notes'); return; } return oh.apply(this, arguments); }; w.__nt = 1; window.openExtensionHubModal = w; }   // any leftover 'Notes' hub shortcut lands on the real Notes tab
     renderNavAll();
   } catch (e) { console.warn('Notes nav integration failed', e); }
@@ -8598,5 +8597,149 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 
 </script>
 <script src="ios-share.js"></script>
+<style id="m2028-guest-tour-css">
+/* guest look: black + white accent + line doodles (only for untouched guest/new accounts) */
+html.m2028-gl{--bg:#000!important;--ai:#fff!important;--a2:rgba(255,255,255,.1)!important;--on-ai-solid:#000!important;--ai-text:#fff!important}
+html.m2028-gl body{background-color:#000!important;background-image:var(--m2028-doodle)!important;background-size:340px 340px!important;background-attachment:fixed!important}
+#m2028Tour{position:fixed;inset:0;z-index:100000;pointer-events:none}
+#m2028Tour .p{position:absolute;background:rgba(0,0,0,.8);pointer-events:auto}
+#m2028Tour .tsv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+#m2028Tour .dr{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:1000;animation:m2028d .8s ease forwards}
+@keyframes m2028d{to{stroke-dashoffset:0}}
+#m2028Tour .tc{position:absolute;pointer-events:auto;background:#fff;color:#111;border-radius:14px;padding:14px 16px;width:min(290px,calc(100vw - 24px));font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#m2028Tour .tc b{display:block;font-size:15px;margin-bottom:3px}
+#m2028Tour .tc .rw{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:8px}
+#m2028Tour .tc .nx{background:#111;color:#fff;border:0;border-radius:9px;padding:8px 16px;font:inherit;font-weight:600;cursor:pointer}
+#m2028Tour .tc .sk{background:none;border:0;color:#666;font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:4px}
+#m2028Tour .tc .st{font-size:11px;color:#888}
+#m2028AppOv{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+#m2028AppBox{width:min(460px,100%);background:var(--s1,#17181c);color:var(--tx,#eee);border:1px solid var(--b2,rgba(128,128,128,.3));border-radius:16px;padding:20px;font-size:13.5px;line-height:1.5}
+#m2028AppBox h3{margin:0 0 6px;font-size:17px}#m2028AppBox .row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+#m2028AppBox .big{flex:1;padding:11px 14px;border-radius:10px;border:0;background:var(--ai,#fff);color:var(--on-ai-solid,#000);font:inherit;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+#m2028AppBox .big.alt{background:var(--s2,#22242a);color:var(--tx,#eee);border:1px solid var(--b2,rgba(128,128,128,.3))}
+</style>
+<script id="m2028-guest-tour">
+(function () {
+  'use strict';
+  var KEY = 'm2028_tour_v1', APPK = 'm2028_app_offer', UA = navigator.userAgent;
+  var phone = /Android|iPhone|iPad|iPod|Mobile/i.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var force = /[?&]tour=1/.test(location.search), ran = false, tourOn = false, idx = 0, ov = null, steps = [], offClick = null;
+  function $(s) { return document.querySelector(s); }
+  function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lset(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function guest() { try { return JSON.parse(ls('m_guestMode')) === true; } catch (e) { return false; } }
+  function freshAcct() { try { return !!(_user && _user.created_at && Date.now() - Date.parse(_user.created_at) < 864e5); } catch (e) { return false; } }
+  function appVisible() { var a = document.getElementById('appShell'); return !!a && a.style.display !== 'none'; }
+  function eligible() { return force || (ls(KEY) !== '1' && (guest() || freshAcct())); }
+  window.__m2028AutoOfferOK = function () { return appVisible() && !eligible() && !tourOn; };
+
+  // ---------- 1. guest look: black, white accent, line doodles ----------
+  var T = 'fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+  var DOODLE = '<svg xmlns="http://www.w3.org/2000/svg" width="340" height="340" ' + T + '>' +
+    '<path d="M30 40h30v22q0 10-10 10H40q-10 0-10-10zM60 46h6q6 0 6 7t-6 7h-6M38 28q3-6 0-10M48 28q3-6 0-10"/>' +
+    '<g transform="rotate(-8 135 58)"><path d="M120 40h30v36h-30zM126 40v36M132 50h12M132 58h12"/></g>' +
+    '<circle cx="250" cy="52" r="20"/><path d="M250 52v-12M250 52l9 6"/>' +
+    '<path d="M30 140h28v28H30zM36 154l7 7 12-14"/>' +
+    '<path d="M150 132a16 16 0 0 0-9 29v8h18v-8a16 16 0 0 0-9-29zM145 176h10"/>' +
+    '<path d="M240 190h22l-3 14h-16zM251 190v-24M251 178q-14 0-16-12 12 0 16 12M251 174q14 0 16-12-12 0-16 12"/>' +
+    '<path d="M26 268a16 16 0 0 1 32 0M24 268h6v14h-6zM54 268h6v14h-6z"/>' +
+    '<path d="M122 250h36v22h-36zM116 278h48"/>' +
+    '<path d="M262 250l5 11 12 1-9 8 3 12-11-6-11 6 3-12-9-8 12-1z"/>' +
+    '<path d="M196 130l22 22-8 2-14-14zM218 152l-1 8"/>' +
+    '<path d="M96 120v-20l14-3v20M92 122a4 4 0 1 0 0-.1M106 119a4 4 0 1 0 0-.1"/>' +
+    '<path d="M300 150c-8-10-22 0-12 12l12 10 12-10c10-12-4-22-12-12z"/>' +
+    '<path d="M70 210q10-14 20 0t20 0M190 300q10-14 20 0t20 0"/></svg>';
+  document.documentElement.style.setProperty('--m2028-doodle', 'url("data:image/svg+xml,' + encodeURIComponent(DOODLE) + '")');
+  function look() {
+    var untouched = (guest() || freshAcct()) && ls('m2028_gl') !== '0' && !ls('m_customColors') && !document.documentElement.classList.contains('haswp') &&
+      (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' && !document.body.classList.contains('onwall');
+    document.documentElement.classList.toggle('m2028-gl', !!untouched);
+  }
+  // ---------- 2. minimal tabs for brand-new guests / accounts (others are opt-in under Customize → Navigation Tabs) ----------
+  function minimalTabs() {
+    if (!freshAcct() || ls('m_navHidden') !== null || ls('m_navInit') !== null) return;
+    try { var h = {}; NAV_TABS.forEach(function (t) { if (['dash', 'pomo', 'notes', 'block'].indexOf(t.id) < 0) h[t.id] = true; }); S.s('navHidden', h); S.s('navInit', true); renderNavAll(); } catch (e) {}
+  }
+
+  // ---------- 3. tour ----------
+  function navBtn(id) { return function () { return $((phone ? '.bnbt' : '.nb') + '[onclick*="\'' + id + '\'"]'); }; }
+  function byText(re) { return function () { var b = document.querySelectorAll('#v-dash button, #v-dash .btn'); for (var i = 0; i < b.length; i++) if (re.test(b[i].textContent) && b[i].offsetWidth) return b[i]; return null; }; }
+  function go(id) { return function () { try { showV(id); } catch (e) {} }; }
+  function buildSteps() {
+    var s = [{ h: 'Welcome to M2028', x: 'A 30-second tour. Everything else on the page is locked until you finish or skip.', b: 'Start' },
+      { t: navBtn('pomo'), act: go('pomo'), click: 1, x: 'Open <b style="display:inline">Pomodoro</b>: your focus timer.' },
+      { t: function () { return $('#v-pomo .card') || $('#v-pomo'); }, x: 'Start a focus session here.', next: 1 },
+      { t: navBtn('notes'), act: go('notes'), click: 1, x: 'Now <b style="display:inline">Notes</b>.' },
+      { t: function () { return $('#nt-new'); }, x: 'Type a note and press Enter. That is all.', next: 1 }];
+    if (!phone) s.push({ t: navBtn('block'), act: go('block'), click: 1, x: '<b style="display:inline">Block Sites</b> keeps you off distracting sites.' },
+      { t: function () { return $('#v-block'); }, x: 'This works through the browser extension. We set it up next.', next: 1 });
+    s.push({ pre: go('dash'), t: byText(/customi[sz]e/i), x: 'Calendar, UPSC, Body and other tabs are switched off to keep things clean. Turn them on in <b style="display:inline">Customize → Navigation Tabs</b>.', next: 1 });
+    s.push(phone ? { pre: go('dash'), h: 'Save notes without opening the site', x: 'Install the app and share links, text or photos straight into Notes.', b: 'Show me', last: 1, open: 'app' }
+                 : { pre: go('dash'), t: function () { return $('#extOpenBtn'); }, act: function () { try { m2028ExtOpen(); } catch (e) {} }, click: 1, last: 1, x: 'Last step: get the extension here. It blocks sites and saves notes in one click.' });
+    return s;
+  }
+  function el(st) { return st.t ? st.t() : null; }
+  function set(p, x, y, w, h) { p.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + Math.max(0, w) + 'px;height:' + Math.max(0, h) + 'px'; }
+  function place() {
+    if (!ov) return; var st = steps[idx], t = el(st), W = innerWidth, H = innerHeight, P = ov.querySelectorAll('.p'), c = ov.querySelector('.tc'), sv = ov.querySelector('.tsv');
+    var r = t && t.getBoundingClientRect(); sv.innerHTML = '';
+    if (!r || !r.width) { set(P[0], 0, 0, W, H); set(P[1], 0, 0, 0, 0); set(P[2], 0, 0, 0, 0); set(P[3], 0, 0, 0, 0); c.style.left = Math.max(12, (W - c.offsetWidth) / 2) + 'px'; c.style.top = Math.max(12, (H - c.offsetHeight) / 2) + 'px'; return; }
+    var pad = 8, x = Math.max(0, r.left - pad), y = Math.max(0, r.top - pad), w = Math.min(W, r.right + pad) - x, h = Math.min(H, r.bottom + pad) - y;
+    set(P[0], 0, 0, W, y); set(P[1], 0, y + h, W, H - y - h); set(P[2], 0, y, x, h); set(P[3], x + w, y, W - x - w, h);
+    var below = y + h + c.offsetHeight + 60 < H, cx = Math.min(Math.max(12, x), W - c.offsetWidth - 12), cy = below ? y + h + 46 : Math.max(12, y - c.offsetHeight - 46);
+    c.style.left = cx + 'px'; c.style.top = cy + 'px';
+    var sx = cx + c.offsetWidth / 2, sy = below ? cy : cy + c.offsetHeight, ex = x + w / 2, ey = below ? y + h + 3 : y - 3, mx = (sx + ex) / 2 + (ex < sx ? -34 : 34), my = (sy + ey) / 2, a = Math.atan2(ey - my, ex - mx);
+    function hd(d) { return 'M' + ex + ' ' + ey + 'l' + (-13 * Math.cos(a + d)) + ' ' + (-13 * Math.sin(a + d)); }
+    sv.innerHTML = '<defs><filter id="m2028p"><feTurbulence baseFrequency=".035" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="3.5"/></filter></defs><g filter="url(#m2028p)">' +
+      '<path class="dr" pathLength="1000" d="M' + (x + 4) + ' ' + y + 'L' + (x + w - 3) + ' ' + (y + 2) + 'L' + (x + w + 1) + ' ' + (y + h - 3) + 'L' + (x + 3) + ' ' + (y + h + 1) + 'Z"/>' +
+      '<path class="dr" pathLength="1000" d="M' + sx + ' ' + sy + 'Q' + mx + ' ' + my + ' ' + ex + ' ' + ey + '"/><path class="dr" pathLength="1000" d="' + hd(.5) + '"/><path class="dr" pathLength="1000" d="' + hd(-.5) + '"/></g>';
+  }
+  function show() {
+    var st = steps[idx]; if (offClick) { offClick(); offClick = null; }
+    var c = ov.querySelector('.tc'), n = steps.length;
+    c.innerHTML = (st.h ? '<b>' + st.h + '</b>' : '') + st.x + '<div class="rw"><button class="sk" data-sk>Skip tour</button><span class="st">' + (idx + 1) + '/' + n + '</span><button class="nx" data-nx>' + (st.b || (idx === n - 1 ? 'Done' : 'Next')) + '</button></div>';
+    c.querySelector('[data-sk]').onclick = function () { finish(false); };
+    c.querySelector('[data-nx]').onclick = function () { if (st.act) st.act(); if (st.open) { finish(true); return; } setTimeout(next, st.act ? 300 : 0); };
+    var tries = 0; (function wait() { var t = el(st); if (st.t && !t && tries++ < 14) { setTimeout(wait, 100); return; } place();
+      if (t && st.click) { var h = function () { if (st.last) { setTimeout(function () { finish(true); }, 150); } else setTimeout(next, 350); }; t.addEventListener('click', h, { once: true }); offClick = function () { t.removeEventListener('click', h); }; } })();
+  }
+  function next() { idx++; if (idx >= steps.length) { finish(true); return; } var st = steps[idx]; if (st.pre) st.pre(); setTimeout(show, st.pre ? 250 : 0); }
+  function finish(ok) {
+    if (offClick) { offClick(); offClick = null; }
+    if (ov) { ov.remove(); ov = null; } tourOn = false; lset(KEY, '1');
+    removeEventListener('resize', place); removeEventListener('scroll', place, true);
+    if (phone && ok && !ls(APPK)) setTimeout(appOpen, 400);
+  }
+  function start() {
+    if (tourOn) return; tourOn = ran = true; idx = 0; steps = buildSteps();
+    ov = document.createElement('div'); ov.id = 'm2028Tour'; ov.innerHTML = '<i class="p"></i><i class="p"></i><i class="p"></i><i class="p"></i><svg class="tsv"></svg><div class="tc"></div>'; document.body.appendChild(ov);
+    try { showV('dash'); } catch (e) {} addEventListener('resize', place); addEventListener('scroll', place, true); show();
+  }
+  window.m2028Tour = function () { force = true; ran = false; start(); };
+
+  // ---------- 4. phone: install-the-app popup ----------
+  function appOpen() {
+    if (document.getElementById('m2028AppOv')) return; lset(APPK, '1');
+    var ios = /iPhone|iPad|iPod/i.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), can = false;
+    try { can = !!_bip; } catch (e) {}
+    var o = document.createElement('div'); o.id = 'm2028AppOv';
+    o.innerHTML = '<div id="m2028AppBox"><h3>Save notes without opening the site</h3><div>Install the M2028 app. Then use <b>Share</b> on any link, text or photo, pick M2028, and it lands in your Notes.</div>' +
+      '<div style="margin-top:10px;color:var(--m2,#8a8f98)">' + (ios ? 'On iPhone: tap <b>Share → Add to Home Screen</b>. Then add the Shortcut so Notes appears in the Share sheet.' : can ? '' : 'Open your browser menu \u22ee and choose <b>Install app</b>.') + '</div>' +
+      '<div class="row">' + (can ? '<button class="big" data-in>Install app</button>' : '') + (ios ? '<a class="big" href="save-to-notes.shortcut">Get the Shortcut</a>' : '') + '<button class="big alt" data-x>Not now</button></div></div>';
+    o.addEventListener('click', function (e) { if (e.target === o) o.remove(); });
+    document.body.appendChild(o); o.querySelector('[data-x]').onclick = function () { o.remove(); };
+    var i = o.querySelector('[data-in]'); if (i) i.onclick = function () { try { _bip.prompt(); } catch (e) {} o.remove(); };
+  }
+  window.m2028AppOpen = appOpen;
+
+  // ---------- poll: look, minimal tabs, start the tour once the app is on screen ----------
+  var n = 0, iv = setInterval(function () {
+    look(); minimalTabs(); n++;
+    if (!ran && !tourOn && appVisible() && eligible() && !document.querySelector('.ov.on, #xdlOv')) setTimeout(function () { if (!tourOn && !ran && eligible()) start(); }, 700);
+    if (ran && n > 120) clearInterval(iv);
+  }, 1000);
+  setTimeout(look, 300);
+})();
+</script>
 </body>
 </html>

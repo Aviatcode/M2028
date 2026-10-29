@@ -29,4 +29,18 @@ if [ "$(uname)" = "Darwin" ]; then
     edge)  open -a "Microsoft Edge" "edge://extensions" ;;
     *)     open -a "Google Chrome" "chrome://extensions" ;;
   esac
+else
+  # Linux: open the folder and the browser's extensions page (first browser binary found)
+  command -v xdg-open >/dev/null 2>&1 && (xdg-open "$DIR" >/dev/null 2>&1 &) || true
+  case "$BROWSER" in
+    brave) URL="brave://extensions"; CANDS="brave-browser brave brave-browser-stable" ;;
+    edge)  URL="edge://extensions";  CANDS="microsoft-edge microsoft-edge-stable" ;;
+    *)     URL="chrome://extensions"; CANDS="google-chrome google-chrome-stable chromium chromium-browser" ;;
+  esac
+  OPENED=0
+  for b in $CANDS; do
+    if command -v "$b" >/dev/null 2>&1; then ("$b" "$URL" >/dev/null 2>&1 &); OPENED=1; break; fi
+  done
+  [ "$OPENED" = 1 ] || echo "Open $URL in your browser to continue."
+  echo "In the folder picker press Ctrl+L and paste: $DIR"
 fi

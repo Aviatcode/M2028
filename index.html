@@ -218,6 +218,30 @@ select.nt-pill{appearance:auto;padding-right:8px}
 @keyframes ntDrawer{from{transform:translateX(-24px);opacity:.4}to{transform:none;opacity:1}}
 
 </style>
+<style id="m2028-notes-ui2">
+/* Notes tab polish: compact expanding search, aligned column, tidy pills */
+#nt-root{max-width:1040px;margin:0 auto}
+.nt-head{gap:10px;margin:2px 0 14px}
+.nt-title{font-size:22px;letter-spacing:-.01em}
+.nt-head .nt-search{display:block;flex:0 0 auto;width:38px;height:38px;margin:0;position:relative;transition:width .22s ease}
+.nt-head .nt-search input{width:100%;height:38px;padding:0 0 0 38px;border-radius:19px;cursor:pointer;font-size:14px;color:var(--tx);background:var(--s2);border:1px solid var(--b2);transition:padding .22s ease,border-color .2s}
+.nt-head .nt-search input::placeholder{color:transparent}
+.nt-head .nt-search svg{left:11px;width:16px;height:16px;pointer-events:none}
+.nt-head .nt-search:hover input{border-color:var(--ai)}
+.nt-head .nt-search:focus-within,.nt-head .nt-search.has{width:min(280px,58%)}
+.nt-head .nt-search:focus-within input,.nt-head .nt-search.has input{padding:0 14px 0 38px;cursor:text;border-color:var(--ai)}
+.nt-head .nt-search:focus-within input::placeholder,.nt-head .nt-search.has input::placeholder{color:var(--m2)}
+@media(max-width:520px){.nt-head:focus-within .nt-title,.nt-head:has(.nt-search.has) .nt-title{display:none}.nt-head .nt-search:focus-within,.nt-head .nt-search.has{flex:1;width:auto}}
+.nt-tb{gap:8px;margin:0 0 14px;padding-bottom:2px;align-items:center}
+.nt-sp{flex:1 0 8px}
+.nt-pill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:16px;font-size:12.5px;background:var(--s1);transition:border-color .15s,background .15s}
+.nt-pill svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
+.nt-pill:hover{border-color:var(--ai);background:var(--s2)}
+select.nt-pill{padding:0 6px 0 11px}
+.nt-quick{max-width:none;margin:0 0 16px;border-radius:14px;padding:5px 8px 5px 16px;box-shadow:0 1px 0 rgba(255,255,255,.03),0 6px 18px rgba(0,0,0,.18);transition:border-color .15s}
+.nt-quick:focus-within{border-color:var(--ai)}
+.nt-quick input{font-size:14.5px;padding:8px 0}
+</style>
 </head>
 <body>
 <script>(function(){var b=document.body,c=window.__bootCls;if(c)b.classList.add(c)})();</script>
@@ -292,6 +316,7 @@ select.nt-pill{appearance:auto;padding-right:8px}
 <div class="ct">
 <span style="display:flex;align-items:center;gap:6px"><span>⏱️</span> Screen Time &amp; Hub</span>
 <div style="display:flex;gap:6px">
+<button class="btn b-gh sm" id="extOpenBtn" onclick="m2028ExtOpen()" title="Get or update the Chrome extension">🧩 Extension<span id="extDot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--ai,#4fd8a0);margin-left:6px;vertical-align:middle"></span></button>
 <button class="btn b-ai sm" onclick="openExtensionHubModal()" title="Open One-Stop Hub">⚡ Open Hub</button>
 </div>
 </div>
@@ -565,7 +590,6 @@ select.nt-pill{appearance:auto;padding-right:8px}
 </div>
 <div id="v-block" class="vw">
 <div class="ph"><div class="ph-t">Block Sites</div><div class="ph-s">Block whole categories or single sites, and cap your daily minutes · locked in once added · needs the M2028 extension on desktop</div></div>
-<div id="extDlRoot"></div>
 <div id="blockTabRoot"></div>
 <div id="v-period" class="vw"></div>
 <div id="v-body" class="vw">
@@ -7530,32 +7554,166 @@ document.addEventListener("click",function(e){
     '<li>Come back and refresh this page. This tab then unlocks the controls.</li>' +
     '</ol>';
 
-  window.m2028ExtDlRender = function () {
-    var root = document.getElementById('extDlRoot');
-    if (!root || busy) return;
-    injectCss();
-    var installed = document.documentElement.hasAttribute('data-m2028-ext');
-    var es = window.m2028ExtState || {};
-    if (installed) {
-      // Sync is automatic (handshake + focus ping). Keep only a tiny update control.
-      var ver = es.version ? ' v' + es.version : '';
-      root.innerHTML = '<div class="xdl-mini"><span class="chip">\u2713 Extension connected' + ver + '</span>' +
-        '<button class="go" id="xdlBtn" title="Download the latest extension build">Update</button>' +
-        '<span class="st" id="xdlStatus"></span>' +
-        '<details><summary>Download again / install on another browser</summary>' + STEPS + '</details></div>';
-      document.getElementById('xdlBtn').onclick = build;
-    } else {
-      root.innerHTML = '<div class="xdl-mini"><span>Blocking sites needs the extension.</span>' +
-        '<button class="go" id="xdlBtn">Download</button><span class="st" id="xdlStatus"></span>' +
-        '<details><summary>Install steps</summary>' + STEPS + '</details></div>';
-      document.getElementById('xdlBtn').onclick = build;
+  // ---------- popup (opened from the Extension button on the main page) ----------
+  var SETUP_EXE = 'M2028-Setup.exe', latest = null, popOpen = false;
+  // Paste your store links here once the extension is published; the popup then offers a one-click store install with automatic updates.
+  var STORE_URLS = { edge: '', chrome: '' };   // e.g. edge: 'https://microsoftedge.microsoft.com/addons/detail/...'
+  var UA = navigator.userAgent;
+  var isMobile = /Mobile|Android|iPhone|iPad/i.test(UA);
+  var isMac = /Mac/i.test(navigator.platform || UA) && !isMobile;
+  var BR = /Edg\//.test(UA) ? 'edge' : (navigator.brave ? 'brave' : (/Firefox/i.test(UA) ? 'firefox' : 'chrome'));
+  var BR_NAME = { edge: 'Edge', brave: 'Brave', firefox: 'Firefox', chrome: 'Chrome' }[BR];
+  var EXT_URL = { edge: 'edge://extensions', brave: 'brave://extensions', chrome: 'chrome://extensions', firefox: 'about:debugging#/runtime/this-firefox' }[BR];
+  var STORE = STORE_URLS[BR === 'brave' ? 'chrome' : BR] || '';
+  var UNSUPPORTED = isMobile ? 'Browser extensions install on a desktop browser. Open this page on your computer in Chrome, Edge or Brave.'
+    : (BR === 'firefox' ? 'Firefox isn\u2019t supported yet: the extension relies on Chrome-only features. Please use Chrome, Edge or Brave for now.' : '');
+  var MAC_CMD = 'curl -fsSL ' + new URL('install.sh', location.href).href + ' | bash -s -- ' + (BR === 'firefox' ? 'chrome' : BR);
+  var PEND = 'm2028_ext_pending', MINK = 'm2028_ext_corner_min';
+  function getPend() { try { return JSON.parse(localStorage.getItem(PEND)) || null; } catch (e) { return null; } }
+  function setPend(v) { try { if (v) localStorage.setItem(PEND, JSON.stringify(v)); else localStorage.removeItem(PEND); } catch (e) {} }
+  function ea(t) { return String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  var isWin = /Windows/i.test(navigator.userAgent);
+  function vnum(v) { return String(v || '0').split('.').map(function (n) { return parseInt(n, 10) || 0; }); }
+  function newer(a, b) { var x = vnum(a), y = vnum(b); for (var i = 0; i < 4; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; }
+  function fetchLatest() {
+    return fetch(new URL('manifest.json', location.href).href, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (m) { latest = m && m.version || null; }).catch(function () { latest = null; });
+  }
+  var POP_CSS = '#xdlOv{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}' +
+    '#xdlBox{width:min(460px,100%);max-height:90vh;overflow:auto;background:var(--s1,#17181c);color:var(--tx,#eee);border:1px solid var(--b2,rgba(128,128,128,.3));border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);font-size:13px;line-height:1.5}' +
+    '#xdlBox h3{margin:0 0 4px;font-size:17px}#xdlBox .sub{color:var(--m2,#8a8f98);margin-bottom:14px}' +
+    '#xdlBox .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}' +
+    '#xdlBox .big{flex:1;min-width:150px;padding:10px 14px;border-radius:10px;border:0;background:var(--ai,#4fd8a0);color:var(--on-ai-solid,#04281c);font:inherit;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;display:inline-block}' +
+    '#xdlBox .big.alt{background:var(--s2,#22242a);color:var(--tx,#eee);border:1px solid var(--b2,rgba(128,128,128,.3))}#xdlBox .big:disabled{opacity:.55;cursor:default}' +
+    '#xdlBox .x{float:right;background:none;border:0;color:var(--m2,#8a8f98);font-size:20px;cursor:pointer;line-height:1}' +
+    '#xdlBox .chip{display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;font-weight:600;background:var(--a2,rgba(79,216,160,.14));color:var(--ai-text,var(--ai,#4fd8a0));margin:0 6px 4px 0}#xdlBox .chip.w{background:rgba(232,160,60,.16);color:#e8a03c}' +
+    '#xdlBox ol{margin:6px 0 0;padding-left:20px}#xdlBox li{margin:5px 0}#xdlBox code{padding:1px 6px;border-radius:6px;background:rgba(128,128,128,.18)}' +
+    '#xdlBox .cp{margin-left:6px;padding:2px 8px;border-radius:8px;border:1px solid var(--b2,rgba(128,128,128,.3));background:transparent;color:inherit;font:inherit;font-size:11px;cursor:pointer}' +
+    '#xdlBox .st{min-height:16px;font-size:11.5px;color:var(--m2,#8a8f98)}#xdlBox .note{font-size:11.5px;color:var(--m2,#8a8f98)}';
+  function injectCss() {
+    if (document.getElementById('xdl-style')) return;
+    var st = document.createElement('style'); st.id = 'xdl-style'; st.textContent = POP_CSS; document.head.appendChild(st);
+  }
+  function cpBtn(txt) { return ' <button class="cp" data-copy="' + ea(txt) + '">Copy</button>'; }
+  function stepsHtml(update) {
+    var path = isMac ? '~/M2028-Extension' : '%LocalAppData%\\M2028-Extension';
+    var h = '<ol>';
+    if (STORE) {
+      return update ? '<ol><li>Nothing to do: the store updates the extension automatically.</li></ol>'
+                    : '<ol><li>Click <b>Install</b> on the store page and accept.</li><li>Refresh this page.</li></ol>';
     }
-    var cp = document.getElementById('xdlCopy');
-    if (cp) cp.onclick = function () {
-      var done = function () { cp.textContent = 'Copied'; setTimeout(function () { cp.textContent = 'Copy'; }, 1500); };
-      try { navigator.clipboard.writeText('chrome://extensions').then(done, function () { cp.textContent = 'Select it'; }); } catch (e) { cp.textContent = 'Select it'; }
-    };
+    if (isMac) h += '<li>' + (update ? 'Run the installer again: open ' : 'Open ') + '<b>Terminal</b>, paste this and press Enter:<br><code>' + ea(MAC_CMD) + '</code>' + cpBtn(MAC_CMD) + '</li>';
+    else if (isWin) h += '<li>Run <b>' + SETUP_EXE + '</b> from your Downloads' + (update ? ' again' : '') + '. If Windows warns, choose <b>More info \u2192 Run anyway</b>.</li>';
+    else h += '<li>Download the zip and unzip it into a folder you will keep (for example <code>' + path + '</code>).</li>';
+    if (update) {
+      h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and click the <b>reload \u27f3</b> arrow on the M2028 card.</li>';
+      h += '<li>Refresh this page. This notice disappears once the new version is detected.</li>';
+    } else {
+      h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and switch on <b>Developer mode</b> (top right).</li>';
+      h += '<li>Click <b>Load unpacked</b> and choose the folder <code>' + path + '</code>' + (isMac ? ' (in the file picker press <b>Cmd+Shift+G</b> and paste that path)' : '') + '. Only needed once.</li>';
+      h += '<li>Optional: in the extension\u2019s <b>Details</b>, switch on <b>Allow in Incognito</b>.</li>';
+      h += '<li>Refresh this page. This notice disappears once the extension is detected.</li>';
+    }
+    return h + '</ol>';
+  }
+  function bindCopy(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-copy]'), function (c) {
+      c.onclick = function () {
+        var d = function () { c.textContent = 'Copied'; setTimeout(function () { c.textContent = 'Copy'; }, 1500); };
+        try { navigator.clipboard.writeText(c.getAttribute('data-copy')).then(d, function () { c.textContent = 'Select it'; }); } catch (e) { c.textContent = 'Select it'; }
+      };
+    });
+  }
+  function isInstalled() { return document.documentElement.hasAttribute('data-m2028-ext'); }
+  function body() {
+    var installed = isInstalled();
+    var es = window.m2028ExtState || {}, cur = es.version || null;
+    var hasNew = installed && latest && (!cur || newer(latest, cur));
+    var h = '<button class="x" data-x aria-label="Close">\u00d7</button><h3>M2028 Extension</h3>';
+    h += '<div class="sub">Blocking, synced notes and the hub work in your browser.</div>';
+    if (UNSUPPORTED) return h + '<div class="note" style="font-size:13px">' + UNSUPPORTED + '</div>';
+    h += '<div>' + (installed ? '<span class="chip">\u2713 Installed' + (cur ? ' v' + cur : '') + '</span>' : '<span class="chip w">Not installed</span>');
+    if (latest) h += '<span class="chip' + (hasNew ? ' w' : '') + '">' + (hasNew ? 'Update available: v' + latest : 'Latest v' + latest) + '</span>';
+    h += '<span class="chip">' + BR_NAME + (isMac ? ' \u00b7 macOS' : isWin ? ' \u00b7 Windows' : '') + '</span></div><div class="row">';
+    var label = installed ? (hasNew ? 'Update to v' + latest : 'Update / reinstall') : 'Download';
+    if (STORE) h += '<a class="big" href="' + ea(STORE) + '" target="_blank" rel="noopener">' + (BR === 'edge' ? 'Get it on Edge Add-ons' : 'Get it on the Chrome Web Store') + '</a>';
+    else if (isWin) h += '<a class="big" id="xdlExe" href="' + SETUP_EXE + '" download>' + label + ' (.exe)</a><button class="big alt" id="xdlBtn">.zip instead</button>';
+    else if (isMac) h += '<button class="big" id="xdlMac" data-copy="' + ea(MAC_CMD) + '">Copy install command</button><button class="big alt" id="xdlBtn">.zip instead</button>';
+    else h += '<button class="big" id="xdlBtn">' + label + ' (.zip)</button>';
+    h += '</div><div class="st" id="xdlStatus"></div>';
+    h += '<div style="font-weight:600;margin-top:6px">' + (installed ? 'To update' : 'To install') + '</div>' + stepsHtml(installed);
+    h += '<div class="note" style="margin-top:10px">' + (STORE ? '' : 'Chrome-based browsers can\u2019t update a manually loaded extension by themselves, so reload it once after each update. These steps also stay pinned in the bottom-right corner until you finish.') + '</div>';
+    return h;
+  }
+  function markPend() { if (!isInstalled() && !STORE && !UNSUPPORTED) { setPend({ t: 'install' }); setTimeout(function () { corner(); }, 300); } }
+  function paint() {
+    var box = document.getElementById('xdlBox'); if (!box) return;
+    box.innerHTML = body();
+    var b = document.getElementById('xdlBtn'); if (b) b.onclick = function () { markPend(); build(); };
+    var x = document.getElementById('xdlExe'); if (x) x.addEventListener('click', markPend);
+    var m = document.getElementById('xdlMac'); if (m) m.addEventListener('click', function () { markPend(); });
+    bindCopy(box);
+    box.querySelector('[data-x]').onclick = close;
+  }
+  // ---------- pinned bottom-right notice: no close button, only minimise; it leaves by itself once done ----------
+  var CORNER_CSS = '#xdlCorner{position:fixed;right:16px;bottom:16px;z-index:99998;width:min(350px,calc(100vw - 32px));background:var(--s1,#17181c);color:var(--tx,#eee);border:1px solid var(--ai,#4fd8a0);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.45);font-size:12.5px;line-height:1.5;overflow:hidden}' +
+    '#xdlCorner .hd{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px 14px;background:var(--s2,#22242a);border:0;color:inherit;font:inherit;font-weight:600;cursor:pointer;text-align:left}' +
+    '#xdlCorner .bd{padding:10px 14px 12px;max-height:min(60vh,420px);overflow:auto}#xdlCorner.min .bd{display:none}#xdlCorner.min{width:auto;max-width:calc(100vw - 32px)}' +
+    '#xdlCorner ol{margin:0;padding-left:18px}#xdlCorner li{margin:5px 0}#xdlCorner code{padding:1px 5px;border-radius:6px;background:rgba(128,128,128,.18);word-break:break-all}' +
+    '#xdlCorner .cp{padding:1px 7px;border-radius:8px;border:1px solid var(--b2,rgba(128,128,128,.3));background:transparent;color:inherit;font:inherit;font-size:11px;cursor:pointer}' +
+    '#xdlCorner .note{margin-top:8px;color:var(--m2,#8a8f98);font-size:11px}';
+  var cornerKey = '';
+  function corner() {
+    var el = document.getElementById('xdlCorner');
+    var installed = isInstalled(), es = window.m2028ExtState || {}, cur = es.version || null;
+    var hasNew = !!(installed && latest && cur && newer(latest, cur)), mode = null;
+    if (!UNSUPPORTED && !STORE) {
+      if (installed) { if (hasNew) mode = 'update'; else setPend(null); }
+      else if (getPend()) mode = 'install';
+    }
+    if (!mode) { if (el) el.remove(); cornerKey = ''; return; }
+    var min = false; try { min = localStorage.getItem(MINK) === '1'; } catch (e) {}
+    var key = mode + '|' + latest + '|' + min;
+    if (el && key === cornerKey) return;
+    cornerKey = key;
+    if (!document.getElementById('xdl-style2')) { var st = document.createElement('style'); st.id = 'xdl-style2'; st.textContent = CORNER_CSS; document.head.appendChild(st); }
+    if (!el) { el = document.createElement('div'); el.id = 'xdlCorner'; document.body.appendChild(el); }
+    el.className = min ? 'min' : '';
+    var title = mode === 'update' ? 'Extension update' + (latest ? ' v' + latest : '') + ': steps' : 'Install the extension: steps';
+    el.innerHTML = '<button class="hd" data-tg aria-expanded="' + (!min) + '"><span>\uD83E\uDDE9 ' + title + '</span><span>' + (min ? '\u25B4' : '\u25BE') + '</span></button>' +
+      '<div class="bd">' + stepsHtml(mode === 'update') + '<div class="note">This stays here until the ' + (mode === 'update' ? 'update is finished' : 'extension is installed') + '. Use the arrow to minimise it and come back to the steps any time.</div></div>';
+    el.querySelector('[data-tg]').onclick = function () { try { localStorage.setItem(MINK, min ? '0' : '1'); } catch (e) {} cornerKey = ''; corner(); };
+    bindCopy(el);
+  }
+  function close() { var o = document.getElementById('xdlOv'); if (o) o.remove(); popOpen = false; }
+  window.m2028ExtOpen = function () {
+    injectCss(); if (popOpen) return; popOpen = true;
+    var o = document.createElement('div'); o.id = 'xdlOv'; o.innerHTML = '<div id="xdlBox"></div>';
+    o.addEventListener('click', function (e) { if (e.target === o) close(); });
+    document.body.appendChild(o); paint();
+    fetchLatest().then(function () { if (popOpen && !busy) paint(); dot(); corner(); });
   };
+  function dot() {
+    var d = document.getElementById('extDot'); if (!d) return;
+    var es = window.m2028ExtState || {}, installed = document.documentElement.hasAttribute('data-m2028-ext');
+    d.style.display = (installed && latest && (!es.version || newer(latest, es.version))) ? 'inline-block' : 'none';
+  }
+  window.m2028ExtDlRender = function () { dot(); corner(); if (popOpen && !busy) paint(); };
+  setInterval(function () { corner(); }, 5000);
+  setInterval(function () { fetchLatest().then(function () { dot(); corner(); }); }, 600000);
+  fetchLatest().then(function () { dot(); setTimeout(corner, 1800); });
+  // quietly check for updates, and offer the popup once on a desktop browser that has no extension yet
+  setTimeout(function () {
+    fetchLatest().then(function () {
+      dot(); corner();
+      var installed = document.documentElement.hasAttribute('data-m2028-ext'), seen = false;
+      try { seen = localStorage.getItem('m2028_ext_offer') === '1'; } catch (e) {}
+      if (!installed && !seen && /Chrome|Edg/.test(navigator.userAgent) && !/Mobile|Android/i.test(navigator.userAgent) && window.innerWidth >= 900) {
+        try { localStorage.setItem('m2028_ext_offer', '1'); } catch (e) {}
+        window.m2028ExtOpen();
+      }
+    });
+  }, 4500);
   window.m2028ExtDlBuild = build; // exposed for testing
 })();
 </script>
@@ -8106,13 +8264,12 @@ function render() {
   const act = document.activeElement, keepQ = act && act.id === 'nt-q';
   const live = st.notes.filter(n => !n.trashed), pend = live.filter(n => n.dest === 'pending');
   const list = visible(), pinned = st.view === 'trash' ? [] : list.filter(n => n.pinned), rest = list.filter(n => !pinned.includes(n));
-  let h = '<div class="nt-head"><button class="nt-ib" data-a="menu" title="Menu" aria-label="Menu">' + svg('menu') + '</button><h2 class="nt-title">' + esc(viewTitle()) + '</h2></div>';
-  h += '<div class="nt-search">' + svg('search') + '<input id="nt-q" type="search" placeholder="Search" value="' + esc(st.q) + '" aria-label="Search notes"></div>';
-  { const so = settings().sort, lv = settings().view;
-    h += '<div class="nt-tb"><select class="nt-pill" data-a="sort" aria-label="Sort notes"><option value="modified"' + (so === 'modified' ? ' selected' : '') + '>Sort: last modified</option><option value="created"' + (so === 'created' ? ' selected' : '') + '>Sort: date created</option><option value="title"' + (so === 'title' ? ' selected' : '') + '>Sort: title</option></select>' +
-      '<button class="nt-pill" data-a="layout">' + (lv === 'grid' ? 'List view' : 'Grid view') + '</button>' +
-      '<button class="nt-pill' + (st.selMode ? ' act' : '') + '" data-a="selmode">Select</button>' +
-      '<button class="nt-pill" data-a="folders">Folders</button><button class="nt-pill" data-a="labels">Labels</button><button class="nt-pill" data-a="settings">Storage &amp; settings</button></div>'; }
+  let h = '<div class="nt-head"><button class="nt-ib" data-a="menu" title="Menu" aria-label="Menu">' + svg('menu') + '</button><h2 class="nt-title">' + esc(viewTitle()) + '</h2><div class="nt-search' + (st.q ? ' has' : '') + '">' + svg('search') + '<input id="nt-q" type="search" placeholder="Search notes" value="' + esc(st.q) + '" aria-label="Search notes"></div></div>';
+    { const so = settings().sort, lv = settings().view;
+    h += '<div class="nt-tb"><select class="nt-pill" data-a="sort" aria-label="Sort notes"><option value="modified"' + (so === 'modified' ? ' selected' : '') + '>Sort: Modified</option><option value="created"' + (so === 'created' ? ' selected' : '') + '>Sort: Created</option><option value="title"' + (so === 'title' ? ' selected' : '') + '>Sort: Title</option></select>' +
+      '<button class="nt-pill" data-a="layout">' + svg(lv === 'grid' ? 'list' : 'grid') + (lv === 'grid' ? 'List' : 'Grid') + '</button>' +
+      '<button class="nt-pill' + (st.selMode ? ' act' : '') + '" data-a="selmode">' + svg('sel') + 'Select</button><span class="nt-sp"></span>' +
+      '<button class="nt-pill" data-a="folders">Folders</button><button class="nt-pill" data-a="labels">Labels</button><button class="nt-pill" data-a="settings">' + svg('gear') + 'Storage</button></div>'; }
   if (st.view !== 'trash' && st.view !== 'archive') h += '<div class="nt-quick"><input id="nt-new" placeholder="Take a note…" aria-label="Take a note"><button class="nt-ib" style="border:0;background:none" data-a="plus" title="New checklist or attachment" aria-label="More ways to add">' + svg('plus') + '</button><input id="nt-file" type="file" multiple style="display:none"></div>';
   if (pend.length) h += '<div class="nt-banner"><span>' + pend.length + ' item' + (pend.length > 1 ? 's' : '') + ' waiting for a storage choice</span><button class="nt-btn" data-a="pending">Choose</button></div>';
   if (st.selMode) h += '<div class="nt-selbar"><b style="font-size:13px">' + st.sel.size + ' selected</b>' + ['archive:Archive', 'del:Delete'].map(x => { const [k, l] = x.split(':'); return '<button class="nt-btn' + (k === 'del' ? ' d' : '') + '" data-a="bulk" data-k="' + k + '"' + (st.sel.size ? '' : ' disabled') + '>' + l + '</button>'; }).join('') + '<button class="nt-btn" data-a="bulkmore"' + (st.sel.size ? '' : ' disabled') + '>⋯</button><button class="nt-btn" data-a="selmode" style="margin-left:auto">Done</button></div>';

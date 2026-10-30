@@ -37,7 +37,7 @@ importScripts('reminders-sw.js'); // background task + medicine reminders (messa
 // it only shows what the page last told it to. If the browser suspends the
 // page for a long time the notification stops updating until the app reopens.
 
-const VERSION = 'v12';
+const VERSION = 'v13';
 const SHELL_CACHE = 'm2028-shell-' + VERSION;
 const LIB_CACHE = 'm2028-lib-' + VERSION;
 const SHELL_FILES = ['./', 'index.html', 'manifest.json', 'app.webmanifest', 'icon-192.png', 'apple-touch-icon.png', 'push.js', 'leaf-icons.css', 'pom-duo.webp', 'ios-share.js'];

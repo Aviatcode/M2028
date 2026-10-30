@@ -14,7 +14,7 @@ function jobs(){var out=[],now=Date.now();
   var k=x.k,tag="m2028-bg-"+k;
   if(/^t_.+_(pre|due)$/.test(k))tag="m2028-task-"+k.slice(2,k.lastIndexOf("_"))+"-"+k.slice(k.lastIndexOf("_")+1);
   else if(k.indexOf("m_")===0){var mk=k.slice(2,k.lastIndexOf("_"));tag="m2028-med-"+mk+"-due";
-   if(x.ts-36e5>now)out.push({k:k+"_pre",ts:x.ts-36e5,title:"\uD83D\uDC8A Medicine in 1 hour",body:x.body,tag:"m2028-med-"+mk+"-pre"})}
+   var dose=x.ts+12e4;if(dose-36e5>now)out.push({k:k+"_pre",ts:dose-36e5,title:"\uD83D\uDC8A Medicine in 1 hour",body:x.body,tag:"m2028-med-"+mk+"-pre"})}
   out.push({k:k,ts:x.ts,title:x.title,body:x.body,tag:tag})})}catch(e){}
  try{getTasks().forEach(function(t){if(t.done||!t.date||t.time)return;var ts=new Date(t.date+"T08:00").getTime();
   if(!isNaN(ts)&&ts>now&&ts-now<5184e6)out.push({k:"t_"+t.id+"_day",ts:ts,title:"\u23F0 Task due today",body:t.text,tag:"m2028-task-"+t.id+"-day"})})}catch(e){}

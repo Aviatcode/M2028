@@ -54,13 +54,18 @@
     } catch (e) {}
   }
 
+  // Only mirror a wallpaper that the page says belongs to THIS account (m2028_wp_owner). Never delete the extension's copy just
+  // because the page currently has none (new device, guest wipe, switching accounts): only an explicit removal seen live deletes it.
+  var seenWp = {};
+  function readOwner() { try { return localStorage.getItem('m2028_wp_owner') || ''; } catch (e) { return ''; } }
   function sync() {
     if (!alive()) { stop(); return; }
     clearLegacy();
     var cur = readPage();
     if (!cur) return;
     var uid = readUid();
-    var sig = uid + '|' + (cur.wp ? cur.wp.length + ':' + cur.wp.slice(-48) : '') + '|' + cur.dim;
+    var owner = readOwner();
+    var sig = uid + '|' + owner + '|' + (cur.wp ? cur.wp.length + ':' + cur.wp.slice(-48) : '') + '|' + cur.dim;
     if (sig === lastSig) return;
     lastSig = sig;
     if (!uid) return;
@@ -68,11 +73,14 @@
     var dimKey = 'm2028_wpDim_' + uid;
     try {
       if (cur.wp) {
+        if (owner !== uid) return;            // the page's wallpaper belongs to someone else / is not tagged yet
+        seenWp[uid] = true;
         var obj = {};
         obj[wpKey] = cur.wp;
         obj[dimKey] = cur.dim;
         chrome.storage.local.set(obj);
-      } else {
+      } else if (seenWp[uid] && (owner === uid || !owner)) {
+        seenWp[uid] = false;                  // the user removed it on the page while we were watching
         chrome.storage.local.remove([wpKey, dimKey]);
       }
     } catch (e) {}
@@ -86,6 +94,6 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
   window.addEventListener('focus', sync);
   window.addEventListener('storage', function (e) {
-    if (!e.key || e.key === 'm_wallpaper' || e.key === 'm_wpDim' || e.key === 'm2028_uid' || e.key === 'sb-lvzcctsqcpikisdzztot-auth-token') sync();
+    if (!e.key || e.key === 'm_wallpaper' || e.key === 'm_wpDim' || e.key === 'm2028_uid' || e.key === 'm2028_wp_owner' || e.key === 'sb-lvzcctsqcpikisdzztot-auth-token') sync();
   });
 })();

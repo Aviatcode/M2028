@@ -214,17 +214,8 @@
           syncObj.customColors = cc;
           syncObj.m_customColors = cc;
         }
-        // Sync wallpaper & wpDim from page
-        const wp = window.localStorage.getItem('m_wallpaper') || window.localStorage.getItem('wallpaper');
-        if (wp) {
-          syncObj.wallpaper = wp;
-          syncObj.m_wallpaper = wp;
-        }
-        const wpDim = window.localStorage.getItem('m_wpDim') || window.localStorage.getItem('wpDim');
-        if (wpDim) {
-          syncObj.wpDim = wpDim;
-          syncObj.m_wpDim = wpDim;
-        }
+        // Wallpaper is NOT synced here: it is per account and is mirrored by wallpaper-bridge.js under the account id
+        // (a global wallpaper key would show one account's wallpaper to another).
 
         // Sync pomSubjects from page
         const pSubs = window.localStorage.getItem('m_pomSubjects') || window.localStorage.getItem('pomSubjects');
@@ -444,7 +435,7 @@
   // 5. Mirror website-side changes into extension storage while a website tab is open.
   //    (The website writes wallpaper / theme straight to localStorage and never announces it, so poll for changes.)
   const MIRROR_JSON = ['hd', 'habs', 'bestSt', 'theme', 'customColors'];
-  const MIRROR_RAW = ['wallpaper', 'wpDim'];
+  const MIRROR_RAW = []; // wallpaper / wpDim are per account now (wallpaper-bridge.js), never global
   const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
   let mirrorFirstRun = true;
 

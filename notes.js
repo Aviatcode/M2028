@@ -344,13 +344,12 @@ function render() {
   const act = document.activeElement, keepQ = act && act.id === 'nt-q';
   const live = st.notes.filter(n => !n.trashed), pend = live.filter(n => n.dest === 'pending');
   const list = visible(), pinned = st.view === 'trash' ? [] : list.filter(n => n.pinned), rest = list.filter(n => !pinned.includes(n));
-  let h = '<div class="nt-head"><button class="nt-ib" data-a="menu" title="Menu" aria-label="Menu">' + svg('menu') + '</button><h2 class="nt-title">' + esc(viewTitle()) + '</h2></div>';
-  h += '<div class="nt-search">' + svg('search') + '<input id="nt-q" type="search" placeholder="Search" value="' + esc(st.q) + '" aria-label="Search notes"></div>';
-  { const so = settings().sort, lv = settings().view;
-    h += '<div class="nt-tb"><select class="nt-pill" data-a="sort" aria-label="Sort notes"><option value="modified"' + (so === 'modified' ? ' selected' : '') + '>Sort: last modified</option><option value="created"' + (so === 'created' ? ' selected' : '') + '>Sort: date created</option><option value="title"' + (so === 'title' ? ' selected' : '') + '>Sort: title</option></select>' +
-      '<button class="nt-pill" data-a="layout">' + (lv === 'grid' ? 'List view' : 'Grid view') + '</button>' +
-      '<button class="nt-pill' + (st.selMode ? ' act' : '') + '" data-a="selmode">Select</button>' +
-      '<button class="nt-pill" data-a="folders">Folders</button><button class="nt-pill" data-a="labels">Labels</button><button class="nt-pill" data-a="settings">Storage &amp; settings</button></div>'; }
+  let h = '<div class="nt-head"><button class="nt-ib" data-a="menu" title="Menu" aria-label="Menu">' + svg('menu') + '</button><h2 class="nt-title">' + esc(viewTitle()) + '</h2><div class="nt-search' + (st.q ? ' has' : '') + '">' + svg('search') + '<input id="nt-q" type="search" placeholder="Search notes" value="' + esc(st.q) + '" aria-label="Search notes"></div></div>';
+    { const so = settings().sort, lv = settings().view;
+    h += '<div class="nt-tb"><select class="nt-pill" data-a="sort" aria-label="Sort notes"><option value="modified"' + (so === 'modified' ? ' selected' : '') + '>Sort: Modified</option><option value="created"' + (so === 'created' ? ' selected' : '') + '>Sort: Created</option><option value="title"' + (so === 'title' ? ' selected' : '') + '>Sort: Title</option></select>' +
+      '<button class="nt-pill" data-a="layout">' + svg(lv === 'grid' ? 'list' : 'grid') + (lv === 'grid' ? 'List' : 'Grid') + '</button>' +
+      '<button class="nt-pill' + (st.selMode ? ' act' : '') + '" data-a="selmode">' + svg('sel') + 'Select</button><span class="nt-sp"></span>' +
+      '<button class="nt-pill" data-a="folders">Folders</button><button class="nt-pill" data-a="labels">Labels</button><button class="nt-pill" data-a="settings">' + svg('gear') + 'Storage</button></div>'; }
   if (st.view !== 'trash' && st.view !== 'archive') h += '<div class="nt-quick"><input id="nt-new" placeholder="Take a note…" aria-label="Take a note"><button class="nt-ib" style="border:0;background:none" data-a="plus" title="New checklist or attachment" aria-label="More ways to add">' + svg('plus') + '</button><input id="nt-file" type="file" multiple style="display:none"></div>';
   if (pend.length) h += '<div class="nt-banner"><span>' + pend.length + ' item' + (pend.length > 1 ? 's' : '') + ' waiting for a storage choice</span><button class="nt-btn" data-a="pending">Choose</button></div>';
   if (st.selMode) h += '<div class="nt-selbar"><b style="font-size:13px">' + st.sel.size + ' selected</b>' + ['archive:Archive', 'del:Delete'].map(x => { const [k, l] = x.split(':'); return '<button class="nt-btn' + (k === 'del' ? ' d' : '') + '" data-a="bulk" data-k="' + k + '"' + (st.sel.size ? '' : ' disabled') + '>' + l + '</button>'; }).join('') + '<button class="nt-btn" data-a="bulkmore"' + (st.sel.size ? '' : ' disabled') + '>⋯</button><button class="nt-btn" data-a="selmode" style="margin-left:auto">Done</button></div>';
@@ -367,6 +366,7 @@ function render() {
   root.querySelectorAll('img[data-aid]').forEach(async im => { const a = st.notes.flatMap(n => n.attachments).find(x => x.id === im.dataset.aid); const u = a && await blobURL(a); if (u) im.src = u; else im.remove(); });
 }
 async function newChecklist() { const n = mk({ listStyle: 'check', items: [{ id: uid(), text: '', done: false, due: '' }], folderId: curFolder() }); n.dest = defDest(); openEditor(n, true); }
+async function newTextNote() { const n = mk({ listStyle: 'none', folderId: curFolder() }); n.dest = defDest(); openEditor(n, true); }
 
 /* ---------- editor ---------- */
 function openEditor(n, isNew) {
@@ -376,7 +376,7 @@ function openEditor(n, isNew) {
   const box = o.firstChild;
   const auto = () => { changed = true; clearTimeout(timer); timer = setTimeout(flush, 400); };
   const itemsHtml = () => n.items.map(i => '<div class="nt-li' + (i.done ? ' done' : '') + '" data-i="' + i.id + '">' + (n.listStyle === 'check' ? '<button class="nt-cb" data-k="tick" aria-label="Toggle">' + (i.done ? '✓' : '') + '</button>' : '<span style="color:var(--m2);width:16px">' + (n.listStyle === 'number' ? (n.items.indexOf(i) + 1) + '.' : '•') + '</span>') + '<input class="tx" value="' + esc(i.text) + '" data-k="txt" placeholder="List item">' + (n.listStyle === 'check' ? (i.due ? '<input class="nt-inp dd" type="date" value="' + esc(i.due) + '" data-k="due" title="Due date">' : '<button class="nt-x" data-k="adddue" title="Add due date" aria-label="Add due date">📅</button>') : '') + '<button class="nt-x" data-k="rm" aria-label="Remove item">×</button></div>').join('');
-  const attHtml = () => n.attachments.map(a => '<div class="nt-file" data-a="' + a.id + '"><span class="x">' + esc(ext(a)) + '</span><span class="nm">' + esc(a.name) + '<br><span class="sz">' + fmt(a.size) + (a.remote ? ' · cloud' : '') + (a.local ? '' : ' · not on device') + (a.err ? ' · ' + esc(a.err) : '') + '</span></span>' + (a.local ? '<button class="nt-btn" data-k="open">Open</button>' : '<button class="nt-btn" data-k="dl">Download</button>') + '<button class="nt-x" data-k="rmatt" aria-label="Remove attachment">×</button></div>').join('');
+  const attHtml = () => n.attachments.map(a => '<div class="nt-file" data-a="' + a.id + '">' + (a.local && /^image\//.test(a.mime) ? '<img class="nt-edimg" data-aid="' + a.id + '" alt="">' : '<span class="x">' + esc(ext(a)) + '</span>') + '<span class="nm">' + esc(a.name) + '<br><span class="sz">' + fmt(a.size) + (a.remote ? ' · cloud' : '') + (a.local ? '' : ' · not on device') + (a.err ? ' · ' + esc(a.err) : '') + '</span></span>' + (a.local ? '<button class="nt-btn" data-k="open">Open</button>' : '<button class="nt-btn" data-k="dl">Download</button>') + '<button class="nt-x" data-k="rmatt" aria-label="Remove attachment">×</button></div>').join('');
   const summary = () => [n.folderId !== 'inbox' ? '📁 ' + folderName(n.folderId) : '', ...n.labels.map(l => '# ' + labelName(l)), n.reminder ? '⏰ ' + new Date(n.reminder).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '', n.pinned ? 'Pinned' : '', n.starred ? '★' : '', n.dest === 'pending' ? 'Storage: not chosen' : n.dest === 'cloud' ? (n.sync === 'synced' ? 'Cloud' : n.sync === 'error' ? 'Sync error: ' + n.err : 'Syncing…') : ''].filter(Boolean).join('  ·  ');
   const paint = () => {
     const tr = n.trashed, sm = summary();
@@ -386,7 +386,10 @@ function openEditor(n, isNew) {
       (n.url ? '<div class="nt-file"><span class="x">URL</span>' + (safeHref(n.url) ? '<a class="nm" href="' + esc(safeHref(n.url)) + '" target="_blank" rel="noopener noreferrer" style="color:var(--up)">' + esc(n.url) + '</a>' : '<span class="nm">' + esc(n.url) + '</span>') + '</div>' : '') +
       (sm ? '<div class="nt-sum">' + esc(sm) + '</div>' : '') +
       '<div class="nt-tools">' + (tr ? '<button class="nt-btn" data-k="restore">Restore</button><button class="nt-btn d" data-k="purge">Delete forever</button>' : '<button class="nt-ib" data-k="attach" title="Attach photo or file" aria-label="Attach">' + svg('img') + '</button><button class="nt-ib" data-k="togglecheck" title="Checklist" aria-label="Toggle checklist">' + svg('check') + '</button><button class="nt-ib" data-k="emenu" title="More" aria-label="More options">' + svg('more') + '</button><input id="ed-file" type="file" multiple style="display:none">') + '<button class="nt-btn p" style="margin-left:auto" data-k="done">Done</button></div>';
+    thumbs();
   };
+  function thumbs() { box.querySelectorAll('#ed-att img[data-aid]').forEach(async im => { const a = n.attachments.find(x => x.id === im.dataset.aid); const u = a && await blobURL(a); if (u) im.src = u; else im.remove(); }); }
+  const refreshAtt = () => { const el = $('#ed-att', box); if (el) { el.innerHTML = attHtml(); thumbs(); } };
   paint();
   const setFormat = async f => {
     await flush();
@@ -418,6 +421,67 @@ function openEditor(n, isNew) {
       else if (k === 'dup') { await duplicate(n); o.close(); toast('Duplicated'); }
       else if (k === 'del') { o.close(); trash(n); }
     });
+  /* ----- images from the clipboard / right-click menu (only inside this editor; the browser menu elsewhere is untouched) ----- */
+  const IMX = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp' };
+  let pasteN = 0;
+  const stamp = () => { const d = new Date(), p = x => String(x).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); };
+  const addImages = async files => {
+    files = files.filter(f => f && /^image\//.test(f.type)); if (!files.length || n.trashed || gone.has(n)) return false;
+    const named = files.map(f => new File([f], (f.name && !/^image\.\w+$/i.test(f.name)) ? f.name : 'pasted-' + stamp() + (pasteN++ ? '-' + pasteN : '') + '.' + (IMX[f.type] || 'png'), { type: f.type }));
+    clearTimeout(timer); changed = true; await flush();            /* keep whatever was typed so far */
+    const skipped = await addFiles(n, named);
+    if (skipped < named.length) { await save(n); refreshAtt(); toast(named.length - skipped === 1 ? 'Image added to this note' : (named.length - skipped) + ' images added to this note'); }
+    return true;
+  };
+  const clipImgs = cd => { let f = [...(cd.files || [])].filter(x => /^image\//.test(x.type)); if (!f.length) f = [...(cd.items || [])].filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean); return f; };
+  const isField = el => !!el && el.matches && el.matches('textarea, input:not([type=file]):not([type=checkbox]):not([type=date]):not([type=datetime-local])');
+  const onDocPaste = e => {
+    if (!box.isConnected) { document.removeEventListener('paste', onDocPaste, true); return; }
+    if (n.trashed || !e.clipboardData) return;
+    const tg = e.target; if (!(box.contains(tg) || tg === document.body || tg === o)) return;
+    const imgs = clipImgs(e.clipboardData); if (!imgs.length) return;
+    if (isField(tg) && !tg.readOnly && e.clipboardData.getData('text/plain')) return;   /* text on the clipboard: normal text paste */
+    e.preventDefault(); addImages(imgs);
+  };
+  document.addEventListener('paste', onDocPaste, true);
+  const insertText = (f, s) => { const a = f.selectionStart, b = f.selectionEnd; f.setRangeText(s, a, b, 'end'); f.dispatchEvent(new Event('input', { bubbles: true })); };
+  const clipPaste = async f => {
+    const canEdit = isField(f) && !f.readOnly;
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read(); const imgs = []; let text = '';
+        for (const it of items) { const ty = it.types.find(x => /^image\//.test(x)); if (it.types.includes('text/plain')) text += await (await it.getType('text/plain')).text(); else if (ty) imgs.push(new File([await it.getType(ty)], 'image.' + (IMX[ty] || 'png'), { type: ty })); }
+        if (text && canEdit) insertText(f, text); else if (imgs.length) await addImages(imgs); else if (text) toast('Click inside the text first, then paste'); else toast('The clipboard has no text or image to paste');
+      } else if (navigator.clipboard && navigator.clipboard.readText) {
+        const s = await navigator.clipboard.readText(); if (s && canEdit) insertText(f, s); else toast('This browser can only paste text here. For images use Ctrl+V.');
+      } else toast('This browser blocks reading the clipboard from the menu. Press Ctrl+V instead.');
+    } catch (err) { toast('The browser blocked clipboard access. Allow it for this site, or press Ctrl+V.'); }
+  };
+  const closeCm = () => document.querySelectorAll('.nt-cm').forEach(m => m.remove());
+  const openCm = (x, y, f) => {
+    closeCm(); const canEdit = isField(f) && !f.readOnly, hasSel = isField(f) && f.selectionStart !== f.selectionEnd;
+    const items = [['cut', 'Cut', !(canEdit && hasSel)], ['copy', 'Copy', !hasSel], ['paste', 'Paste', false], ['all', 'Select all', !isField(f)], ['img', 'Insert image from computer…', false]];
+    const m = document.createElement('div'); m.className = 'nt-cm'; m.setAttribute('role', 'menu');
+    m.innerHTML = items.map(i => '<button type="button" role="menuitem" data-c="' + i[0] + '"' + (i[2] ? ' disabled' : '') + '>' + i[1] + '</button>').join('');
+    m.addEventListener('mousedown', e => e.preventDefault());           /* keep the text selection / focus */
+    m.addEventListener('click', async e => {
+      const b = e.target.closest('[data-c]'); if (!b || b.disabled) return; const c = b.dataset.c; closeCm();
+      if (isField(f)) f.focus();
+      if (c === 'cut' || c === 'copy') { let ok = false; try { ok = document.execCommand(c); } catch (er) {} if (!ok) { try { await navigator.clipboard.writeText(f.value.slice(f.selectionStart, f.selectionEnd)); if (c === 'cut' && canEdit) { f.setRangeText('', f.selectionStart, f.selectionEnd, 'end'); f.dispatchEvent(new Event('input', { bubbles: true })); } } catch (er) { toast('Could not use the clipboard. Use Ctrl+' + (c === 'cut' ? 'X' : 'C') + '.'); } } }
+      else if (c === 'paste') await clipPaste(f);
+      else if (c === 'all') f.select();
+      else if (c === 'img') $('#ed-file', box).click();
+    });
+    document.body.appendChild(m);
+    m.style.left = Math.max(4, Math.min(x, innerWidth - m.offsetWidth - 4)) + 'px'; m.style.top = Math.max(4, Math.min(y, innerHeight - m.offsetHeight - 4)) + 'px';
+    const off = ev => { if (ev && ev.type === 'keydown' && ev.key !== 'Escape') return; if (ev && m.contains(ev.target)) return; closeCm(); ['mousedown', 'keydown', 'scroll', 'resize', 'blur'].forEach(k => window.removeEventListener(k, off, true)); };
+    setTimeout(() => ['mousedown', 'keydown', 'scroll', 'resize', 'blur'].forEach(k => window.addEventListener(k, off, true)), 0);
+  };
+  box.addEventListener('contextmenu', e => {
+    if (e.shiftKey || n.trashed || e.target.closest('a')) return;                     /* Shift+right-click = the normal browser menu */
+    if (window.matchMedia && !matchMedia('(pointer:fine)').matches) return;            /* touch: keep the native long-press menu */
+    e.preventDefault(); const f = e.target.closest('textarea, input'); openCm(e.clientX, e.clientY, f);
+  });
   box.addEventListener('input', e => {
     const li = e.target.closest('.nt-li'); if (li) { const it = n.items.find(x => x.id === li.dataset.i); if (it) { if (e.target.dataset.k === 'txt') it.text = e.target.value; if (e.target.dataset.k === 'due') it.due = e.target.value; } }
     auto();
@@ -524,7 +588,7 @@ function openMenu(kind) {
   const so = settings().sort, lv = settings().view; const live = st.notes.filter(n => !n.trashed);
   const it = (k, label, on, n) => '<button class="nt-mi" data-m="' + k + '"><span>' + label + '</span><span style="color:var(--m2)">' + (on ? '✓' : (n != null ? n : '')) + '</span></button>';
   let h;
-  if (kind === 'add') h = '<h3>Add</h3>' + it('newlist', 'New checklist') + it('newfile', 'Note with photo or file');
+  if (kind === 'add') h = '<h3>Add</h3>' + it('newnote', 'New note') + it('newlist', 'New checklist') + it('newfile', 'Note with photo or file');
   else if (kind === 'bulk') h = '<h3>' + st.sel.size + ' selected</h3>' + it('b:pin', 'Pin / unpin') + it('b:star', 'Star / unstar') + it('b:move', 'Move to folder…') + it('b:local', 'Keep on this device') + it('b:cloud', 'Upload to cloud');
   else h = '<h3>Notes</h3>' + it('v:all', 'All notes', st.view === 'all') + it('v:inbox', 'Inbox', st.view === 'inbox', live.filter(n => n.folderId === 'inbox' && !n.archived).length || '') + it('v:starred', 'Starred', st.view === 'starred') + it('v:reminders', 'Reminders', st.view === 'reminders') +
     (st.folders.length ? '<div class="nt-sec">Folders</div>' + st.folders.map(f => it('v:f:' + f.id, '📁 ' + esc(f.name), st.view === 'f:' + f.id)).join('') : '') +
@@ -538,7 +602,7 @@ function openMenu(kind) {
     else if (m.startsWith('b:')) bulk(m.slice(2));
     else if (m === 'layout') { setSetting('view', settings().view === 'grid' ? 'list' : 'grid'); render(); }
     else if (m === 'selmode') { st.selMode = !st.selMode; st.sel.clear(); render(); }
-    else if (m === 'newlist') newChecklist(); else if (m === 'newfile') $('#nt-file').click();
+    else if (m === 'newnote') newTextNote(); else if (m === 'newlist') newChecklist(); else if (m === 'newfile') $('#nt-file').click();
     else if (m === 'folders') manage('folders'); else if (m === 'labels') manage('labels'); else if (m === 'settings') openSettings(); };
 }
 
@@ -595,7 +659,7 @@ async function quickAdd(t) {
 }
 
 /* ---------- reminders ---------- */
-setInterval(async () => { const now = Date.now(); for (const n of st.notes) { if (n.reminder && !n.remFired && !n.trashed && new Date(n.reminder).getTime() <= now) { n.remFired = true; await idb.put('notes', n); const msg = '⏰ ' + (n.title || n.body.slice(0, 40) || 'Note reminder'); try { if (window.Notification && Notification.permission === 'granted') new Notification('Reminder', { body: msg.slice(2) }); } catch (e) {} try { banner(msg); } catch (e) { toast(msg); } } } }, 30000);
+setInterval(async () => { const now = Date.now(); for (const n of st.notes) { if (n.reminder && !n.remFired && !n.trashed && new Date(n.reminder).getTime() <= now + (window.M2028_LEAD_MS || 12e4)) { n.remFired = true; await idb.put('notes', n); const lf = new Date(n.reminder).getTime() - now; const msg = '⏰ ' + (n.title || n.body.slice(0, 40) || 'Note reminder') + (lf > 3e4 ? ' (in ' + Math.max(1, Math.round(lf / 6e4)) + ' min)' : ''); try { if (window.Notification && Notification.permission === 'granted') new Notification('Reminder', { body: msg.slice(2) }); } catch (e) {} try { banner(msg); } catch (e) { toast(msg); } } } }, 30000);
 
 /* ---------- Home cleanup + migration (non-destructive, re-checked) ---------- */
 const hsh = t => { let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return String(h); };
@@ -645,8 +709,8 @@ function integrate() {
   try {
     if (!NAV_TABS.some(t => t.id === 'notes')) NAV_TABS.splice(2, 0, { id: 'notes', label: 'Notes', icon: svg('notes').replace('<svg ', '<svg width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-.2em" '), group: 'Today', primary: true, shortLabel: 'Notes' });
     const sv = window.showV; if (!sv.__nt) { const w = function (id) { const vn = document.getElementById('v-notes'); if (id === 'notes' && vn && vn.classList.contains('on')) { render(); return; } /* already open: re-running the app's view switch would restart its fade animation (visible flicker) */ const r = sv.apply(this, arguments); if (id === 'notes') { render(); refreshQuota(); promptOnce(); } return r; }; w.__nt = 1; window.showV = w; }
-    // Minimal defaults for first-time guests: Home, Pomodoro, Calendar only (everything else is opt-in in tab settings)
-    const gm = window.guestMode; if (typeof gm === 'function' && !gm.__nt) { const w = function () { const fresh = localStorage.getItem('m_navHidden') === null; const r = gm.apply(this, arguments); if (fresh && localStorage.getItem('m_navInit') === null) { const h = {}; NAV_TABS.forEach(t => { if (!['dash', 'pomo', 'sched'].includes(t.id)) h[t.id] = true; }); S.s('navHidden', h); S.s('navInit', true); try { renderNavAll(); } catch (e) {} } return r; }; w.__nt = 1; window.guestMode = w; }
+    // Minimal defaults for first-time guests: Home, Pomodoro, Notes, Block Sites only (everything else is opt-in in tab settings)
+    const gm = window.guestMode; if (typeof gm === 'function' && !gm.__nt) { const w = function () { const fresh = localStorage.getItem('m_navHidden') === null; const r = gm.apply(this, arguments); if (fresh && localStorage.getItem('m_navInit') === null) { const h = {}; NAV_TABS.forEach(t => { if (!['dash', 'pomo', 'notes', 'block'].includes(t.id)) h[t.id] = true; }); S.s('navHidden', h); S.s('navInit', true); try { renderNavAll(); } catch (e) {} } return r; }; w.__nt = 1; window.guestMode = w; }
     const oh = window.openExtensionHubModal; if (typeof oh === 'function' && !oh.__nt) { const w = function (t) { if (t === 'notes') { showV('notes'); return; } return oh.apply(this, arguments); }; w.__nt = 1; window.openExtensionHubModal = w; }   // any leftover 'Notes' hub shortcut lands on the real Notes tab
     renderNavAll();
   } catch (e) { console.warn('Notes nav integration failed', e); }

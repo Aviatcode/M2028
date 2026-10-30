@@ -2893,15 +2893,17 @@
           }
           if (!pageUid) pageUid = localStorage.getItem('m2028_uid') || '';
           const wp = localStorage.getItem('m_wallpaper') || '';
-          return { ok: true, uid: pageUid, wp: /^data:image\//.test(wp) ? wp : '', dim: localStorage.getItem('m_wpDim') };
+          return { ok: true, uid: pageUid, owner: localStorage.getItem('m2028_wp_owner') || '', wp: /^data:image\//.test(wp) ? wp : '', dim: localStorage.getItem('m_wpDim') };
         } catch (e) { return { ok: false }; }
       };
       chrome.scripting.executeScript({ target: { tabId: tab.id }, func: probe }, function (r) {
         const p = !chrome.runtime.lastError && r && r[0] && r[0].result;
         if (!p || !p.ok || p.uid !== uid) return finish();
         const dim = (p.dim === null || p.dim === undefined || isNaN(parseFloat(p.dim))) ? 0.3 : parseFloat(p.dim);
-        const keys = [wallpaperKey(uid), wallpaperKey(uid, true)];
-        if (!p.wp) { chrome.storage.local.remove(keys, finish); return; }
+        // A tab without a wallpaper (new device, guest mode, another account just signed out) must never erase the saved one,
+        // and a wallpaper the page does not tag as this account's must never be stored under it. Explicit removals are
+        // propagated live by wallpaper-bridge.js.
+        if (!p.wp || p.owner !== uid) return finish();
         const obj = {};
         obj[wallpaperKey(uid)] = p.wp;
         obj[wallpaperKey(uid, true)] = dim;

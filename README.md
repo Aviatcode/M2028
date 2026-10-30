@@ -65,6 +65,38 @@ Rearrange and resize everything on the home screen, and add your own widgets:
 | `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon-32.png` | App icons |
 | `sussurus1.mp3` | Audio for the relaxation player |
 
+## Install the browser extension
+
+The installer scripts are different for Windows vs. macOS/Linux — **use the one that matches your OS and terminal.** Running the Bash command in PowerShell (or vice versa) is the most common installation failure, since PowerShell's `curl` is an alias for `Invoke-WebRequest` and doesn't understand Bash flags like `-fsSL`.
+
+**Windows (PowerShell 5.1+):**
+```powershell
+& ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave
+```
+Replace `brave` with `chrome` or `edge` if you use a different browser. This runs `install.ps1` — do not use the `curl | bash` command below in PowerShell.
+
+**macOS / Linux (bash/zsh):**
+```bash
+curl -fsSL https://aviatcode.github.io/M2028/install.sh | bash -s -- brave
+```
+Replace `brave` with `chrome` or `edge` if needed.
+
+**Security note:** both commands pipe a remotely-hosted script straight into an interpreter. That's convenient, but it means you're trusting whatever is currently published at that URL at the moment you run it. If you'd rather review the script first, download it and read it before running:
+```bash
+# macOS/Linux
+curl -fsSL https://aviatcode.github.io/M2028/install.sh -o install.sh && less install.sh && bash install.sh brave
+```
+```powershell
+# Windows
+irm https://aviatcode.github.io/M2028/install.ps1 -OutFile install.ps1; notepad install.ps1; .\install.ps1 brave
+```
+
+Either installer downloads the extension files to a staging folder first, validates them (including the manifest), and only then replaces your existing install — so a failed or interrupted run won't leave you with a broken extension. After it finishes:
+- **First install:** open your browser's extensions page, turn on Developer mode, click "Load unpacked", and select the folder the script printed (`%LOCALAPPDATA%\M2028-Extension` on Windows, `~/M2028-Extension` on macOS/Linux).
+- **Update:** click the reload arrow on the M2028 card on the extensions page — the script does not do this automatically, since browsers don't expose that to a script.
+
+The installers only prepare and update a locally-loaded ("unpacked") extension; they cannot publish it to the Chrome Web Store or Edge Add-ons, bypass the "Load unpacked" step, or silently enable it — that's a one-time manual action by design, for browser security.
+
 ## Run it locally
 
 No setup needed for guest mode: open `index.html` in a browser. Service-worker features (offline mode, live notification) need the page served over `http://localhost` or `https`, for example:

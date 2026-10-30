@@ -7574,6 +7574,7 @@ document.addEventListener("click",function(e){
   var STORE = STORE_URLS[BR === 'brave' ? 'chrome' : BR] || '';
   var UNSUPPORTED = isMobile ? 'Browser extensions install on a desktop browser. Open this page on your computer in Chrome, Edge or Brave.'
     : (BR === 'firefox' ? 'Firefox isn\u2019t supported yet: the extension relies on Chrome-only features. Please use Chrome, Edge or Brave for now.' : '');
+  var isWin = /Windows/i.test(navigator.userAgent);
   var MAC_CMD = 'curl -fsSL ' + new URL('install.sh', location.href).href + ' | bash -s -- ' + (BR === 'firefox' ? 'chrome' : BR);
   var WIN_CMD = "& ([scriptblock]::Create((irm '" + new URL('install.ps1', location.href).href + "'))) " + (BR === 'firefox' ? 'chrome' : BR);
   var INSTALL_CMD = isWin ? WIN_CMD : MAC_CMD;
@@ -7581,7 +7582,6 @@ document.addEventListener("click",function(e){
   function getPend() { try { return JSON.parse(localStorage.getItem(PEND)) || null; } catch (e) { return null; } }
   function setPend(v) { try { if (v) localStorage.setItem(PEND, JSON.stringify(v)); else localStorage.removeItem(PEND); } catch (e) {} }
   function ea(t) { return String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
-  var isWin = /Windows/i.test(navigator.userAgent);
   function vnum(v) { return String(v || '0').split('.').map(function (n) { return parseInt(n, 10) || 0; }); }
   function newer(a, b) { var x = vnum(a), y = vnum(b); for (var i = 0; i < 4; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; }
   function fetchLatest() {
@@ -8663,7 +8663,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 })();
 
 </script>
-<script src="ios-share.js"></script>
+<script src="ios-share.js" defer></script>
 <script id="m2028-vault">
 /* Per-owner local vault. Logging out used to delete what was only on this device: entering guest mode wiped every m_* key, leaving guest
    mode dropped the guest's data, and signing out removed changes that had not uploaded yet. Now, before any of those wipes, this device

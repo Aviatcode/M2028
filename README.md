@@ -97,6 +97,23 @@ Either installer downloads the extension files to a staging folder first, valida
 
 The installers only prepare and update a locally-loaded ("unpacked") extension; they cannot publish it to the Chrome Web Store or Edge Add-ons, bypass the "Load unpacked" step, or silently enable it — that's a one-time manual action by design, for browser security.
 
+### Optional: stop running the command by hand
+
+Add `-Schedule` (Windows) or `--schedule` (macOS/Linux) to the install command to set up a background job that silently re-downloads the extension files once a day, so they never go stale without you doing anything. This does **not** make updates fully automatic — Chromium only reloads an unpacked extension's code when you click the reload arrow on its extensions page, and that one click can't be scripted away for a developer-mode install (it's the same restriction that stops any webpage from silently rewriting code running with your browser's permissions). What it does remove is the "copy a command into a terminal" step: with `--schedule` on, all that's left is clicking reload when the Screen Time & Hub widget shows **Update available**.
+
+```powershell
+# Windows — uses Task Scheduler, no admin rights needed
+& ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave -Schedule
+```
+```bash
+# macOS/Linux — uses launchd / cron, no sudo needed
+curl -fsSL https://aviatcode.github.io/M2028/install.sh | bash -s -- brave --schedule
+```
+
+Turn it back off with `-Unschedule` / `--unschedule` (same syntax, no browser name needed).
+
+This has no cost and needs no account of any kind — unlike genuine silent auto-updates, which Chromium only grants to extensions listed on the Chrome Web Store (a one-time $5 developer fee) or Edge Add-ons (free). If that tradeoff is ever worth it to you, Edge Add-ons gets you real zero-click updates for Edge users at no cost; Chrome/Brave auto-updates require the Web Store, which also covers Brave since it's Chromium-based.
+
 ## Run it locally
 
 No setup needed for guest mode: open `index.html` in a browser. Service-worker features (offline mode, live notification) need the page served over `http://localhost` or `https`, for example:

@@ -7570,7 +7570,21 @@ document.addEventListener("click",function(e){
   var isWin = /Windows/i.test(navigator.userAgent);
   var MAC_CMD = 'curl -fsSL ' + new URL('install.sh', location.href).href + ' | bash -s -- ' + (BR === 'firefox' ? 'chrome' : BR);
   var WIN_CMD = "& ([scriptblock]::Create((irm '" + new URL('install.ps1', location.href).href + "'))) " + (BR === 'firefox' ? 'chrome' : BR);
-  var INSTALL_CMD = isWin ? WIN_CMD : MAC_CMD;
+  // Free, no-account way to cut the install flow down to "click reload": the installer can schedule
+  // itself to silently re-download the extension files in the background (Task Scheduler / launchd /
+  // cron). It still can't click the reload arrow for you \u2014 Chromium reserves that for a real person,
+  // for unpacked extensions \u2014 but it removes the "copy a command" step from every future update.
+  // On by default, since fewer steps is the whole point; a checkbox in the popup lets you turn it off.
+  var SCHED_KEY = 'm2028_ext_schedule';
+  function schedOn() { try { return localStorage.getItem(SCHED_KEY) !== '0'; } catch (e) { return true; } }
+  function installCmd() {
+    var base = isWin ? WIN_CMD : MAC_CMD;
+    return schedOn() ? base + (isWin ? ' -Schedule' : ' --schedule') : base;
+  }
+  window.m2028ToggleSched = function (checked) {
+    try { localStorage.setItem(SCHED_KEY, checked ? '1' : '0'); } catch (e) {}
+    if (popOpen && !busy) paint();
+  };
   var PEND = 'm2028_ext_pending', MINK = 'm2028_ext_corner_min';
   function getPend() { try { return JSON.parse(localStorage.getItem(PEND)) || null; } catch (e) { return null; } }
   function setPend(v) { try { if (v) localStorage.setItem(PEND, JSON.stringify(v)); else localStorage.removeItem(PEND); } catch (e) {} }
@@ -7604,7 +7618,7 @@ document.addEventListener("click",function(e){
       return update ? '<ol><li>Nothing to do: the store updates the extension automatically.</li></ol>'
                     : '<ol><li>Click <b>Install</b> on the store page and accept.</li><li>Refresh this page.</li></ol>';
     }
-    h += '<li>' + (update ? 'Run the installer again: open ' : 'Open ') + (isWin ? '<b>PowerShell</b> (press <b>Win+X</b>, then choose <b>Terminal</b> or <b>Windows PowerShell</b>)' : '<b>Terminal</b>') + ', paste this and press Enter:<br><code>' + ea(INSTALL_CMD) + '</code>' + cpBtn(INSTALL_CMD) + '</li>';
+    h += '<li>' + (update ? 'Run the installer again: open ' : 'Open ') + (isWin ? '<b>PowerShell</b> (press <b>Win+X</b>, then choose <b>Terminal</b> or <b>Windows PowerShell</b>)' : '<b>Terminal</b>') + ', paste this and press Enter:<br><code>' + ea(installCmd()) + '</code>' + cpBtn(installCmd()) + '</li>';
     if (update) {
       h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and click the <b>reload \u27f3</b> arrow on the M2028 card.</li>';
       h += '<li>Refresh this page and close this popup. Once the new version is detected, the \uD83E\uDDE9 button in the Screen Time &amp; Hub widget switches to <b>\u26A1 Open Hub</b>.</li>';
@@ -7638,8 +7652,10 @@ document.addEventListener("click",function(e){
     h += '</div><div class="row">';
     var cmdLabel = installed ? (hasNew ? 'Copy update command \u2192 v' + latest : 'Copy update command') : 'Copy install command';
     if (STORE) h += '<a class="big" href="' + ea(STORE) + '" target="_blank" rel="noopener">' + (BR === 'edge' ? 'Get it on Edge Add-ons' : 'Get it on the Chrome Web Store') + '</a>';
-    else h += '<button class="big" id="xdlMac" data-copy="' + ea(INSTALL_CMD) + '">' + cmdLabel + '</button>';
-    h += '</div><div class="st" id="xdlStatus"></div>';
+    else h += '<button class="big" id="xdlMac" data-copy="' + ea(installCmd()) + '">' + cmdLabel + '</button>';
+    h += '</div>';
+    if (!STORE) h += '<label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--m2);margin-top:9px;cursor:pointer"><input type="checkbox" id="xdlSched" ' + (schedOn() ? 'checked' : '') + ' onchange="window.m2028ToggleSched(this.checked)" style="margin:0"> Also schedule silent background updates (free, no account \u2014 you\u2019ll just click reload when it\u2019s ready)</label>';
+    h += '<div class="st" id="xdlStatus"></div>';
     h += '<div style="font-weight:600;margin-top:6px">' + (installed ? 'To update' : 'To install') + '</div>' + stepsHtml(installed);
     return h;
   }

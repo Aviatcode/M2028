@@ -6,7 +6,23 @@
 #   & ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave
 #
 # Valid arguments: brave (default), chrome, edge
-param([string]$Browser = 'brave')
+#
+# Optional switches (add after the browser name):
+#   -Schedule     Set up a background task that silently re-runs this installer once a day,
+#                 so the extension FILES stay current without you ever running the command
+#                 again. Chromium still requires a manual click of the reload arrow on
+#                 chrome://extensions (or brave://, edge://) to pick up the new files — that
+#                 step can't be automated for an unpacked/developer-mode extension, by design,
+#                 regardless of this script. This just removes the "copy/paste a command"
+#                 part. No admin rights needed; runs only while you're logged in.
+#   -Unschedule   Remove that background task.
+#   -Quiet        Skip opening the browser/folder windows (used by the scheduled run itself;
+#                 you can also pass it by hand for a silent one-off update).
+#
+# Examples:
+#   & ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave -Schedule
+#   & ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave -Unschedule
+param([string]$Browser = 'brave', [switch]$Schedule, [switch]$Unschedule, [switch]$Quiet)
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -15,6 +31,14 @@ $Dir  = Join-Path $env:LOCALAPPDATA 'M2028-Extension'
 $Tmp  = "$Dir.new"
 $required = 'manifest.json','background.js','content.js','wallpaper-bridge.js','popup.html','popup.js','block-ui.js','blocked.html','blocked.js','options.html','options.js','favicon-32.png','icon-192.png'
 $optional = 'popup.css','options.css','leaf-icons.css','stickers.js','offscreen.html','offscreen.js','index.html','pom-duo.webp','sussurus1.mp3','icon-512.png','apple-touch-icon.png','favicon.ico'
+$TaskName = 'M2028AutoUpdate'
+
+if ($Unschedule) {
+  try { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop }
+  catch { } # fine if it never existed
+  Write-Host "Removed the background auto-update task (if it existed). Manual 'copy install command' updates are back to how they were." -ForegroundColor Green
+  exit 0
+}
 
 # --- Normalize / validate the browser argument ---
 $BrowserNorm = $Browser.Trim().ToLowerInvariant()
@@ -103,6 +127,31 @@ if ($existed) {
   Write-Host "Installed v$ver to $Dir." -ForegroundColor Green
   Write-Host "This does NOT load it into the browser automatically. Turn on Developer mode, click 'Load unpacked', and select that folder." -ForegroundColor Green
 }
+
+# --- Optional: schedule this installer to silently re-run once a day, so the FILES on disk
+#     stay current without you ever running the command again. The browser still needs a
+#     manual reload click (see the header comment) — that part cannot be automated for an
+#     unpacked extension. Requires no admin rights; only runs while you're logged in. ---
+if ($Schedule) {
+  try {
+    $selfCopy = Join-Path $Dir 'install.ps1'
+    Invoke-WebRequest -UseBasicParsing -Uri "$Base/install.ps1?t=$stamp" -OutFile $selfCopy -TimeoutSec 60
+    $psExe = (Get-Process -Id $PID).Path
+    if (-not $psExe) { $psExe = 'powershell.exe' }
+    # Built-in ScheduledTasks cmdlets (Windows 10/11, no extra install) take structured
+    # parameters instead of a hand-quoted command line, so there's no quoting to get wrong.
+    $taskArgs = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $selfCopy + '" -Browser ' + $BrowserNorm + ' -Quiet'
+    $action  = New-ScheduledTaskAction -Execute $psExe -Argument $taskArgs
+    $trigger = New-ScheduledTaskTrigger -Daily -At '09:00'
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Description 'Silently refreshes the M2028 extension files once a day. Does not touch the browser itself.' -Force | Out-Null
+    Write-Host "Scheduled a silent daily check — the extension files will stay current on their own. You'll still need to click the reload arrow on $BrowserNorm's extensions page when the website shows 'Update available'. Run with -Unschedule to turn this off." -ForegroundColor Green
+  } catch {
+    Write-Host "Could not set up the scheduled task ($($_.Exception.Message)). The install itself still succeeded — you can keep updating manually, or try -Schedule again." -ForegroundColor Yellow
+  }
+}
+
+if ($Quiet) { exit 0 }
 
 Start-Process explorer.exe $Dir
 

@@ -10,6 +10,19 @@
   // Lets the website know the extension is installed (used by the "Open Hub" widget)
   try { document.documentElement.setAttribute('data-m2028-ext', '1'); } catch (e) {}
 
+  // Tell the website which version is actually installed, so its "Update available" check is accurate
+  // instead of always assuming an update is pending. Sent once on load, and again any time the website
+  // asks (EXT_PING) — e.g. if its own script finishes initializing after this content script already ran.
+  function sendExtReady() {
+    let version = '';
+    try { version = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : ''; } catch (e) {}
+    try { window.postMessage({ from: 'M2028_EXT', type: 'EXT_READY', version: version }, '*'); } catch (e) {}
+  }
+  sendExtReady();
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.from === 'M2028_PAGE' && event.data.type === 'EXT_PING') sendExtReady();
+  });
+
   const mirrorSigs = {};
   let lastNotes = null; // last notes text passed between page and extension (stops echo loops)
 

@@ -7607,12 +7607,12 @@ document.addEventListener("click",function(e){
     h += '<li>' + (update ? 'Run the installer again: open ' : 'Open ') + (isWin ? '<b>PowerShell</b> (press <b>Win+X</b>, then choose <b>Terminal</b> or <b>Windows PowerShell</b>)' : '<b>Terminal</b>') + ', paste this and press Enter:<br><code>' + ea(INSTALL_CMD) + '</code>' + cpBtn(INSTALL_CMD) + '</li>';
     if (update) {
       h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and click the <b>reload \u27f3</b> arrow on the M2028 card.</li>';
-      h += '<li>Refresh this page. This notice disappears once the new version is detected.</li>';
+      h += '<li>Refresh this page and close this popup. Once the new version is detected, the \uD83E\uDDE9 button in the Screen Time &amp; Hub widget switches to <b>\u26A1 Open Hub</b>.</li>';
     } else {
       h += '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and switch on <b>Developer mode</b> (' + (BR === 'edge' ? 'left sidebar' : 'top right') + ').</li>';
       h += '<li>Click <b>Load unpacked</b>, paste <code>' + path + '</code>' + cpBtn(path) + ' into the folder box' + (isMac ? ' (press <b>Cmd+Shift+G</b> first)' : !isWin ? ' (press <b>Ctrl+L</b> first)' : '') + ', press Enter, then click <b>Select Folder</b>. This is the folder the installer made. Only needed once.</li>';
       h += '<li>Optional: in the extension\u2019s <b>Details</b>, switch on <b>Allow ' + (BR === 'edge' ? 'in InPrivate' : 'in Incognito') + '</b>.</li>';
-      h += '<li>Refresh this page. This notice disappears once the extension is detected.</li>';
+      h += '<li>Refresh this page. Once the extension is detected, the \uD83E\uDDE9 button in the Screen Time &amp; Hub widget switches to <b>\u26A1 Open Hub</b>.</li>';
     }
     return h + '</ol>';
   }
@@ -7636,9 +7636,9 @@ document.addEventListener("click",function(e){
     if (installed) h += '<span class="chip">\u2713 Installed' + (cur ? ' v' + cur : '') + '</span>';
     if (hasNew) h += '<span class="chip w">Update available: v' + latest + '</span>';
     h += '</div><div class="row">';
-    var label = installed ? (hasNew ? 'Update to v' + latest : 'Update / reinstall') : 'Download';
+    var cmdLabel = installed ? (hasNew ? 'Copy update command \u2192 v' + latest : 'Copy update command') : 'Copy install command';
     if (STORE) h += '<a class="big" href="' + ea(STORE) + '" target="_blank" rel="noopener">' + (BR === 'edge' ? 'Get it on Edge Add-ons' : 'Get it on the Chrome Web Store') + '</a>';
-    else h += '<button class="big" id="xdlMac" data-copy="' + ea(INSTALL_CMD) + '">' + (installed ? 'Copy update command' : 'Copy install command') + '</button>';
+    else h += '<button class="big" id="xdlMac" data-copy="' + ea(INSTALL_CMD) + '">' + cmdLabel + '</button>';
     h += '</div><div class="st" id="xdlStatus"></div>';
     h += '<div style="font-weight:600;margin-top:6px">' + (installed ? 'To update' : 'To install') + '</div>' + stepsHtml(installed);
     return h;

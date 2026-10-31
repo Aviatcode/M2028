@@ -320,8 +320,7 @@ select.nt-pill{padding:0 6px 0 11px}
 <div class="ct">
 <span style="display:flex;align-items:center;gap:6px"><span>⏱️</span> Screen Time &amp; Hub</span>
 <div style="display:flex;gap:6px">
-<button class="btn b-gh sm" id="extOpenBtn" onclick="m2028ExtOpen()" title="Get or update the Chrome extension">🧩 Extension<span id="extDot" style="display:none;width:7px;height:7px;border-radius:50%;background:var(--ai,#4fd8a0);margin-left:6px;vertical-align:middle"></span></button>
-<button class="btn b-ai sm" onclick="openExtensionHubModal()" title="Open One-Stop Hub">⚡ Open Hub</button>
+<button class="btn b-gh sm" id="extOpenBtn" onclick="m2028ExtAction()" title="Open the Hub, or get/update the extension"><span id="extOpenBtnLbl">🧩 Extension</span></button>
 </div>
 </div>
 <div id="wScreenTimeContent">
@@ -338,12 +337,6 @@ select.nt-pill{padding:0 6px 0 11px}
 <div style="font-size:10px;font-weight:600;color:var(--mt);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px">Top Places Visited</div>
 <div id="wTopSitesList" style="display:flex;flex-direction:column;gap:5px;max-height:130px;overflow-y:auto">
 <div style="font-size:11px;color:var(--mt);padding:6px 0;text-align:center">Tracking active browser tabs...</div>
-</div>
-<div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b)">
-<button class="btn b-ai sm" style="flex:1" onclick="openExtensionHubModal('stopwatch')">⏱️ Stopwatch</button>
-<button class="btn b-up sm" style="flex:1" onclick="openExtensionHubModal('timer')">⏳ Timer</button>
-<button class="btn b-gh sm" style="flex:1" onclick="openExtensionHubModal('notes')">📝 Notes</button>
-<button class="btn b-gh sm" style="flex:1" onclick="openExtensionHubModal('search')">🔍 Search</button>
 </div>
 </div>
 </div>
@@ -874,7 +867,7 @@ select.nt-pill{padding:0 6px 0 11px}
 <button onclick="setCWType('note')" id="cwt-note" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">📝<br><span style="font-size:10px">Note Pad</span></button>
 <button onclick="setCWType('links')" id="cwt-links" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">🔗<br><span style="font-size:10px">Link Buttons</span></button>
 <button onclick="setCWType('checklist')" id="cwt-checklist" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">✅<br><span style="font-size:10px">Checklist</span></button>
-<button onclick="enableMedWidget()" id="cwt-meds" style="grid-column:1/-1;padding:16px 10px;border-radius:12px;border:1px solid var(--ai);background:var(--a2);color:var(--ai);cursor:pointer;font-family:inherit;text-align:center;font-size:15px;font-weight:800">💊<br><span style="font-size:12px">Medicine Tracker</span><br><span style="font-size:10px;font-weight:500;color:var(--m2)">Doses, reminders &amp; buy-more alerts</span></button>
+<button onclick="enableMedWidget()" id="cwt-meds" title="Doses, reminders &amp; buy-more alerts" style="padding:12px 8px;border-radius:9px;border:1px solid var(--ai);background:var(--a2);color:var(--ai);cursor:pointer;font-family:inherit;text-align:center;font-size:13px;font-weight:700">💊<br><span style="font-size:10px">Medicine Tracker</span></button>
 </div>
 <div id="cwTypeHint" style="font-size:11px;color:var(--mt);margin-bottom:11px;padding:8px 10px;background:var(--s2);border-radius:7px;min-height:32px">← Tap a type above to begin</div>
 <div style="margin-bottom:9px">
@@ -7650,15 +7643,16 @@ document.addEventListener("click",function(e){
     h += '<div style="font-weight:600;margin-top:6px">' + (installed ? 'To update' : 'To install') + '</div>' + stepsHtml(installed);
     return h;
   }
-  function markPend() { if (!isInstalled() && !STORE && !UNSUPPORTED) { setPend({ t: 'install' }); setTimeout(function () { corner(); }, 300); } }
-  // After the person clicks Download / Copy command: close the popup and leave the pinned steps in the corner.
+  function markPend() { if (!isInstalled() && !STORE && !UNSUPPORTED) setPend({ t: 'install' }); }
+  // After the person clicks Download / Copy command: close the popup. Update status now lives in the
+  // widget button itself (syncExtBtn), so there's no separate floating notice to leave behind.
   function afterGo() {
     var installed = isInstalled(), es = window.m2028ExtState || {};
     var hasNew = !!(installed && latest && es.version && newer(latest, es.version));
     if (installed && !hasNew) return;   // plain reinstall with nothing new: keep the popup and its steps open
     markPend();
     try { localStorage.setItem(MINK, '0'); } catch (e) {}
-    cornerKey = ''; corner();
+    syncExtBtn();
     setTimeout(close, 500);
   }
   function paint() {
@@ -7669,31 +7663,6 @@ document.addEventListener("click",function(e){
     bindCopy(box);
     box.querySelector('[data-x]').onclick = close;
   }
-  // ---------- pinned bottom-right notice: no close button, only minimise; it leaves by itself once done ----------
-  // Corner notice: only a tiny "update available" chip with an X. No install steps are ever shown here
-  // (they live in the Extension popup). Hidden during the tour, dismissed per version, never reappears for that version.
-  var CORNER_CSS = '#xdlCorner{position:fixed;right:14px;bottom:14px;z-index:900;display:flex;align-items:center;gap:2px;max-width:calc(100vw - 28px);padding:3px 4px 3px 12px;border-radius:999px;background:var(--s2,#22242a);color:var(--tx,#fff);border:1px solid var(--b2,rgba(128,128,128,.35));font:600 12px system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35)}' +
-    '#xdlCorner .lb{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:5px 4px}' +
-    '#xdlCorner .x{background:none;border:0;color:inherit;font:inherit;font-size:16px;line-height:1;cursor:pointer;width:26px;height:26px;border-radius:50%;opacity:.75}#xdlCorner .x:hover{opacity:1;background:rgba(128,128,128,.25)}';
-  var cornerKey = '';
-  function corner() {
-    var el = document.getElementById('xdlCorner');
-    var installed = isInstalled(), es = window.m2028ExtState || {}, cur = es.version || null;
-    var hasNew = !!(installed && latest && cur && newer(latest, cur));
-    if (installed && !hasNew) setPend(null);
-    var dis = ''; try { dis = localStorage.getItem('m2028_ext_dismiss') || ''; } catch (e) {}
-    var openModal = !!document.querySelector('.ov.op, #xdlOv');
-    if (window.__m2028TourOn || UNSUPPORTED || STORE || !hasNew || dis === String(latest) || openModal) { if (el) el.remove(); cornerKey = ''; return; }
-    var key = 'update|' + latest;
-    if (el && key === cornerKey) return;
-    cornerKey = key;
-    if (!document.getElementById('xdl-style2')) { var st = document.createElement('style'); st.id = 'xdl-style2'; st.textContent = CORNER_CSS; document.head.appendChild(st); }
-    if (!el) { el = document.createElement('div'); el.id = 'xdlCorner'; document.body.appendChild(el); }
-    el.className = '';
-    el.innerHTML = '<button type="button" class="lb" data-op>\uD83E\uDDE9 Extension update' + (latest ? ' v' + esc2(latest) : '') + '</button><button type="button" class="x" data-x aria-label="Close" title="Close">\u00D7</button>';
-    el.querySelector('[data-op]').onclick = function () { window.m2028ExtOpen(); };
-    el.querySelector('[data-x]').onclick = function () { try { localStorage.setItem('m2028_ext_dismiss', String(latest)); } catch (e) {} el.remove(); cornerKey = ''; };
-  }
   function esc2(s) { return String(s).replace(/[^0-9A-Za-z.\-]/g, ''); }
   function close() { var o = document.getElementById('xdlOv'); if (o) o.remove(); popOpen = false; }
   window.m2028ExtOpen = function () {
@@ -7701,21 +7670,32 @@ document.addEventListener("click",function(e){
     var o = document.createElement('div'); o.id = 'xdlOv'; o.innerHTML = '<div id="xdlBox"></div>';
     o.addEventListener('click', function (e) { if (e.target === o) close(); });
     document.body.appendChild(o); paint();
-    fetchLatest().then(function () { if (popOpen && !busy) paint(); dot(); corner(); });
+    fetchLatest().then(function () { if (popOpen && !busy) paint(); syncExtBtn(); });
   };
-  function dot() {
-    var d = document.getElementById('extDot'); if (!d) return;
+  // Single header control: shows install/update state right in the widget (no separate floating notice),
+  // and either opens the install/update flow or the Hub, depending on what's current.
+  function syncExtBtn() {
+    var lbl = document.getElementById('extOpenBtnLbl'); if (!lbl) return;
     var es = window.m2028ExtState || {}, installed = document.documentElement.hasAttribute('data-m2028-ext');
-    d.style.display = (installed && latest && (!es.version || newer(latest, es.version))) ? 'inline-block' : 'none';
+    var hasNew = installed && latest && (!es.version || newer(latest, es.version));
+    lbl.textContent = hasNew ? '\uD83E\uDDE9 Update available' : installed ? '\u26A1 Open Hub' : '\uD83E\uDDE9 Extension';
+    var btn = document.getElementById('extOpenBtn');
+    if (btn) btn.style.color = hasNew ? 'var(--ai,#4fd8a0)' : '';
   }
-  window.m2028ExtDlRender = function () { dot(); corner(); if (popOpen && !busy) paint(); };
-  setInterval(function () { corner(); }, 5000);
-  setInterval(function () { fetchLatest().then(function () { dot(); corner(); }); }, 600000);
-  fetchLatest().then(function () { dot(); setTimeout(corner, 1800); });
+  window.m2028ExtAction = function () {
+    var installed = document.documentElement.hasAttribute('data-m2028-ext');
+    var es = window.m2028ExtState || {};
+    var hasNew = installed && latest && (!es.version || newer(latest, es.version));
+    if (installed && !hasNew) { if (typeof openExtensionHubModal === 'function') openExtensionHubModal(); return; }
+    window.m2028ExtOpen();
+  };
+  window.m2028ExtDlRender = function () { syncExtBtn(); if (popOpen && !busy) paint(); };
+  setInterval(function () { fetchLatest().then(syncExtBtn); }, 600000);
+  fetchLatest().then(syncExtBtn);
   // quietly check for updates, and offer the popup once on a desktop browser that has no extension yet
   setTimeout(function () {
     fetchLatest().then(function () {
-      dot(); corner();
+      syncExtBtn();
       var installed = document.documentElement.hasAttribute('data-m2028-ext'), seen = false;
       try { seen = localStorage.getItem('m2028_ext_offer') === '1'; } catch (e) {}
       if (!installed && !seen && /Chrome|Edg/.test(navigator.userAgent) && !/Mobile|Android/i.test(navigator.userAgent) && window.innerWidth >= 900 && (!window.__m2028AutoOfferOK || window.__m2028AutoOfferOK())) {

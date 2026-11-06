@@ -138,6 +138,52 @@ const ADULT_REGEX = '^https?://([a-z0-9-]+\\.)*[a-z0-9-]*(' + ADULT_KEYWORDS.joi
 const ADULT_RE_JS = new RegExp(ADULT_REGEX, 'i');
 const DNR_ADULT_KEYWORD_ID = 3990;
 
+// ---- Auto-detection helpers (adult searches, gambling words in the address, pages detected by detect.js) ----
+const GAMBLING_HOST_RE = /(^|[.-])(casino|sportsbook|betting|jackpot)[a-z0-9-]*\./i;
+const SEARCH_HOSTS = ['google.', 'bing.com', 'duckduckgo.com', 'yahoo.com', 'search.brave.com', 'ecosia.org', 'yandex.', 'startpage.com'];
+const ADULT_QUERY_RE = /(^|[^a-z0-9])(porn|porno|pornhub|xxx|xvideos|xnxx|hentai|nsfw|sex\s*videos?|nude\s*(photos|pics|videos)?|onlyfans\s*leaks?|milf|blowjob)([^a-z0-9]|$)/i;
+function adultSearchQuery(url) {
+  try {
+    const u = new URL(url);
+    const h = u.hostname.toLowerCase();
+    if (!SEARCH_HOSTS.some(x => h.indexOf(x) !== -1)) return false;
+    const q = u.searchParams.get('q') || u.searchParams.get('query') || u.searchParams.get('p') || u.searchParams.get('text') || '';
+    return ADULT_QUERY_RE.test(q);
+  } catch (e) { return false; }
+}
+// Big mixed sites are never learned as a whole (detect.js already skips them, this is the second check)
+const NEVER_LEARN = ['google.com', 'bing.com', 'duckduckgo.com', 'yahoo.com', 'wikipedia.org', 'github.com', 'reddit.com', 'x.com', 'twitter.com',
+  'facebook.com', 'instagram.com', 'youtube.com', 'tiktok.com', 'medium.com', 'quora.com', 'aviatcode.github.io', 'localhost', '127.0.0.1'];
+function neverLearn(d) {
+  return !d || /\.(gov|edu|ac)(\.[a-z]{2})?$/.test(d) || NEVER_LEARN.some(x => d === x || d.endsWith('.' + x));
+}
+async function handleContentDetected(message, sender) {
+  const tab = sender && sender.tab;
+  if (!tab || tab.id == null || !message) return { ok: false };
+  if (sender.id !== chrome.runtime.id) return { ok: false };
+  const cat = message.category;
+  if (cat !== 'adult' && cat !== 'gambling') return { ok: false };
+  const d = extractDomain(tab.url || message.url);
+  if (!d || d.indexOf('chrome://') === 0 || d === 'local-file') return { ok: false };
+  const data = await chrome.storage.local.get([STORAGE_KEY_BLOCKLIST, 'm2028_custom_rules', 'm2028_learned']);
+  // Only act if you really have this category switched on
+  if (!(data[STORAGE_KEY_BLOCKLIST] || []).some(b => b && b.target === 'category:' + cat)) return { ok: false };
+  if (!neverLearn(d)) {
+    const rules = data.m2028_custom_rules || {};
+    if (rules[d] !== cat && Object.keys(rules).length < 2000) {
+      rules[d] = cat;
+      const learned = data.m2028_learned || {};
+      learned[d] = { cat: cat, at: Date.now(), why: String(message.why || '').slice(0, 40), score: Number(message.score) || 0 };
+      await chrome.storage.local.set({ m2028_custom_rules: rules, m2028_learned: learned });
+      await syncBlocking();
+    }
+  }
+  try {
+    await chrome.tabs.update(tab.id, { url: chrome.runtime.getURL('blocked.html?reason=block&domain=' + encodeURIComponent(d)) });
+  } catch (e) {}
+  return { ok: true };
+}
+
 // Rules we manage all live in these id ranges so we can safely wipe & rebuild them
 const DNR_BLOCK_ID_BASE = 1;      // permanent blocklist
 const DNR_LIMIT_ID_BASE = 2000;   // today's over-the-limit sites
@@ -741,6 +787,11 @@ async function guardTab(tabId, url) {
     if (hit(blocked)) reason = 'block';
     else if (hit(limited)) reason = 'limit';
     else if (blocked.indexOf('#adult-keywords') !== -1 && ADULT_RE_JS.test(url)) { reason = 'block'; label = 'adult site'; }
+    if (!reason && blocked.indexOf('#adult-keywords') !== -1 && adultSearchQuery(url)) { reason = 'block'; label = 'adult search'; }
+    if (!reason && GAMBLING_HOST_RE.test(d)) {
+      const liveBl = await chrome.storage.local.get(STORAGE_KEY_BLOCKLIST);
+      if ((liveBl[STORAGE_KEY_BLOCKLIST] || []).some(b => b && b.target === 'category:gambling')) reason = 'block';
+    }
     if (!reason) return;
     await chrome.tabs.update(tabId, {
       url: chrome.runtime.getURL('blocked.html?reason=' + reason + '&domain=' + encodeURIComponent(label))
@@ -1399,6 +1450,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
       }
 
+      case 'CONTENT_DETECTED': {
+        sendResponse(await handleContentDetected(message, sender));
+        break;
+      }
       case 'LOCK_REQUEST': {
         const result = await lockRequest(message);
         await syncBlocking();

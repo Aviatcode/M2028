@@ -139,7 +139,12 @@ const ADULT_RE_JS = new RegExp(ADULT_REGEX, 'i');
 const DNR_ADULT_KEYWORD_ID = 3990;
 
 // ---- Auto-detection helpers (adult searches, gambling words in the address, pages detected by detect.js) ----
-const GAMBLING_HOST_RE = /(^|[.-])(casino|sportsbook|betting|jackpot)[a-z0-9-]*\./i;
+const HOST_KEYWORDS = {
+  gambling: /(^|[.-])(casino|sportsbook|betting|jackpot)[a-z0-9-]*\./i,
+  entertainment: /(^|[.-])(fmovies|123movies|gomovies|putlocker|soap2day|solarmovie|yesmovies|kissanime|hianime|9anime|hdmovies|freemovies|watchmovies|moviesda|tamilrockers|filmyzilla|torrent[a-z0-9-]*)\./i,
+  communication: /(^|[.-])(chatroulette|omegle|randomchat|chatroom[a-z0-9-]*|strangerchat|talkwithstranger)\./i,
+  social: /(^|[.-])(socialnetwork|friendfinder|meetnewpeople)[a-z0-9-]*\./i
+};
 const SEARCH_HOSTS = ['google.', 'bing.com', 'duckduckgo.com', 'yahoo.com', 'search.brave.com', 'ecosia.org', 'yandex.', 'startpage.com'];
 const ADULT_QUERY_RE = /(^|[^a-z0-9])(porn|porno|pornhub|xxx|xvideos|xnxx|hentai|nsfw|sex\s*videos?|nude\s*(photos|pics|videos)?|onlyfans\s*leaks?|milf|blowjob)([^a-z0-9]|$)/i;
 function adultSearchQuery(url) {
@@ -162,7 +167,7 @@ async function handleContentDetected(message, sender) {
   if (!tab || tab.id == null || !message) return { ok: false };
   if (sender.id !== chrome.runtime.id) return { ok: false };
   const cat = message.category;
-  if (cat !== 'adult' && cat !== 'gambling') return { ok: false };
+  if (!LOCK_CATEGORIES.includes(cat)) return { ok: false };
   const d = extractDomain(tab.url || message.url);
   if (!d || d.indexOf('chrome://') === 0 || d === 'local-file') return { ok: false };
   const data = await chrome.storage.local.get([STORAGE_KEY_BLOCKLIST, 'm2028_custom_rules', 'm2028_learned']);
@@ -788,9 +793,12 @@ async function guardTab(tabId, url) {
     else if (hit(limited)) reason = 'limit';
     else if (blocked.indexOf('#adult-keywords') !== -1 && ADULT_RE_JS.test(url)) { reason = 'block'; label = 'adult site'; }
     if (!reason && blocked.indexOf('#adult-keywords') !== -1 && adultSearchQuery(url)) { reason = 'block'; label = 'adult search'; }
-    if (!reason && GAMBLING_HOST_RE.test(d)) {
-      const liveBl = await chrome.storage.local.get(STORAGE_KEY_BLOCKLIST);
-      if ((liveBl[STORAGE_KEY_BLOCKLIST] || []).some(b => b && b.target === 'category:gambling')) reason = 'block';
+    if (!reason) {
+      const kwCat = Object.keys(HOST_KEYWORDS).find(c => HOST_KEYWORDS[c].test(d));
+      if (kwCat) {
+        const liveBl = await chrome.storage.local.get(STORAGE_KEY_BLOCKLIST);
+        if ((liveBl[STORAGE_KEY_BLOCKLIST] || []).some(b => b && b.target === 'category:' + kwCat)) reason = 'block';
+      }
     }
     if (!reason) return;
     await chrome.tabs.update(tabId, {

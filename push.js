@@ -8,6 +8,7 @@ var VAPID="BKXNMDQ70tAt4e-JvpUPI7C4pSd9r2rMdY__2aJqgNKDyiBiPv2SybsoNlgtftqPrNQLz
 var last="",busy=0,again=0,fails=0,lastPom=null,pomFan=0;
 function uid(){try{return(typeof _user!=="undefined"&&_user&&_user.id)||null}catch(e){return null}}
 function isPom(x){return /^pom_/.test(x.k)}
+function isLive(x){return /^pom_live_/.test(x.k)}
 function key(s){var p="=".repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,"+").replace(/_/g,"/")),o=new Uint8Array(r.length);for(var i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o}
 function jobs(){var out=[],now=Date.now();
  try{(window.m2028ReminderItems?window.m2028ReminderItems():[]).forEach(function(x){
@@ -40,8 +41,8 @@ async function register(){
    if(ps!==lastPom){try{var pr=await fetch(API,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",apikey:ANON,Authorization:"Bearer "+ANON},
      body:JSON.stringify({action:"pomo",uid:u,subscription:sub.toJSON(),jobs:pom.map(function(x){return{k:x.k,ts:x.ts,title:x.title,body:x.body,tag:"m2028-pom"}})})});
      var pj={};try{pj=await pr.json()}catch(e){}
-     pomFan=(pr.ok&&pj&&pj.pomo===true)?1:0;if(pomFan)lastPom=ps}catch(e){pomFan=0}}}
-  var op=await opaque(pomFan?all.filter(function(x){return!isPom(x)}):all),list=op.pub,sig=sub.endpoint+JSON.stringify(list)+JSON.stringify(op.map);if(sig===last)return;
+     pomFan=(pr.ok&&pj&&pj.pomo===true)?1:0;window.__m2028PomFan=pomFan;if(pomFan)lastPom=ps}catch(e){pomFan=0}}}
+  var op=await opaque(pomFan?all.filter(function(x){return!isPom(x)}):all.filter(function(x){return!isLive(x)})),list=op.pub,sig=sub.endpoint+JSON.stringify(list)+JSON.stringify(op.map);if(sig===last)return;
   var sw=reg.active||navigator.serviceWorker.controller;if(sw)sw.postMessage({type:"m2028-push-map",map:op.map});
   var r=await fetch(API,{method:"POST",keepalive:true,headers:{"Content-Type":"application/json",apikey:ANON,Authorization:"Bearer "+ANON},
    body:JSON.stringify({action:"register",subscription:sub.toJSON(),jobs:list})});

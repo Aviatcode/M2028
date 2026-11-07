@@ -941,7 +941,8 @@ function updatePomoBadge(st) {
     // Same remaining time the popup and website show (they use Math.floor) — no offset, so they always agree.
     // (Math.ceil used to round UP to the next whole minute, making the badge read ~1 min high;
     // combined with the badge only refreshing on the 30s/1min tick, it could sit ~2 min ahead of reality.)
-    const min = Math.floor(remSec / 60);
+    // Updates in 2-minute steps (30m, 28m, 26m…) until the last 10 minutes, then every minute — same as the website.
+    const min = remSec > 600 ? Math.max(10, 2 * Math.round(remSec / 120)) : Math.floor(remSec / 60);
     chrome.action.setBadgeText({ text: min > 0 ? String(min) + 'm' : remSec > 0 ? '<1m' : '0m' });
 
     chrome.storage.local.get(['theme', 'm_theme', 'customColors', 'm_customColors'], (res) => {
@@ -1040,17 +1041,14 @@ async function schedulePomoAlarms(st) {
     if (warnAt > now + 2000) chrome.alarms.create('m2028_pomo_warn', { when: warnAt });
     chrome.alarms.create('m2028_pomo_alarm', { when: Math.max(st.endTs, now + 1000) });
 
-    // Periodic reminders: every 10 min while more than 10 min remain, every 2 min inside the final 10.
+    // Periodic reminders: every 2 min while more than 10 min remain, every 1 min inside the final 10
+    // (the 2-min mark has its own heads-up alarm, and the final minute is left to the end alarm).
     // Scheduled as real chrome.alarms (not a page setTimeout loop), so they fire on time even if no
     // tab is open or the browser is backgrounded — this is what was making the 10-min ones run late.
-    const startTs = st.endTs - (st.phaseLen || 0) * 1000;
-    let t = Math.max(startTs, now);
     let idx = 0;
-    while (true) {
-      const remMs = st.endTs - t;
-      const step = remMs > 10 * 60 * 1000 ? 10 * 60 * 1000 : 2 * 60 * 1000;
-      t += step;
-      if (t >= st.endTs - 60 * 1000) break; // leave the final minute to the warn/end alarms
+    for (let M = Math.floor((st.endTs - now) / 60000); M >= 3; M--) {
+      if (M > 10 && M % 2) continue;
+      const t = st.endTs - M * 60000;
       if (t > now + 2000) chrome.alarms.create('m2028_pomo_ping_' + (idx++), { when: t });
     }
 
@@ -1127,12 +1125,14 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       const remMs = st.endTs - Date.now();
       if (remMs < 60 * 1000) return; // too close to the end — the warn/end alarms already cover this
       const remMin = Math.round(remMs / 60000);
-      chrome.notifications.create('m2028_pomo_ping_' + Date.now(), {
+      // Fixed id: each update replaces the previous one in place (no stacking), and it is silent.
+      chrome.notifications.create('m2028_pomo_live', {
         type: 'basic',
         iconUrl: 'icon-192.png',
         title: `⏳ ~${remMin} min left — ${st.mode === 'focus' ? 'Focus' : 'Break'}`,
         message: 'Ends ' + new Date(st.endTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        priority: 1
+        priority: 0,
+        silent: true
       });
     } catch (e) {}
   } else if (alarm.name === 'm2028_timer_alarm') {

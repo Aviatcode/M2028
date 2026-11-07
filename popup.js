@@ -42,6 +42,7 @@
         if (key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
         chrome.storage.local.set(obj);
       }
+      markDirty(key);
       if (typeof pushCloudData === 'function') {
         pushCloudData(key, val);
       }
@@ -3429,6 +3430,22 @@
   const SYNC_KEYS = ['habs', 'hd', 'hubNotes', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
   const _pushTimers = {};
   const _lastSync = {};
+  const THREEWAY = ['habs', 'hd', 'cd', 'customWidgets'];
+  const META_KEY = 'm2028_sync_meta';
+  let _meta = { base: {}, dirty: {} };
+  const _metaReady = new Promise(function (res) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([META_KEY], function (r) {
+          const m = r && r[META_KEY];
+          if (m && typeof m === 'object') _meta = { base: m.base || {}, dirty: m.dirty || {} };
+          res();
+        });
+        return;
+      }
+    } catch (e) {}
+    res();
+  });
 
   function setAuthAlert(msg, isSuccess) {
     const el = document.getElementById('authAlertMsg');
@@ -3542,6 +3559,14 @@
           updateAuthUI();
           initWallpaperSync();
           pullCloudData(true);
+          // The website account is the main one: if an open M2028 tab is signed in as someone else, follow it.
+          getSessionFromOpenTab().then(function (tabSess) {
+            if (tabSess && tabSess.user && tabSess.access_token && _authSession && _authSession.user && tabSess.user.id !== _authSession.user.id) {
+              saveAuthSession(tabSess);
+              initWallpaperSync();
+              pullCloudData(true);
+            }
+          }).catch(function () {});
         } else {
           // Check if an open web app tab already has an active login session
           checkOpenTabForAuth();
@@ -3752,19 +3777,103 @@
         chrome.tabs.sendMessage(t.id, { type: 'GET_M2028_PAGE_DATA' }, function (res) {
           if (done || chrome.runtime.lastError || !res || !res.success || !res.data) return;
           done = true;
-          const obj = {};
+          // Signed in and syncing: the cloud copy is the source of truth (a background website tab can be stale).
+          // The tab is only used when there is no account, or when the cloud could not be reached.
+          const keepCloud = !!_authSession && _lastPull.indexOf('OK') === 0;
           ['hd', 'habs', 'bestSt'].forEach(function (k) {
             const v = res.data[k];
             if (v === undefined || v === null) return;
-            obj[k] = v;
-            obj['m_' + k] = v;
-            try { localStorage.setItem('m_' + k, JSON.stringify(v)); } catch (e) {}
+            if (k === 'bestSt') { writeLocalKey(k, v); return; }
+            if (keepCloud) return;
+            applyRemoteValue(k, v, { fromCloud: false });
           });
-          if (Object.keys(obj).length && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set(obj);
-            renderHabits();
-          }
+          renderHabits();
         });
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Habits / habit ticks / countdowns: three-way merge, the same rules as the website's _m3().
+  // Before, the extension simply replaced its copy with the cloud / website copy, and dropped its own
+  // change whenever the cloud looked newer. A tick made on one side could vanish, so the daily streak
+  // differed between the extension and the website. Now both sides' changes are kept.
+  //   base  = the last cloud copy this extension saw
+  //   dirty = keys changed here and not yet confirmed in the cloud (kept in chrome.storage, so it
+  //           survives closing the popup, and content.js can see it too)
+  // ---------------------------------------------------------------------
+  function _canon(v) {
+    if (v === undefined) return 'u';
+    if (v && typeof v === 'object') {
+      if (Array.isArray(v)) return '[' + v.map(_canon).join(',') + ']';
+      return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + _canon(v[k]); }).join(',') + '}';
+    }
+    return JSON.stringify(v);
+  }
+  function _isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+  function _idArr(v) { return Array.isArray(v) && v.every(function (x) { return x && typeof x === 'object' && x.id !== undefined; }); }
+  function _isEmptyVal(v) { return v === null || v === undefined || (Array.isArray(v) ? v.length === 0 : (typeof v === 'object' && Object.keys(v).length === 0)); }
+  function merge3(base, local, cloud) {
+    const o = _canon(local), a = _canon(cloud), i = _canon(base);
+    if (o === a) return local;
+    if (o === i) return cloud;
+    if (a === i) return local;
+    if (_isObj(local) && _isObj(cloud)) {
+      const b = _isObj(base) ? base : {};
+      const out = {};
+      new Set(Object.keys(cloud).concat(Object.keys(local))).forEach(function (k) {
+        const m = merge3(b[k], local[k], cloud[k]);
+        if (m !== undefined) out[k] = m;
+      });
+      return out;
+    }
+    if (_idArr(local) && _idArr(cloud)) {
+      const bm = new Map((_idArr(base) ? base : []).map(function (x) { return [x.id, x]; }));
+      const lm = new Map(local.map(function (x) { return [x.id, x]; }));
+      const cm = new Map(cloud.map(function (x) { return [x.id, x]; }));
+      const seen = new Set();
+      const out = [];
+      cloud.concat(local).forEach(function (x) {
+        if (seen.has(x.id)) return;
+        seen.add(x.id);
+        const m = merge3(bm.get(x.id), lm.get(x.id), cm.get(x.id));
+        if (m !== undefined) out.push(m);
+      });
+      return out;
+    }
+    return local;
+  }
+  function writeLocalKey(key, val) {
+    try { localStorage.setItem('m_' + key, JSON.stringify(val)); } catch (e) {}
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const o = {}; o['m_' + key] = val; o[key] = val;
+      chrome.storage.local.set(o);
+    }
+  }
+  function metaSave() {
+    try { if (chrome.storage && chrome.storage.local) { const o = {}; o[META_KEY] = _meta; chrome.storage.local.set(o); } } catch (e) {}
+  }
+  function markDirty(key) {
+    try {
+      if (THREEWAY.indexOf(key) < 0) return;
+      _metaReady.then(function () { _meta.dirty[key] = Date.now(); metaSave(); });
+    } catch (e) {}
+  }
+  // Take a copy of `key` that came from outside (cloud, or the open website tab) without losing changes made here.
+  function applyRemoteValue(key, remote, opts, done) {
+    const fromCloud = !!(opts && opts.fromCloud);
+    _metaReady.then(function () {
+      readExtValue(key, function (loc) {
+        let merged = remote;
+        if (_meta.dirty[key] && loc !== undefined && loc !== null) merged = merge3(_meta.base[key], loc, remote);
+        const differs = _canon(merged) !== _canon(remote);
+        if (fromCloud) _meta.base[key] = remote;
+        if (differs) { if (!_meta.dirty[key]) _meta.dirty[key] = Date.now(); }
+        else if (fromCloud) delete _meta.dirty[key];
+        metaSave();
+        if (_canon(merged) !== _canon(loc)) writeLocalKey(key, merged);
+        if (differs && fromCloud) pushCloudData(key, merged); // a change of ours the cloud has not got yet
+        if (done) done(merged);
       });
     });
   }
@@ -3812,7 +3921,9 @@
     if (statusEl) statusEl.textContent = 'Fetching latest data from cloud...';
 
     try {
-      const resp = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&select=*`, {
+      // Light refreshes only ask for the keys they need (the full table can hold large items like wallpapers)
+      const keyFilter = Array.isArray(onlyKeys) && onlyKeys.length ? '&data_key=in.(' + onlyKeys.map(encodeURIComponent).join(',') + ')' : '';
+      const resp = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}${keyFilter}&select=*`, {
         method: 'GET'
       });
       if (!resp.ok) throw new Error('Cloud fetch status ' + resp.status);
@@ -3833,19 +3944,10 @@
         });
       }
 
-      // 1. Habits
-      if (dataMap.habs !== undefined) {
-        try { localStorage.setItem('m_habs', JSON.stringify(dataMap.habs)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_habs: dataMap.habs, habs: dataMap.habs });
-        }
-      }
-      if (dataMap.hd !== undefined) {
-        try { localStorage.setItem('m_hd', JSON.stringify(dataMap.hd)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_hd: dataMap.hd, hd: dataMap.hd });
-        }
-      }
+      // 1. Habits + habit ticks (the daily streak is calculated from the ticks): merged, never overwritten
+      await Promise.all(['habs', 'hd'].filter(function (k) { return dataMap[k] !== undefined; }).map(function (k) {
+        return new Promise(function (res) { applyRemoteValue(k, dataMap[k], { fromCloud: true }, res); });
+      }));
 
       // 2. Tasks: the website keeps tasks on each device only, so they are not pulled from the cloud here
 
@@ -3863,19 +3965,10 @@
         }
       }
 
-      // 3. Countdowns
-      if (dataMap.customWidgets !== undefined) {
-        try { localStorage.setItem('m_customWidgets', JSON.stringify(dataMap.customWidgets)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_customWidgets: dataMap.customWidgets, customWidgets: dataMap.customWidgets });
-        }
-      }
-      if (dataMap.cd !== undefined) {
-        try { localStorage.setItem('m_cd', JSON.stringify(dataMap.cd)); } catch (e) {}
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ m_cd: dataMap.cd, cd: dataMap.cd });
-        }
-      }
+      // 3. Countdowns: merged too
+      await Promise.all(['customWidgets', 'cd'].filter(function (k) { return dataMap[k] !== undefined; }).map(function (k) {
+        return new Promise(function (res) { applyRemoteValue(k, dataMap[k], { fromCloud: true }, res); });
+      }));
 
       // 4. Pomodoro
       // Session log and daily counts are merged with what the extension already has (never overwritten)
@@ -3969,19 +4062,43 @@
     if (!_authSession || !_authSession.user || !_authSession.access_token) return;
     if (!SYNC_KEYS.includes(key)) return;
 
-    // Debounce rapid bursts
+    // Debounce rapid bursts (short for habit ticks, so closing the popup right after a tick still saves it)
     clearTimeout(_pushTimers[key]);
     _pushTimers[key] = setTimeout(async function () {
+      const startedAt = Date.now();
       try {
+        await _metaReady;
         // Safety check: if the cloud copy is newer than what this popup last saw (for example the website changed
         // it), do NOT overwrite it with this older copy. Take the cloud version instead.
         const isMerge = MERGE_KEYS.includes(key);
-        const chk = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&data_key=eq.${encodeURIComponent(key)}&select=updated_at${isMerge ? ',data_value' : ''}`, { method: 'GET' });
+        const isTW = THREEWAY.indexOf(key) >= 0;
+        const chk = await authFetch(`${SUPA_URL}/rest/v1/user_data?user_id=eq.${_authSession.user.id}&data_key=eq.${encodeURIComponent(key)}&select=updated_at${(isMerge || isTW) ? ',data_value' : ''}`, { method: 'GET' });
         if (chk.ok) {
           const cur = await chk.json();
           if (Array.isArray(cur) && cur.length) {
             const cloudTs = Date.parse(cur[0].updated_at) || 0;
-            if (isMerge) {
+            if (isTW) {
+              // Keep both sides' changes (e.g. a habit ticked on the website while this popup was open)
+              const cloudVal = cur[0].data_value;
+              const merged = merge3(_meta.base[key], val, cloudVal);
+              if (_canon(merged) !== _canon(val)) writeLocalKey(key, merged);
+              if (_canon(merged) === _canon(cloudVal)) {
+                _meta.base[key] = cloudVal;
+                if ((_meta.dirty[key] || 0) <= startedAt) delete _meta.dirty[key];
+                metaSave();
+                _lastSync[key] = cloudTs;
+                return;
+              }
+              if (key === 'habs' && _isEmptyVal(merged) && !_isEmptyVal(cloudVal)) {
+                // same safety net as the website: keep a backup before the habit list is emptied
+                await authFetch(`${SUPA_URL}/rest/v1/user_data?on_conflict=user_id,data_key`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+                  body: JSON.stringify({ user_id: _authSession.user.id, data_key: 'habs__backup', data_value: cloudVal, updated_at: new Date().toISOString() })
+                });
+              }
+              val = merged;
+            } else if (isMerge) {
               const cloudVal = cur[0].data_value;
               if (key === 'pomLive') {
                 // Whoever has the newer timer state wins; never push an older one over it
@@ -4028,6 +4145,11 @@
           return;
         }
         _lastSync[key] = Date.parse(sentAt);
+        if (isTW) {
+          _meta.base[key] = val;
+          if ((_meta.dirty[key] || 0) <= startedAt) delete _meta.dirty[key];
+          metaSave();
+        }
         const statusEl = document.getElementById('authSyncStatusText');
         if (statusEl) {
           const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -4036,7 +4158,7 @@
       } catch (e) {
         console.warn('Push error for ' + key, e);
       }
-    }, 400);
+    }, THREEWAY.indexOf(key) >= 0 ? 120 : 400);
   }
 
   function syncWithOpenWebTab() {
@@ -4398,7 +4520,7 @@
       adoptWebAppData();
       adoptWallpaperFromWebTab();
       if (_authSession) pullCloudData(true, ['habs', 'hd', 'hubNotes']);
-    }, 30000);
+    }, 10000);
     initPomo();
     initTimeTracker();
     renderHabits();

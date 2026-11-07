@@ -69,11 +69,26 @@
         lastNotes = event.data.value;
       }
       if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        const obj = {};
-        obj[event.data.key] = event.data.value;
-        obj['m_' + event.data.key] = event.data.value;
-        if (event.data.key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
-        chrome.storage.local.set(obj);
+        const key = event.data.key;
+        const value = event.data.value;
+        const write = function () {
+          const obj = {};
+          obj[key] = value;
+          obj['m_' + key] = value;
+          if (key === 'hubNotes') obj['m_hubNotesTs'] = Date.now();
+          chrome.storage.local.set(obj);
+        };
+        // Habits / ticks / countdowns: if the extension has a change it has not sent to the cloud yet, do not
+        // overwrite it with this page copy. The popup merges both sides and sends the result (see popup.js).
+        if (key === 'habs' || key === 'hd' || key === 'cd' || key === 'customWidgets') {
+          chrome.storage.local.get(['m2028_sync_meta'], function (r) {
+            const m = r && r.m2028_sync_meta;
+            if (m && m.dirty && m.dirty[key]) return;
+            write();
+          });
+        } else {
+          write();
+        }
       }
     } else if (event.data.type === 'OPEN_EXT_HUB') {
       // Website widget -> open the extension hub (popup.html) in a tab on the requested section
@@ -258,6 +273,7 @@
             const sess = JSON.parse(supaTok);
             if (sess && sess.access_token && sess.user) {
               syncObj.m_authSession = safeSession(sess);
+              syncObj.m_authUid = sess.user.id;
             }
           } catch (e) {}
         }
@@ -451,6 +467,7 @@
   const MIRROR_RAW = []; // wallpaper / wpDim are per account now (wallpaper-bridge.js), never global
   const SUPA_TOKEN_KEY = 'sb-lvzcctsqcpikisdzztot-auth-token';
   let mirrorFirstRun = true;
+  let noTokPolls = 0;
 
   function readPage(key) {
     try { return window.localStorage.getItem('m_' + key); } catch (e) { return null; }
@@ -494,12 +511,30 @@
       let tokRaw = null;
       try { tokRaw = window.localStorage.getItem(SUPA_TOKEN_KEY); } catch (e) {}
       if (tokRaw) {
+        noTokPolls = 0;
         const prevTok = mirrorSigs.__tok;
         mirrorSigs.__tok = tokRaw;
         if (!first && tokRaw !== prevTok) {
           try {
             const sess = JSON.parse(tokRaw);
-            if (sess && sess.access_token && sess.user) setObj.m_authSession = safeSession(sess);
+            if (sess && sess.access_token && sess.user) {
+              setObj.m_authSession = safeSession(sess);   // signed in, token refreshed, or switched to another account
+              setObj.m_authUid = sess.user.id;
+            }
+          } catch (e) {}
+        }
+      } else if (location.hostname === 'aviatcode.github.io') {
+        // The website has no login any more (signed out). Mirror that, otherwise the extension keeps acting as the old account.
+        // Wait a few polls so a page that is still starting up does not sign the extension out by mistake.
+        noTokPolls++;
+        if (noTokPolls === 3) {
+          mirrorSigs.__tok = null;
+          // Only drop a login that was copied from the website. A login made inside the extension popup is its own account.
+          try {
+            chrome.storage.local.get(['m_authSession'], function (r) {
+              const cur = r && r.m_authSession;
+              if (cur && cur._src !== 'popup') chrome.storage.local.remove(['m_authSession', 'm_authUid']);
+            });
           } catch (e) {}
         }
       }

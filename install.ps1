@@ -16,20 +16,27 @@
 #                 regardless of this script. This just removes the "copy/paste a command"
 #                 part. No admin rights needed; runs only while you're logged in.
 #   -Unschedule   Remove that background task.
-#   -Quiet        Skip opening the browser/folder windows (used by the scheduled run itself;
-#                 you can also pass it by hand for a silent one-off update).
+#   -Quiet        Print less and skip copying the folder path to the clipboard (used by the
+#                 scheduled run itself; you can also pass it by hand for a silent update).
+#
+# This installer NEVER opens a browser or Explorer window. When it finishes it copies the install
+# folder path to your clipboard, so the one-time "Load unpacked" step is just: Ctrl+V.
 #
 # Examples:
 #   & ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave -Schedule
 #   & ([scriptblock]::Create((irm 'https://aviatcode.github.io/M2028/install.ps1'))) brave -Unschedule
 param([string]$Browser = 'brave', [switch]$Schedule, [switch]$Unschedule, [switch]$Quiet)
+$IsFile = [bool]$PSCommandPath   # true for the scheduled run (-File); false when pasted as a command
+# `exit` would close the user's whole terminal when this is pasted as a command, so we stop with a private exception instead.
+function Stop-M2028([int]$code) { if ($IsFile) { exit $code } else { throw 'M2028_STOP' } }
+try {
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $Base = 'https://aviatcode.github.io/M2028'
 $Dir  = Join-Path $env:LOCALAPPDATA 'M2028-Extension'
 $Tmp  = "$Dir.new"
-$required = 'manifest.json','background.js','content.js','wallpaper-bridge.js','popup.html','popup.js','block-ui.js','blocked.html','blocked.js','options.html','options.js','favicon-32.png','icon-192.png'
+$required = 'manifest.json','background.js','content.js','detect.js','wallpaper-bridge.js','popup.html','popup.js','block-ui.js','blocked.html','blocked.js','options.html','options.js','favicon-32.png','icon-192.png'
 $optional = 'popup.css','options.css','leaf-icons.css','stickers.js','offscreen.html','offscreen.js','index.html','pom-duo.webp','sussurus1.mp3','icon-512.png','apple-touch-icon.png','favicon.ico'
 $TaskName = 'M2028AutoUpdate'
 
@@ -37,7 +44,7 @@ if ($Unschedule) {
   try { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop }
   catch { } # fine if it never existed
   Write-Host "Removed the background auto-update task (if it existed). Manual 'copy install command' updates are back to how they were." -ForegroundColor Green
-  exit 0
+  return
 }
 
 # --- Normalize / validate the browser argument ---
@@ -50,7 +57,7 @@ if ($BrowserNorm -notin @('brave', 'chrome', 'edge')) {
 function Fail($msg) {
   Write-Host "ERROR: $msg" -ForegroundColor Red
   if (Test-Path $Tmp) { Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue }
-  exit 1
+  Stop-M2028 1
 }
 
 if (Test-Path $Tmp) { Remove-Item $Tmp -Recurse -Force }
@@ -109,13 +116,17 @@ try {
   }
   New-Item -ItemType Directory -Path $Dir -Force | Out-Null
   Copy-Item (Join-Path $Tmp '*') $Dir -Recurse -Force
+  # The folder is rebuilt from the download, which does not contain install.ps1 itself. Keep the copy the
+  # scheduled task runs, otherwise the daily update would silently stop after its first run.
+  $oldSelf = Join-Path $BackupDir 'install.ps1'
+  if ($existed -and (Test-Path $oldSelf)) { Copy-Item $oldSelf (Join-Path $Dir 'install.ps1') -Force }
 } catch {
   # Roll back to the previous working install on any failure during the swap.
   Write-Host "ERROR: install step failed ($($_.Exception.Message)) — restoring previous version." -ForegroundColor Red
   if (Test-Path $Dir) { Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue }
   if ($existed -and (Test-Path $BackupDir)) { Rename-Item $BackupDir (Split-Path $Dir -Leaf) }
   Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue
-  exit 1
+  Stop-M2028 1
 }
 if (Test-Path $BackupDir) { Remove-Item $BackupDir -Recurse -Force -ErrorAction SilentlyContinue }
 Remove-Item $Tmp -Recurse -Force -ErrorAction SilentlyContinue
@@ -151,35 +162,21 @@ if ($Schedule) {
   }
 }
 
-if ($Quiet) { exit 0 }
+if ($Quiet) { return }
 
-Start-Process explorer.exe $Dir
-
-# --- Find the browser's executable in common locations (most Windows installs do NOT put
-#     Chrome/Brave on PATH, so Start-Process <name> alone frequently fails silently). ---
-switch ($BrowserNorm) {
-  'brave'  { $exeName = 'brave.exe';  $url = 'brave://extensions';  $candidates = @(
-                "$env:PROGRAMFILES\BraveSoftware\Brave-Browser\Application\brave.exe",
-                "${env:PROGRAMFILES(X86)}\BraveSoftware\Brave-Browser\Application\brave.exe",
-                "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\Application\brave.exe") }
-  'edge'   { $exeName = 'msedge.exe'; $url = 'edge://extensions';   $candidates = @(
-                "$env:PROGRAMFILES\Microsoft\Edge\Application\msedge.exe",
-                "${env:PROGRAMFILES(X86)}\Microsoft\Edge\Application\msedge.exe") }
-  default  { $exeName = 'chrome.exe'; $url = 'chrome://extensions'; $candidates = @(
-                "$env:PROGRAMFILES\Google\Chrome\Application\chrome.exe",
-                "${env:PROGRAMFILES(X86)}\Google\Chrome\Application\chrome.exe",
-                "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") }
+# No windows are opened. Put the folder path on the clipboard so "Load unpacked" is just Ctrl+V.
+$copied = $false
+try { Set-Clipboard -Value $Dir; $copied = $true } catch {}
+$url = @{ brave = 'brave://extensions'; edge = 'edge://extensions'; chrome = 'chrome://extensions' }[$BrowserNorm]
+Write-Host ''
+Write-Host ("Folder: $Dir" + $(if ($copied) { '   (path copied to your clipboard)' } else { '' }))
+if (-not $existed) {
+  Write-Host "Next (first time only): open $url, switch on Developer mode, click Load unpacked, press Ctrl+V, press Enter, then Select Folder."
 }
 
-$exePath = $null
-$onPath = Get-Command $exeName -ErrorAction SilentlyContinue
-if ($onPath) { $exePath = $onPath.Source }
-else { $exePath = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1 }
-
-if ($exePath) {
-  try { Start-Process -FilePath $exePath -ArgumentList $url } catch { Write-Host "Open $url in $BrowserNorm to continue." -ForegroundColor Yellow }
-} else {
-  Write-Host "Could not find $BrowserNorm on this machine. Open $url manually (or install $BrowserNorm first) to continue." -ForegroundColor Yellow
+} catch {
+  if ($_.Exception.Message -ne 'M2028_STOP') {
+    Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
+    if ($IsFile) { exit 1 }
+  }
 }
-
-exit 0

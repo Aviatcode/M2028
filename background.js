@@ -824,6 +824,65 @@ chrome.tabs.onCreated.addListener((tab) => {
   if (tab && (tab.pendingUrl || tab.url)) guardTab(tab.id, tab.pendingUrl || tab.url);
 });
 
+// ---- Blocked-attempt counter -------------------------------------------------------------------------------------------
+// Every blocked page, whichever rule caught it (network rule, tab guard, adult-keyword check), ends on blocked.html, so that is
+// the one place we count. Stored per day and in total, per website and per blocked target (a site or a category).
+const STORAGE_KEY_ATTEMPTS = 'm2028_block_attempts';
+const BLOCKED_PAGE_PREFIX = chrome.runtime.getURL('blocked.html');
+const recentAttempt = new Map();
+let attemptQueue = Promise.resolve();
+function attemptDayKey(ts) {
+  const d = new Date(ts);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+async function attemptTarget(domain) {
+  const live = await chrome.storage.local.get([STORAGE_KEY_BLOCKLIST, 'm2028_custom_rules']);
+  const list = (live[STORAGE_KEY_BLOCKLIST] || []).map(b => b && b.target).filter(Boolean);
+  const custom = live.m2028_custom_rules || {};
+  const hit = (x) => x && (domain === x || domain.endsWith('.' + x));
+  if (domain === 'adult site' || domain === 'adult search') return list.indexOf('category:adult') > -1 ? 'category:adult' : 'other';
+  for (const t of list) if (t.indexOf('category:') !== 0 && expandTargetDomains(t, custom).some(hit)) return t;   // a site you blocked by name
+  for (const t of list) if (t.indexOf('category:') === 0 && expandTargetDomains(t, custom).some(hit)) return t;  // otherwise its category
+  const kw = Object.keys(HOST_KEYWORDS).find(c => HOST_KEYWORDS[c].test(domain));
+  if (kw && list.indexOf('category:' + kw) > -1) return 'category:' + kw;
+  return 'other';
+}
+function recordBlockAttempt(tabId, url) {
+  try {
+    const u = new URL(url);
+    if (u.searchParams.get('reason') !== 'block') return;                 // limits are not "blocked sites"
+    const domain = (u.searchParams.get('domain') || '').toLowerCase();
+    if (!domain) return;
+    const key = tabId + '|' + domain, now = Date.now();
+    if (recentAttempt.get(key) && now - recentAttempt.get(key) < 4000) return;   // one visit can fire two redirects
+    recentAttempt.set(key, now);
+    if (recentAttempt.size > 200) recentAttempt.clear();
+    attemptQueue = attemptQueue.then(async () => {
+      const target = await attemptTarget(domain);
+      const r = await chrome.storage.local.get(STORAGE_KEY_ATTEMPTS);
+      const a = r[STORAGE_KEY_ATTEMPTS] || { v: 1, all: { total: 0, targets: {}, domains: {} }, days: {} };
+      const bump = (o) => {
+        o.total = (o.total || 0) + 1;
+        o.targets = o.targets || {}; o.domains = o.domains || {};
+        o.targets[target] = (o.targets[target] || 0) + 1;
+        o.domains[domain] = (o.domains[domain] || 0) + 1;
+        const ks = Object.keys(o.domains);
+        if (ks.length > 300) ks.forEach(k => { if (o.domains[k] <= 1 && k !== domain) delete o.domains[k]; });
+      };
+      a.all = a.all || { total: 0, targets: {}, domains: {} }; a.days = a.days || {};
+      bump(a.all);
+      const dk = attemptDayKey(now);
+      a.days[dk] = a.days[dk] || { total: 0, targets: {}, domains: {} };
+      bump(a.days[dk]);
+      Object.keys(a.days).sort().slice(0, -60).forEach(k => { delete a.days[k]; });   // keep the last 60 days
+      await chrome.storage.local.set({ [STORAGE_KEY_ATTEMPTS]: a });
+    }).catch(() => {});
+  } catch (e) {}
+}
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.url && changeInfo.url.indexOf(BLOCKED_PAGE_PREFIX) === 0) recordBlockAttempt(tabId, changeInfo.url);
+});
+
 // detect.js is injected from here instead of being listed in manifest.json. A content script that is missing on disk makes
 // Chrome refuse to load the WHOLE extension ("Could not load javascript 'detect.js'"); this way a missing file only turns the
 // auto-detector off. It still does nothing unless at least one category is blocked.

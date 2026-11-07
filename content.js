@@ -363,23 +363,24 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function readBlockState(cb) {
-    chrome.storage.local.get(BLOCK_KEYS.concat(['m2028_limit_usage']), function (res) {
+    chrome.storage.local.get(BLOCK_KEYS.concat(['m2028_limit_usage', 'm2028_block_attempts']), function (res) {
       cb({
         limits: res.m2028_limits || [],
         blocklist: res.m2028_blocklist || [],
         redirects: res.m2028_redirect_settings || {},
         lock: res.m2028_lock || null,
-        usage: res.m2028_limit_usage || {}
+        usage: res.m2028_limit_usage || {},
+        attempts: res.m2028_block_attempts || null
       });
     });
   }
   function pushBlockToPage(skipIfSame) {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
     readBlockState(function (s) {
-      const sig = JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock]);
+      const sig = JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, s.attempts && s.attempts.all && s.attempts.all.total]);
       if (skipIfSame && sig === lastBlockSig) return;
       lastBlockSig = sig;
-      window.postMessage({ from: 'M2028_EXT', type: 'BLOCK_UPDATE', limits: s.limits, blocklist: s.blocklist, redirects: s.redirects, lock: s.lock, usage: s.usage }, '*');
+      window.postMessage({ from: 'M2028_EXT', type: 'BLOCK_UPDATE', limits: s.limits, blocklist: s.blocklist, redirects: s.redirects, lock: s.lock, usage: s.usage, attempts: s.attempts }, '*');
     });
   }
 
@@ -421,6 +422,8 @@
       if (areaName !== 'local') return;
       if (BLOCK_KEYS.some(function (k) { return changes[k]; })) {
         pushBlockToPage(true); // changed from the popup / options page / lock engine
+      } else if (changes.m2028_block_attempts) {
+        pushBlockToPage(true); // someone just tried a blocked site: refresh the counters
       } else if (changes.m2028_limit_usage && Date.now() - lastUsagePush > 15000) {
         lastUsagePush = Date.now();
         pushBlockToPage(false); // refresh today's usage numbers
@@ -700,6 +703,12 @@
     });
   }
   setTimeout(function () { pushTimeToPage(true); }, 1500);
+
+  // 8. One-click update from the website: the page has written the new files into the extension folder, so reload.
+  window.addEventListener('message', function (event) {
+    if (!event.data || event.data.from !== 'M2028_PAGE' || event.data.type !== 'EXT_RELOAD') return;
+    try { chrome.runtime.sendMessage({ type: 'RELOAD_EXT' }, function () { void chrome.runtime.lastError; }); } catch (e) {}
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialSync);

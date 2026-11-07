@@ -652,6 +652,55 @@
   }
   backupTick();
 
+  // 7. Screen time -> website
+  //    Extension -> page : { from:'M2028_EXT', type:'TIME_STATS', stats:{ 'YYYY-MM-DD': { totalSeconds, domains } } }
+  //    Page -> extension : { from:'M2028_PAGE', type:'TIME_REQUEST' }  (ask for today's numbers)
+  //    The website saves today's numbers in the signed-in account, so the phone widget shows the laptop's time.
+  const TIME_KEY = 'm2028_time_stats';
+  let lastTimePush = 0;
+  let lastTimeTotal = -1;
+
+  function timeDayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function pushTimeToPage(force) {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    try {
+      chrome.storage.local.get([TIME_KEY], function (res) {
+        if (chrome.runtime && chrome.runtime.lastError) return;
+        const key = timeDayKey();
+        const day = res && res[TIME_KEY] && res[TIME_KEY][key];
+        if (!day || !day.totalSeconds) return;
+        if (!force && day.totalSeconds === lastTimeTotal) return;
+        lastTimeTotal = day.totalSeconds;
+        lastTimePush = Date.now();
+        const doms = {};
+        Object.keys(day.domains || {})
+          .sort(function (a, b) { return (day.domains[b].seconds || 0) - (day.domains[a].seconds || 0); })
+          .slice(0, 15)
+          .forEach(function (d) {
+            const x = day.domains[d] || {};
+            doms[d] = { seconds: x.seconds || 0, title: x.title || d, category: x.category || 'other' };
+          });
+        const stats = {};
+        stats[key] = { totalSeconds: day.totalSeconds, domains: doms };
+        window.postMessage({ from: 'M2028_EXT', type: 'TIME_STATS', stats: stats }, '*');
+      });
+    } catch (e) {}
+  }
+  window.addEventListener('message', function (event) {
+    if (!event.data || event.data.from !== 'M2028_PAGE') return;
+    if (event.data.type === 'TIME_REQUEST') pushTimeToPage(true);
+  });
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (area !== 'local' || !changes[TIME_KEY]) return;
+      if (Date.now() - lastTimePush > 15000) pushTimeToPage(false);
+    });
+  }
+  setTimeout(function () { pushTimeToPage(true); }, 1500);
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialSync);
   } else {

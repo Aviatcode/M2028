@@ -6606,6 +6606,21 @@ document.addEventListener("click",function(e){
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
+  // Screen time follows the account: the laptop (where the extension runs) saves today's numbers, the phone shows them.
+  var _stPushAt = 0, _stPushTot = -1;
+  function pushScreenTime(today, st) {
+    try {
+      if (typeof S === 'undefined' || !S.s || !localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token')) return;
+      var tot = Math.round(st.totalSeconds || 0), now = Date.now();
+      if (!tot || (tot === _stPushTot) || (now - _stPushAt < 30000 && tot - _stPushTot < 300)) return;
+      var cl = S.g('screenTime');
+      if (cl && cl.date === today && (cl.totalSeconds || 0) >= tot) { _stPushTot = tot; return; }
+      var doms = {}, ent = Object.entries(st.domains || {}).sort(function(a, b) { return (b[1].seconds || 0) - (a[1].seconds || 0); }).slice(0, 15);
+      ent.forEach(function(x) { doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: x[1].category || 'other', title: x[1].title || '' }; });
+      _stPushAt = now; _stPushTot = tot;
+      S.s('screenTime', { date: today, totalSeconds: tot, domains: doms, at: now });
+    } catch (e) {}
+  }
   window.renderScreenTimeWidget = async function() {
     var today = getTodayKey();
     var stats = null;
@@ -6624,17 +6639,15 @@ document.addEventListener("click",function(e){
       } catch(e) {}
     }
 
-    // Default mock data if empty (e.g. initial view before browsing)
-    if (!stats || !stats.totalSeconds) {
-      stats = {
-        totalSeconds: 5400,
-        domains: {
-          'github.com': { seconds: 3600, title: 'M2028 Planner', category: 'productive' },
-          'youtube.com': { seconds: 1200, title: 'Lo-Fi Focus', category: 'entertainment' },
-          'chatgpt.com': { seconds: 600, title: 'ChatGPT', category: 'productive' }
-        }
-      };
+    if (stats && stats.totalSeconds) {
+      pushScreenTime(today, stats);          // this device tracks time (laptop + extension): share it with the account
+    } else {
+      try {                                  // no tracker here (phone): show what the laptop saved today
+        var cl = S.g('screenTime');
+        if (cl && cl.date === today && cl.totalSeconds) stats = cl;
+      } catch(e) {}
     }
+    if (!stats || !stats.totalSeconds) stats = { totalSeconds: 0, domains: {} };
 
     var totalEl = document.getElementById('wScreenTimeVal');
     var scoreEl = document.getElementById('wProdScoreVal');
@@ -7530,7 +7543,7 @@ document.addEventListener("click",function(e){
   var ZIP_NAME = 'M2028-extension.zip';
   var ZIP_FOLDER = 'M2028-extension';
   // Chrome refuses to load the extension without these
-  var REQUIRED = ['manifest.json', 'background.js', 'content.js', 'wallpaper-bridge.js', 'popup.html', 'popup.js', 'block-ui.js',
+  var REQUIRED = ['manifest.json', 'background.js', 'content.js', 'detect.js', 'wallpaper-bridge.js', 'popup.html', 'popup.js', 'block-ui.js',
     'blocked.html', 'blocked.js', 'options.html', 'options.js', 'favicon-32.png', 'icon-192.png'];
   // Nice to have; skipped quietly if they are not on the site
   var OPTIONAL = ['popup.css', 'options.css', 'leaf-icons.css', 'stickers.js', 'offscreen.html', 'offscreen.js', 'index.html',
@@ -7590,14 +7603,34 @@ document.addEventListener("click",function(e){
     }).catch(function () { return null; });
   }
 
+  var toastEl = null, toastT = null;
+  function toast(msg, bad, ms, copy) {
+    if (!toastEl) {
+      toastEl = document.createElement('div'); toastEl.id = 'xdlToast';
+      toastEl.style.cssText = 'position:fixed;left:50%;bottom:84px;transform:translateX(-50%);z-index:99999;max-width:min(92vw,460px);padding:11px 16px;border-radius:12px;background:var(--s1,#17181c);color:var(--tx,#eee);border:1px solid var(--b2,rgba(128,128,128,.3));box-shadow:0 12px 40px rgba(0,0,0,.45);font-size:13px;line-height:1.45;text-align:center';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg; toastEl.style.color = bad ? 'var(--rd,#e86060)' : 'var(--tx,#eee)'; toastEl.style.display = 'block';
+    if (copy) {
+      var b = document.createElement('button'); b.textContent = 'Copy ' + copy;
+      b.style.cssText = 'display:block;margin:8px auto 0;padding:5px 12px;border-radius:8px;border:1px solid var(--b2,rgba(128,128,128,.3));background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer';
+      b.onclick = function () { try { navigator.clipboard.writeText(copy); } catch (e) {} b.textContent = 'Copied'; };
+      toastEl.appendChild(b);
+    }
+    clearTimeout(toastT); toastT = setTimeout(function () { toastEl.style.display = 'none'; }, ms || 8000);
+  }
   function setStatus(msg, bad) {
     var el = document.getElementById('xdlStatus');
-    if (!el) return;
+    if (!el) { if (msg) toast(msg, bad); return; }
     el.textContent = msg || '';
     el.style.color = bad ? 'var(--rd,#e86060)' : 'var(--m2,#8a8f98)';
   }
 
   function build() {
+    if (busy) return;
+    planFiles().then(buildNow);
+  }
+  function buildNow() {
     if (busy) return;
     busy = true;
     var btn = document.getElementById('xdlBtn');
@@ -7663,6 +7696,167 @@ document.addEventListener("click",function(e){
     '<li>Come back and refresh this page. This tab then unlocks the controls.</li>' +
     '</ol>';
 
+  // ---------- file list straight from manifest.json (so a file the manifest names can never be forgotten) ----------
+  function planFiles() {
+    return fetchFile('manifest.json').then(function (d) {
+      if (!d) return;
+      var m; try { m = JSON.parse(new TextDecoder().decode(d)); } catch (e) { return; }
+      var req = [], opt = [];
+      function clean(p) { if (typeof p !== 'string') return ''; p = p.replace(/^\.?\//, ''); return (!p || /[*:]/.test(p) || p.indexOf('..') > -1) ? '' : p; }
+      function add(list, p) { p = clean(p); if (p && list.indexOf(p) < 0) list.push(p); }
+      function icons(x) { if (typeof x === 'string') add(req, x); else if (x) Object.keys(x).forEach(function (k) { add(req, x[k]); }); }
+      if (m.background) { add(req, m.background.service_worker); (m.background.scripts || []).forEach(function (p) { add(req, p); }); add(req, m.background.page); }
+      (m.content_scripts || []).forEach(function (c) { (c.js || []).forEach(function (p) { add(req, p); }); (c.css || []).forEach(function (p) { add(req, p); }); });
+      var act = m.action || m.browser_action || m.page_action;
+      if (act) { add(req, act.default_popup); icons(act.default_icon); }
+      icons(m.icons);
+      add(req, m.options_page); if (m.options_ui) add(req, m.options_ui.page);
+      if (m.side_panel) add(req, m.side_panel.default_path);
+      if (m.chrome_url_overrides) Object.keys(m.chrome_url_overrides).forEach(function (k) { add(req, m.chrome_url_overrides[k]); });
+      if (m.declarative_net_request && m.declarative_net_request.rule_resources) m.declarative_net_request.rule_resources.forEach(function (r) { add(req, r.path); });
+      (m.web_accessible_resources || []).forEach(function (w) { (typeof w === 'string' ? [w] : (w.resources || [])).forEach(function (p) { add(opt, p); }); });
+      req.forEach(function (n) { if (REQUIRED.indexOf(n) < 0) REQUIRED.push(n); var k = OPTIONAL.indexOf(n); if (k > -1) OPTIONAL.splice(k, 1); });
+      opt.forEach(function (n) { if (REQUIRED.indexOf(n) < 0 && OPTIONAL.indexOf(n) < 0) OPTIONAL.push(n); });
+    });
+  }
+
+  // ---------- one-click install / update: the page writes the files into a folder you pick once ----------
+  var linkedName = null, nextSteps = null;
+  function oneClickOK() { return typeof window.showDirectoryPicker === 'function' && !STORE; }
+  function idbOpen() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('m2028-ext-updater', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('h'); };
+      r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); };
+    });
+  }
+  function getDirHandle() {
+    return idbOpen().then(function (db) { return new Promise(function (res) { var q = db.transaction('h').objectStore('h').get('dir'); q.onsuccess = function () { res(q.result || null); }; q.onerror = function () { res(null); }; }); }).catch(function () { return null; });
+  }
+  function putDirHandle(h) {
+    return idbOpen().then(function (db) { return new Promise(function (res) { var t = db.transaction('h', 'readwrite'); t.objectStore('h').put(h, 'dir'); t.oncomplete = function () { res(); }; t.onerror = function () { res(); }; }); }).catch(function () {});
+  }
+  function refreshLinked() { return getDirHandle().then(function (h) { linkedName = h ? h.name : null; }); }
+  function scanRefs(data) {
+    var t = new TextDecoder().decode(data), out = [], m, re = /(?:src|href)\s*=\s*["']([^"':?#]+\.(?:js|css|png|webp|svg|mp3|woff2?|ico))["']/gi;
+    while ((m = re.exec(t))) { var p = m[1].replace(/^\.\//, ''); if (p.indexOf('..') < 0 && p.charAt(0) !== '/') out.push(p); }
+    return out;
+  }
+  async function fetchPlan(setMsg) {
+    await planFiles();
+    var queue = REQUIRED.concat(OPTIONAL), seen = {}, files = [], missing = [], done = 0;
+    queue.forEach(function (n) { seen[n] = 1; });
+    while (queue.length) {
+      var batch = queue.splice(0, 4);
+      var res = await Promise.all(batch.map(function (n) { return fetchFile(n); }));
+      res.forEach(function (data, i) {
+        var n = batch[i]; done++; setMsg('Downloading ' + done + ' / ' + (done + queue.length) + '…');
+        if (data) {
+          files.push({ name: n, data: data });
+          if (/\.html$/.test(n) && n !== 'index.html') scanRefs(data).forEach(function (r) {
+            if (seen[r]) return; seen[r] = 1; queue.push(r);
+            if (/\.js$/.test(r) && REQUIRED.indexOf(r) < 0) REQUIRED.push(r);   // a script a page loads must exist
+          });
+        } else if (REQUIRED.indexOf(n) > -1) missing.push(n);
+      });
+    }
+    return { files: files, missing: missing };
+  }
+  async function writeFile(dir, name, data) {
+    var parts = name.split('/'), d = dir;
+    for (var i = 0; i < parts.length - 1; i++) d = await d.getDirectoryHandle(parts[i], { create: true });
+    var fh = await d.getFileHandle(parts[parts.length - 1], { create: true });
+    var w = await fh.createWritable(); await w.write(data); await w.close();
+  }
+  async function ensurePerm(h) {
+    var o = { mode: 'readwrite' };
+    if ((await h.queryPermission(o)) === 'granted') return true;
+    return (await h.requestPermission(o)) === 'granted';
+  }
+  async function hasPerm(h) { try { return (await h.queryPermission({ mode: 'readwrite' })) === 'granted'; } catch (e) { return false; } }
+  async function folderVersion(h) {
+    try { var f = await (await h.getFileHandle('manifest.json')).getFile(); var m = JSON.parse(await f.text()); return m.version || ''; } catch (e) { return null; }
+  }
+  async function oneClick(forcePick, silent) {
+    if (busy) return;
+    busy = true; nextSteps = null;
+    var say = silent ? function () {} : setStatus;
+    var btn = document.getElementById('xdlOne'); if (btn) btn.disabled = true;
+    try {
+      var h = forcePick ? null : await getDirHandle();
+      if (h) {
+        if (silent) { if (!(await hasPerm(h))) return; }
+        else if (!(await ensurePerm(h))) { setStatus('Permission was not given. Click again and choose Allow.', true); return; }
+      } else {
+        if (silent) return;
+        try { h = await window.showDirectoryPicker({ id: 'm2028ext', mode: 'readwrite' }); }
+        catch (e) {
+          if (e && e.name === 'AbortError') return;
+          setStatus('Your browser would not open that folder. Pick or create a normal folder, for example inside Documents.', true); return;
+        }
+        await putDirHandle(h);
+      }
+      linkedName = h.name;
+      // Chrome runs the extension from ONE folder. Writing files anywhere else changes nothing, so check before writing.
+      var cur = (window.m2028ExtState || {}).version || '';
+      if (isInstalled() && cur) {
+        var fv = await folderVersion(h);
+        if (fv === null || (fv !== cur && fv !== latest)) {
+          if (!silent) setStatus('This is not the folder Chrome loaded the extension from' + (fv ? ' (it holds v' + fv + ', Chrome runs v' + cur + ')' : ' (no M2028 files in it)') + '. Click \u201cUse a different folder\u201d and choose the folder shown as \u201cLoaded from\u201d on the extension\u2019s Details page at ' + EXT_URL + '.', true);
+          return;
+        }
+      }
+      say('Downloading the files\u2026');
+      var plan = await fetchPlan(say);
+      if (plan.missing.length) {
+        setStatus('These files are not on the site yet: ' + plan.missing.join(', ') + '. Upload them next to index.html, then try again. Nothing in your folder was changed.', true);
+        return;
+      }
+      var main = plan.files.filter(function (f) { return f.name !== 'manifest.json'; }), man = plan.files.filter(function (f) { return f.name === 'manifest.json'; });
+      var all = main.concat(man);   // manifest last: a half-finished update never shows the new version
+      for (var i = 0; i < all.length; i++) { say('Writing ' + (i + 1) + ' / ' + all.length + '\u2026'); await writeFile(h, all[i].name, all[i].data); }
+      if (isInstalled()) {
+        try { localStorage.setItem('m2028_ext_updchk', JSON.stringify({ v: latest, at: Date.now(), f: h.name })); } catch (e) {}
+        try { window.postMessage({ from: 'M2028_PAGE', type: 'EXT_RELOAD' }, '*'); } catch (e) {}
+        if (silent) {
+          // Quiet update: never reload the page while you are typing; refresh it as soon as you switch away from this tab.
+          var rl = function () { if (document.hidden) location.reload(); };
+          if (document.hidden) setTimeout(function () { location.reload(); }, 1500);
+          else document.addEventListener('visibilitychange', rl);
+        } else {
+          setStatus('Updated \u2713 The extension reloads itself and this page refreshes.');
+          setTimeout(function () { location.reload(); }, 3000);
+        }
+      } else {
+        nextSteps = h.name;
+        if (!popOpen) toast('Files are ready in the folder \u201c' + h.name + '\u201d. Open ' + EXT_URL + ', switch on Developer mode, click Load unpacked and choose that folder (remove an old M2028 card that says Failed to load first). Then refresh this page.', false, 30000, EXT_URL);
+      }
+    } catch (e) {
+      setStatus('Something went wrong: ' + ((e && e.message) || e), true);
+    } finally {
+      busy = false;
+      if (nextSteps && popOpen) paint(); else if (!nextSteps) { var b2 = document.getElementById('xdlOne'); if (b2) b2.disabled = false; }
+    }
+  }
+  function oneClickHtml(installed, hasNew) {
+    var linked = !!linkedName;
+    var lbl = !linked ? 'Set up one-click updates' : (hasNew ? 'Update now \u2192 v' + latest : (installed ? 'Update now' : 'Install the files'));
+    var h = '<div class="row"><button class="big" id="xdlOne">' + lbl + '</button></div>';
+    h += '<div class="note">' + (linked
+      ? 'Writes the new files straight into your folder <b>' + ea(linkedName) + '</b> and reloads the extension. No terminal.'
+      : 'Choose a folder you can keep, for example a new one inside Documents. The page puts the extension there; after that every update is this one click.') + '</div>';
+    h += '<div class="st" id="xdlStatus"></div>';
+    if (nextSteps) {
+      h += '<div style="font-weight:600;margin-top:8px">Files are ready. One last step, only once:</div><ol>' +
+        '<li>Open <code>' + EXT_URL + '</code>' + cpBtn(EXT_URL) + ' and switch on <b>Developer mode</b>. If an old M2028 card says <i>Failed to load</i>, click <b>Remove</b> on it first.</li>' +
+        '<li>Click <b>Load unpacked</b> and choose the folder <b>' + ea(nextSteps) + '</b>.</li>' +
+        '<li>Refresh this page.</li></ol>';
+    }
+    if (linked) h += '<div class="note" style="margin-top:6px"><a href="#" id="xdlChange" style="color:inherit;text-decoration:underline">Use a different folder</a></div>';
+    h += '<details style="margin-top:10px"><summary class="note" style="cursor:pointer">Use the terminal instead</summary>' + stepsHtml(installed) + '</details>';
+    return h;
+  }
+
   // ---------- popup (opened from the Extension button on the main page) ----------
   var latest = null, popOpen = false;
   // Paste your store links here once the extension is published; the popup then offers a one-click store install with automatic updates.
@@ -7700,6 +7894,14 @@ document.addEventListener("click",function(e){
   function ea(t) { return String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
   function vnum(v) { return String(v || '0').split('.').map(function (n) { return parseInt(n, 10) || 0; }); }
   function newer(a, b) { var x = vnum(a), y = vnum(b); for (var i = 0; i < 4; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; } return false; }
+  var pageT0 = Date.now();
+  // True only when the installed version is really older. Never guessed while the extension is still saying hello.
+  function extHasNew() {
+    if (!isInstalled() || !latest) return false;
+    var es = window.m2028ExtState || {};
+    if (es.version) return newer(latest, es.version);
+    return Date.now() - pageT0 > 12000;   // installed but never reported a version: an old build
+  }
   function fetchLatest() {
     return fetch(new URL('manifest.json', location.href).href, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; })
       .then(function (m) { latest = m && m.version || null; }).catch(function () { latest = null; });
@@ -7751,14 +7953,16 @@ document.addEventListener("click",function(e){
   function body() {
     var installed = isInstalled();
     var es = window.m2028ExtState || {}, cur = es.version || null;
-    var hasNew = installed && latest && (!cur || newer(latest, cur));
+    var hasNew = extHasNew();
     var h = '<button class="x" data-x aria-label="Close">\u00d7</button><h3>M2028 Extension</h3>';
     h += '<div class="sub">Blocking, synced notes and the hub work in your browser.</div>';
     if (UNSUPPORTED) return h + '<div class="note" style="font-size:13px">' + UNSUPPORTED + '</div>';
     h += '<div>';
     if (installed) h += '<span class="chip">\u2713 Installed' + (cur ? ' v' + cur : '') + '</span>';
     if (hasNew) h += '<span class="chip w">Update available: v' + latest + '</span>';
-    h += '</div><div class="row">';
+    h += '</div>';
+    if (oneClickOK()) return h + oneClickHtml(installed, hasNew);
+    h += '<div class="row">';
     var cmdLabel = installed ? (hasNew ? 'Copy update command \u2192 v' + latest : 'Copy update command') : 'Copy install command';
     if (STORE) h += '<a class="big" href="' + ea(STORE) + '" target="_blank" rel="noopener">' + (BR === 'edge' ? 'Get it on Edge Add-ons' : 'Get it on the Chrome Web Store') + '</a>';
     else h += '<button class="big" id="xdlMac" data-copy="' + ea(installCmd()) + '">' + cmdLabel + '</button>';
@@ -7773,7 +7977,7 @@ document.addEventListener("click",function(e){
   // widget button itself (syncExtBtn), so there's no separate floating notice to leave behind.
   function afterGo() {
     var installed = isInstalled(), es = window.m2028ExtState || {};
-    var hasNew = !!(installed && latest && es.version && newer(latest, es.version));
+    var hasNew = extHasNew();
     if (installed && !hasNew) return;   // plain reinstall with nothing new: keep the popup and its steps open
     markPend();
     try { localStorage.setItem(MINK, '0'); } catch (e) {}
@@ -7785,6 +7989,8 @@ document.addEventListener("click",function(e){
     box.innerHTML = body();
     var b = document.getElementById('xdlBtn'); if (b) b.onclick = function () { markPend(); build(); };
     var m = document.getElementById('xdlMac'); if (m) m.addEventListener('click', afterGo);
+    var one = document.getElementById('xdlOne'); if (one) one.onclick = function () { oneClick(false); };
+    var chg = document.getElementById('xdlChange'); if (chg) chg.onclick = function (e) { e.preventDefault(); oneClick(true); };
     bindCopy(box);
     box.querySelector('[data-x]').onclick = close;
   }
@@ -7795,6 +8001,7 @@ document.addEventListener("click",function(e){
     var o = document.createElement('div'); o.id = 'xdlOv'; o.innerHTML = '<div id="xdlBox"></div>';
     o.addEventListener('click', function (e) { if (e.target === o) close(); });
     document.body.appendChild(o); paint();
+    refreshLinked().then(function () { if (popOpen && !busy) paint(); });
     fetchLatest().then(function () { if (popOpen && !busy) paint(); syncExtBtn(); });
   };
   // Single header control: shows install/update state right in the widget (no separate floating notice),
@@ -7802,33 +8009,53 @@ document.addEventListener("click",function(e){
   function syncExtBtn() {
     var lbl = document.getElementById('extOpenBtnLbl'); if (!lbl) return;
     var es = window.m2028ExtState || {}, installed = document.documentElement.hasAttribute('data-m2028-ext');
-    var hasNew = installed && latest && (!es.version || newer(latest, es.version));
+    var hasNew = extHasNew();
     lbl.textContent = hasNew ? '\uD83E\uDDE9 Update available' : installed ? '\u26A1 Open Hub' : '\uD83E\uDDE9 Extension';
     var btn = document.getElementById('extOpenBtn');
     if (btn) btn.style.color = hasNew ? 'var(--ai,#4fd8a0)' : '';
   }
   window.m2028ExtAction = function () {
-    var installed = document.documentElement.hasAttribute('data-m2028-ext');
-    var es = window.m2028ExtState || {};
-    var hasNew = installed && latest && (!es.version || newer(latest, es.version));
+    var installed = isInstalled(), hasNew = extHasNew();
     if (installed && !hasNew) { if (typeof openExtensionHubModal === 'function') openExtensionHubModal(); return; }
-    window.m2028ExtOpen();
+    if (oneClickOK() && !UNSUPPORTED) { oneClick(false); return; }   // install / update straight away, no steps popup
+    if (installed && !UNSUPPORTED) {                                  // update in a browser without folder access: a short note, not the steps popup
+      try { navigator.clipboard.writeText(installCmd()); } catch (e) {}
+      toast('Update command copied. Paste it in ' + (isWin ? 'PowerShell' : 'Terminal') + ' and press Enter, then click \u27f3 on the M2028 card at ' + EXT_URL + '.', false, 20000, EXT_URL);
+      return;
+    }
+    window.m2028ExtOpen();                                            // first-time install only
   };
   window.m2028ExtDlRender = function () { syncExtBtn(); if (popOpen && !busy) paint(); };
   setInterval(function () { fetchLatest().then(syncExtBtn); }, 600000);
   fetchLatest().then(syncExtBtn);
-  // quietly check for updates, and offer the popup once on a desktop browser that has no extension yet
-  setTimeout(function () {
-    fetchLatest().then(function () {
-      syncExtBtn();
-      var installed = document.documentElement.hasAttribute('data-m2028-ext'), seen = false;
-      try { seen = localStorage.getItem('m2028_ext_offer') === '1'; } catch (e) {}
-      if (!installed && !seen && /Chrome|Edg/.test(navigator.userAgent) && !/Mobile|Android/i.test(navigator.userAgent) && window.innerWidth >= 900 && (!window.__m2028AutoOfferOK || window.__m2028AutoOfferOK())) {
-        try { localStorage.setItem('m2028_ext_offer', '1'); } catch (e) {}
-        window.m2028ExtOpen();
-      }
+  // quietly check for updates (the widget button shows "Update available"); nothing pops up by itself
+  setTimeout(function () { fetchLatest().then(syncExtBtn); }, 4500);
+  // Auto-update: when the extension is older than the site AND the folder is already allowed, update with no click and no popup.
+  function autoUpdate() {
+    if (!oneClickOK() || UNSUPPORTED || busy || popOpen || !extHasNew()) return;
+    var g = null; try { g = JSON.parse(localStorage.getItem('m2028_ext_auto')); } catch (e) {}
+    if (g && g.v === latest && Date.now() - g.at < 1800000) return;     // tried this version a moment ago: do not loop
+    getDirHandle().then(function (h) {
+      if (!h) return;
+      return hasPerm(h).then(function (ok) {
+        if (!ok || busy || !extHasNew()) return;
+        try { localStorage.setItem('m2028_ext_auto', JSON.stringify({ v: latest, at: Date.now() })); } catch (e) {}
+        oneClick(false, true);
+      });
     });
-  }, 4500);
+  }
+  // After an update the page reloads: confirm Chrome really runs the new version, otherwise say what to do.
+  function verifyAfterUpdate() {
+    var c = null; try { c = JSON.parse(localStorage.getItem('m2028_ext_updchk')); } catch (e) {}
+    if (!c) return;
+    var es = window.m2028ExtState || {};
+    if (!es.version && Date.now() - c.at < 120000) return setTimeout(verifyAfterUpdate, 3000);
+    try { localStorage.removeItem('m2028_ext_updchk'); } catch (e) {}
+    if (es.version && newer(c.v, es.version)) toast('The new files were saved, but Chrome still runs v' + es.version + '. Open ' + EXT_URL + ' and click \u27f3 on the M2028 card once. If it stays old, Chrome loaded a different folder than \u201c' + (c.f || 'the linked one') + '\u201d.', true, 30000, EXT_URL);
+  }
+  setTimeout(verifyAfterUpdate, 6000);
+  setTimeout(function () { fetchLatest().then(function () { syncExtBtn(); autoUpdate(); }); }, 7000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) fetchLatest().then(function () { syncExtBtn(); autoUpdate(); }); });
   window.m2028ExtDlBuild = build; // exposed for testing
 })();
 </script>
@@ -9211,7 +9438,7 @@ function integrate() {
   if (!$('#v-money')) { var host = document.getElementById('v-pomo'); var v = document.createElement('div'); v.id = 'v-money'; v.className = 'vw'; host.parentNode.appendChild(v); }
   try {
     var ico = '<svg viewBox="0 0 24 24" width="1.1em" height="1.1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:-.2em"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><path d="M4 7.5V17a2 2 0 0 0 2 2h12.5a1.5 1.5 0 0 0 1.500-1.500v-8A1.500 1.500 0 0 0 18.500 8H6.500A2.500 2.500 0 0 1 4 7.500z"/><circle cx="16" cy="13.500" r="1.100" fill="currentColor" stroke="none"/></svg>';
-    if (!NAV_TABS.some(function (t) { return t.id === 'money'; })) NAV_TABS.splice(4, 0, { id: 'money', label: 'Money', get icon() { return document.body && document.body.classList.contains('pink') ? '💰' : ico; }, group: 'Track', primary: false, shortLabel: 'Money' });
+    if (!NAV_TABS.some(function (t) { return t.id === 'money'; })) NAV_TABS.splice(4, 0, { id: 'money', label: 'Money', get icon() { var pk = document.body && document.body.classList.contains('pink'), st = true; try { st = S.go('stickers', true) !== false; } catch (e) {} return pk && st ? '💰' : ico; }, group: 'Track', primary: false, shortLabel: 'Money' });
     var sv = window.showV;
     if (!sv.__mn) { var w = function (id) { var r = sv.apply(this, arguments); if (id === 'money') render(); return r; }; w.__mn = 1; window.showV = w; }
     var gk = window.getAllKeys;
@@ -9451,7 +9678,7 @@ html.m2028-gl.m2028-gl.m2028-gl body:not(.x):not(.xx):not(.xxx):not(.xxxx) #logi
       { t: function () { return $('#v-block'); }, x: 'This works through the browser extension. We set it up next.', next: 1 });
     s.push({ pre: go('dash'), t: function () { var b = byText(/customi[sz]e/i)(); if (vis(b)) return b; b = $('#acctBtn'); return vis(b) ? b : null; }, x: 'Calendar, UPSC, Body and other tabs are switched off to keep things clean. Open your <b style="display:inline">profile</b> and choose <b style="display:inline">Customize → Navigation Tabs</b> to turn them on.', next: 1 });
     s.push(phone ? { pre: go('dash'), h: 'Save notes without opening the site', x: 'Install the app and share links, text or photos straight into Notes.', b: 'Show me', last: 1, open: 'app' }
-                 : { pre: go('dash'), t: function () { return $('#extOpenBtn'); }, act: function () { try { m2028ExtOpen(); } catch (e) {} }, click: 1, last: 1, x: 'Last step: get the extension here. It blocks sites and saves notes in one click.' });
+                 : { pre: go('dash'), t: function () { return $('#extOpenBtn'); }, act: function () {}, click: 1, last: 1, x: 'Last step: get the extension here. It blocks sites and saves notes in one click.' });
     return s;
   }
   function el(st) { return st.t ? st.t() : null; }
@@ -9628,6 +9855,36 @@ html{scrollbar-gutter:stable}
   /* ---- 5. alert() is blocked or suppressed in some browsers and installed apps: show it in the app instead ---- */
   var _al=window.alert;
   window.alert=function(m){try{note(String(m))}catch(e){try{_al.call(window,m)}catch(_){}}};
+})();
+</script>
+<script id="m2028-st-sync">
+(function(){'use strict';
+  var ua=navigator.userAgent||'';
+  var phone=/Android|iPhone|iPod|iPad|Mobile/i.test(ua)||(navigator.maxTouchPoints>1&&Math.min(screen.width,screen.height)<900)||!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+  if(phone){
+    document.documentElement.classList.add('m2028-phone');
+    var st=document.createElement('style');st.id='m2028-phone-css';
+    st.textContent='html.m2028-phone #extOpenBtn{display:none!important}';
+    document.head.appendChild(st);
+  }
+  function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function render(){try{window.renderScreenTimeWidget&&window.renderScreenTimeWidget();}catch(e){}}
+  // the extension (laptop) hands over its time stats -> kept on this device, then shared to the account by the widget
+  window.addEventListener('message',function(e){
+    var d=e.data;if(!d||d.from!=='M2028_EXT')return;
+    var v=null;
+    if(d.type==='TIME_STATS')v=d.stats||d.value;
+    else if(d.type==='EXT_DATA'&&/time_?stats/i.test(String(d.key||'')))v=d.value;
+    if(!v||typeof v!=='object')return;
+    var t=today(),day=v[t]||(v.totalSeconds!=null?v:null);
+    if(!day||!day.totalSeconds)return;
+    try{var m=JSON.parse(localStorage.getItem('m2028_time_stats')||'{}');m[t]=day;localStorage.setItem('m2028_time_stats',JSON.stringify(m));}catch(x){}
+    render();
+  });
+  function ask(){try{window.postMessage({from:'M2028_PAGE',type:'TIME_REQUEST'},'*');}catch(e){}}
+  setTimeout(ask,2500);
+  setInterval(function(){if(!document.hidden){ask();render();}},30000);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden){ask();setTimeout(render,400);}});
 })();
 </script>
 </body>

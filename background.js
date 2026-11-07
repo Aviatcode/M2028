@@ -824,6 +824,21 @@ chrome.tabs.onCreated.addListener((tab) => {
   if (tab && (tab.pendingUrl || tab.url)) guardTab(tab.id, tab.pendingUrl || tab.url);
 });
 
+// detect.js is injected from here instead of being listed in manifest.json. A content script that is missing on disk makes
+// Chrome refuse to load the WHOLE extension ("Could not load javascript 'detect.js'"); this way a missing file only turns the
+// auto-detector off. It still does nothing unless at least one category is blocked.
+async function injectDetector(tabId, url) {
+  try {
+    if (tabId == null || tabId < 0 || !url || !/^https?:/i.test(url) || !chrome.scripting) return;
+    const r = await chrome.storage.local.get(STORAGE_KEY_BLOCKLIST);
+    if (!(r[STORAGE_KEY_BLOCKLIST] || []).some(b => b && typeof b.target === 'string' && b.target.indexOf('category:') === 0)) return;
+    await chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['detect.js'] });
+  } catch (e) { /* page not allowed, or detect.js not installed: ignore */ }
+}
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab && tab.url) injectDetector(tabId, tab.url);
+});
+
 // Daily limits: re-check shortly after every tab switch / navigation instead of waiting for the 30 s heartbeat.
 let _limitCheckT = null;
 function scheduleLimitCheck() {

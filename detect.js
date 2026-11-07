@@ -8,6 +8,7 @@
 (function () {
   'use strict';
   if (window.top !== window) return;                       // top page only
+  if (window.__m2028Detect) return; window.__m2028Detect = true;   // injected once per page
   if (!/^https?:$/.test(location.protocol)) return;
   var HOST = location.hostname.toLowerCase().replace(/^www\./, '');
 

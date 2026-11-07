@@ -482,10 +482,13 @@ async function doSyncBlocking() {
       const limitSeconds = (Number(limit.minutes) || 0) * 60;
       if (limitSeconds <= 0) continue;
       const domains = expandTargetDomains(limit.target, customRules);
+      // Count every host that is the target or one of its subdomains (m.youtube.com, music.youtube.com, old.reddit.com ...).
       let computed = 0;
-      for (const d of domains) {
-        const rec = todayData.domains && todayData.domains[d];
-        if (rec) computed += rec.seconds;
+      const dset = new Set(domains);
+      for (const [rd, rec] of Object.entries(todayData.domains || {})) {
+        let hit = dset.has(rd), p = rd;
+        while (!hit && p.indexOf('.') > -1) { p = p.slice(p.indexOf('.') + 1); hit = dset.has(p); }
+        if (hit && rec) computed += Number(rec.seconds) || 0;
       }
       const prev = track.t[limit.target] || { last: 0, cum: 0 };
       prev.cum += computed >= prev.last ? computed - prev.last : computed;
@@ -585,6 +588,8 @@ let currentFavicon = '';
 let sessionStartTime = Date.now();
 let isWindowFocused = true;
 let isUserActive = true;
+let idleState = 'active';        // 'active' | 'idle' | 'locked'
+let activeTabAudible = false;    // video/music playing in the focused tab
 
 // Helper: Get Today's Date String YYYY-MM-DD
 function getTodayKey() {
@@ -632,7 +637,10 @@ function getCategory(domain) {
 
 // Flush current tracking delta into chrome.storage.local
 async function flushTime() {
-  if (!currentDomain || !isWindowFocused || !isUserActive) {
+  // Idle (no mouse/keyboard) still counts while the focused tab is playing sound, so a daily limit works for videos and music.
+  // A locked screen never counts.
+  const counting = isUserActive || (activeTabAudible && idleState !== 'locked');
+  if (!currentDomain || !isWindowFocused || !counting) {
     sessionStartTime = Date.now();
     return;
   }
@@ -734,6 +742,7 @@ async function checkCurrentTab() {
       const anyTabs = await chrome.tabs.query({ active: true });
       tab = anyTabs && anyTabs[0];
     }
+    activeTabAudible = !!(tab && tab.audible);
     if (tab && tab.url) {
       await updateActiveTarget(tab.url, tab.title, tab.favIconUrl);
     } else {
@@ -754,6 +763,7 @@ async function initTrackingState() {
   if (chrome.idle && chrome.idle.queryState) {
     try {
       const state = await chrome.idle.queryState(60);
+      idleState = state;
       isUserActive = state === 'active';
     } catch (e) {}
   }
@@ -865,6 +875,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 if (chrome.idle) {
   chrome.idle.setDetectionInterval(60); // 60 seconds
   chrome.idle.onStateChanged.addListener(async (newState) => {
+    idleState = newState;
     if (newState === 'active') {
       sessionStartTime = Date.now();
       isUserActive = true;
@@ -1455,6 +1466,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await schedulePomoAlarms(st);
         updatePomoBadge(st && st.run && st.endTs ? st : null);
         sendResponse({ success: true });
+        break;
+      }
+
+      case 'RELOAD_EXT': {
+        // One-click update from the website: the page already wrote the new files into the extension folder.
+        sendResponse({ success: true });
+        setTimeout(function () { try { chrome.runtime.reload(); } catch (e) {} }, 300);
         break;
       }
 

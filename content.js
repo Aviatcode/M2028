@@ -23,6 +23,28 @@
     if (event.data && event.data.from === 'M2028_PAGE' && event.data.type === 'EXT_PING') sendExtReady();
   });
 
+  // Detect an extension update/reload that happens WITHOUT this page's own one-click updater (e.g. you
+  // click the reload arrow on chrome://extensions by hand, or the Chrome Web Store auto-updates it in the
+  // background). The moment that happens, this already-injected content script is orphaned — Chrome gives
+  // no event for that, but chrome.runtime.id reliably flips to undefined in the orphaned script, so we poll
+  // for it. The first time we see it, reload the page once: that re-injects a fresh content script, which
+  // reports the new version via EXT_READY (sendExtReady above), so the website's "Update available" chip
+  // clears itself automatically — no manual refresh needed.
+  (function watchForOrphanedContext() {
+    var FLAG = 'm2028_ext_ctx_reload';
+    try { if (chrome && chrome.runtime && chrome.runtime.id) sessionStorage.removeItem(FLAG); } catch (e) {}
+    setInterval(function () {
+      var alive = false;
+      try { alive = !!(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id); } catch (e) { alive = false; }
+      if (alive) return;
+      var already = false;
+      try { already = sessionStorage.getItem(FLAG) === '1'; } catch (e) {}
+      if (already) return;
+      try { sessionStorage.setItem(FLAG, '1'); } catch (e) {}
+      location.reload();
+    }, 3000);
+  })();
+
   const mirrorSigs = {};
   let lastNotes = null; // last notes text passed between page and extension (stops echo loops)
 

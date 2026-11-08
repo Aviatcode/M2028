@@ -18,6 +18,46 @@
     try { version = (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : ''; } catch (e) {}
     try { window.postMessage({ from: 'M2028_EXT', type: 'EXT_READY', version: version }, '*'); } catch (e) {}
   }
+
+  // ---- Device identity -------------------------------------------------------------------
+  // So the same account signed in on two+ computers doesn't have one laptop's screen time
+  // silently overwrite the other's. A random id + a human-editable name are generated once per
+  // Chrome profile/install and cached locally (chrome.storage.local, so it never leaves this
+  // machine on its own). Both are attached to every TIME_STATS push (see pushTimeToPage below) so
+  // the website can keep each device's numbers in their own bucket instead of one shared number.
+  const DEVICE_KEY = 'm2028_device';
+  let deviceInfo = null;
+  function defaultDeviceName() {
+    const ua = navigator.userAgent || '', plat = navigator.platform || '';
+    const os = /Mac/i.test(plat) ? 'Mac' : /Win/i.test(plat) ? 'Windows PC' : /Linux|X11/i.test(plat) ? 'Linux PC' : 'Computer';
+    const br = /Edg\//.test(ua) ? 'Edge' : (navigator.brave ? 'Brave' : /Chrome/.test(ua) ? 'Chrome' : 'Browser');
+    return os + ' (' + br + ')';
+  }
+  function ensureDevice(cb) {
+    if (deviceInfo) { cb(deviceInfo); return; }
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) { cb({ id: '', name: defaultDeviceName() }); return; }
+    chrome.storage.local.get([DEVICE_KEY], function (res) {
+      let d = res && res[DEVICE_KEY];
+      if (!d || !d.id || !d.name) {
+        d = { id: 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: defaultDeviceName() };
+        chrome.storage.local.set({ [DEVICE_KEY]: d });
+      }
+      deviceInfo = d;
+      cb(d);
+    });
+  }
+  function setDeviceName(name) {
+    name = String(name || '').trim().slice(0, 40);
+    if (!name || typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    ensureDevice(function (d) {
+      const next = { id: d.id, name: name };
+      chrome.storage.local.set({ [DEVICE_KEY]: next }, function () { deviceInfo = next; pushTimeToPage(true); });
+    });
+  }
+  ensureDevice(function () {});
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.from === 'M2028_PAGE' && event.data.type === 'SET_DEVICE_NAME') setDeviceName(event.data.name);
+  });
   sendExtReady();
   window.addEventListener('message', function (event) {
     if (event.data && event.data.from === 'M2028_PAGE' && event.data.type === 'EXT_PING') sendExtReady();
@@ -678,9 +718,11 @@
   backupTick();
 
   // 7. Screen time -> website
-  //    Extension -> page : { from:'M2028_EXT', type:'TIME_STATS', stats:{ 'YYYY-MM-DD': { totalSeconds, domains } } }
+  //    Extension -> page : { from:'M2028_EXT', type:'TIME_STATS', stats:{ 'YYYY-MM-DD': { totalSeconds, domains } }, device:{id,name} }
   //    Page -> extension : { from:'M2028_PAGE', type:'TIME_REQUEST' }  (ask for today's numbers)
-  //    The website saves today's numbers in the signed-in account, so the phone widget shows the laptop's time.
+  //    Page -> extension : { from:'M2028_PAGE', type:'SET_DEVICE_NAME', name:'...' }  (rename this device)
+  //    The website saves today's numbers in the signed-in account, tagged with this device's id/name, so a
+  //    second laptop on the same account adds its own bucket instead of overwriting the first one's time.
   const TIME_KEY = 'm2028_time_stats';
   let lastTimePush = 0;
   let lastTimeTotal = -1;
@@ -708,9 +750,11 @@
             const x = day.domains[d] || {};
             doms[d] = { seconds: x.seconds || 0, title: x.title || d, category: x.category || 'other' };
           });
-        const stats = {};
-        stats[key] = { totalSeconds: day.totalSeconds, domains: doms };
-        window.postMessage({ from: 'M2028_EXT', type: 'TIME_STATS', stats: stats }, '*');
+        ensureDevice(function (dev) {
+          const stats = {};
+          stats[key] = { totalSeconds: day.totalSeconds, domains: doms };
+          window.postMessage({ from: 'M2028_EXT', type: 'TIME_STATS', stats: stats, device: dev }, '*');
+        });
       });
     } catch (e) {}
   }

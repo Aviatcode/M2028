@@ -413,6 +413,7 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 <div id="wTopSitesList" style="display:flex;flex-direction:column;gap:5px;max-height:130px;overflow-y:auto">
 <div style="font-size:11px;color:var(--mt);padding:6px 0;text-align:center">Tracking active browser tabs...</div>
 </div>
+<div id="wDeviceBreakdown" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--b)"></div>
 </div>
 </div>
 </div>
@@ -2463,7 +2464,7 @@ const mins=rem>600?Math.max(10,2*Math.round(rem/120)):Math.max(1,Math.ceil(rem/6
  body="Ends "+new Date(endTs).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}),
  ic=new URL("icon-192.png",location.href).href;
 navigator.serviceWorker.ready.then(r=>r.showNotification(title,{body:body,tag:"m2028-live",renotify:!1,silent:!0,icon:ic,badge:ic})).catch(()=>{})}
-document.addEventListener("visibilitychange",()=>{if(document.hidden&&pomRun&&!extOwnsPomoAudio())try{updateLiveNotification(!0)}catch(e){}if(!document.hidden&&pomRun){const e=JSON.parse(localStorage.getItem(POM_KEY)||"{}");e.endTs&&(pomRem=Math.max(0,Math.round((e.endTs-Date.now())/1e3)),pomRem<=0&&completeIfExpired()),updatePomUI(),extOwnsPomoAudio()||updateLiveNotification()}}),window.addEventListener("pageshow",()=>{loadPomState(),updatePomUI(),extOwnsPomoAudio()||updateLiveNotification()});let _liveNotifTimer=null;function startLiveNotifLoop(){if(extOwnsPomoAudio())return;if(!("Notification"in window)||"granted"!==Notification.permission)return;if(!pomRun)return;clearTimeout(_liveNotifTimer);const e=()=>{updateLiveNotification(),pomRun&&(_liveNotifTimer=setTimeout(e,15e3))};e()}function stopLiveNotifLoop(){clearTimeout(_liveNotifTimer),_liveNotifTimer=null,closeLiveNotification()}function closeLiveNotification(){window.__lnT=0;window.__lnS=null;window.__lnR=0;"serviceWorker"in navigator&&navigator.serviceWorker.ready.then(e=>{e.getNotifications({tag:"m2028-live"}).then(e=>e.forEach(e=>e.close()))}).catch(()=>{})}const IS_IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||"MacIntel"===navigator.platform&&navigator.maxTouchPoints>1,IS_STANDALONE=!0===window.navigator.standalone||!!(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches);function iosNotifHelp(){if(document.getElementById("iosNotifOv"))return;const e=document.createElement("div");e.className="ov op",e.id="iosNotifOv",e.style.zIndex="100000",e.innerHTML='<div class="mo" style="max-width:370px"><div class="mot">Turn on notifications on iPhone</div><div style="font-size:13px;color:var(--m2);line-height:1.6;margin-bottom:12px">iPhone only allows web-app notifications after the app is added to your Home Screen (iOS 16.4 or newer).<ol style="margin:10px 0 0 18px;padding:0"><li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button, then <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Open <b>M2028</b> from the new Home Screen icon (not from Safari).</li><li>Tap <b>Account</b> then <b>Notifications</b>, and choose <b>Allow</b>.</li></ol></div><div style="font-size:12px;color:var(--mt);line-height:1.5;margin-bottom:14px">After you tap Allow, reminders are delivered by push, so they can arrive even when M2028 is closed. If they stop, check iPhone Settings, Notifications, M2028.</div><button class="btn b-ai" id="iosNotifOk" style="width:100%">Got it</button></div>',document.body.appendChild(e);const t=()=>e.parentNode&&e.parentNode.removeChild(e);e.querySelector("#iosNotifOk").onclick=t,e.addEventListener("click",n=>{n.target===e&&t()})}function reqNotif(e){if(IS_IOS&&(!("Notification"in window)||!IS_STANDALONE))return void(e!==!0&&iosNotifHelp());if("Notification"in window)return"granted"===Notification.permission?(e!==!0&&banner("Notifications already on!"),void schedNotifs()):void("denied"!==Notification.permission?Notification.requestPermission().then(e=>{const t=document.getElementById("nBtn");"granted"===e?(banner("Notifications enabled!"),t&&(t.textContent="Notifications On"),schedNotifs(),startLiveNotifLoop(),IS_IOS&&window.m2028PushRegister&&setTimeout(window.m2028PushRegister,300)):(banner("Notifications blocked."),t&&(t.textContent="Notifications Blocked"))}):banner(IS_IOS?"Notifications are blocked. Open the iPhone Settings app, tap Notifications, choose M2028, and turn on Allow Notifications.":"Blocked. Enable in phone Settings → Apps → Browser → Notifications."));banner("Notifications are not supported in this browser.")}function schedNotifs(){return;if("granted"!==Notification.permission)return;const e=new Date;[{h:6,m:30,t:"📰 Hindu time",b:"30 min — read The Hindu now"},{h:16,m:30,t:"📚 Study time",b:"4:30 PM — AI/Python Pomodoro"},{h:18,m:0,t:"💪 Workout time",b:"6 PM — Mon/Wed/Fri workout"},{h:19,m:30,t:"📖 NCERT time",b:"7:30 PM — NCERT Pomodoro"},{h:20,m:30,t:"🔄 Revision time",b:"10 min revision before bed"}].forEach(t=>{const n=new Date;n.setHours(t.h,t.m,0,0);const o=n-e;o>0&&setTimeout(()=>sendNotif(t.t,t.b),o)});const t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,0,0,10,0);setTimeout(()=>{onNewDay(),schedNotifs()},n-t)}function onNewDay(){try{renderDash()}catch(e){}try{renderHabits()}catch(e){}try{renderTasks()}catch(e){}try{renderCal()}catch(e){}sendNotif("🌅 Good morning!","New day — habits reset. Let's go!")}function warmAudio(){const e=getAudioCtx();if(e){"suspended"===e.state&&e.resume().catch(()=>{});try{const t=e.createOscillator(),n=e.createGain();t.connect(n),n.connect(e.destination),n.gain.setValueAtTime(0,e.currentTime),t.start(),t.stop(e.currentTime+.001)}catch(e){}}}document.addEventListener("click",warmAudio),document.addEventListener("touchend",warmAudio),document.addEventListener("visibilitychange",()=>{if(!document.hidden){const e=getAudioCtx();e&&"suspended"===e.state&&e.resume().catch(()=>{})}});const _idle=(e,t)=>"requestIdleCallback"in window?requestIdleCallback(e,{timeout:t||1e3}):setTimeout(e,50);function init(){document.getElementById("bfDate").value=TK(),"Notification"in window&&"granted"===Notification.permission&&(document.getElementById("nBtn").textContent="Notifications On",schedNotifs()),function e(){const t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,0,0,15,0);setTimeout(()=>{try{renderDash()}catch(e){}try{renderHabits()}catch(e){}try{renderTasks()}catch(e){}try{renderCal()}catch(e){}e()},n-t)}(),applyTheme(),migrateChecklistWidgets(),applyDashCfg(),applyUpscTitle(),initNSDR(),applyNavPos(),loadPomState(),renderDash(),renderTasks();const e=[migrateAiTrack,checkAutoScorecard,checkDailyQuotePopup],t=()=>{const n=e.shift();if(n){try{n()}catch(e){}e.length&&_idle(t,400)}};setTimeout(()=>_idle(t,1500),300),_taskTick(),updatePomUI(),pomRun&&startLiveNotifLoop()}function _taskTick(){checkTaskReminders(),window.checkMedReminders&&window.checkMedReminders(),document.hidden||(showTaskAlerts(),window.showMedAlerts&&window.showMedAlerts())}setInterval(syncQuoteText,6e4),setInterval(_taskTick,15e3),document.addEventListener("visibilitychange",()=>{"visible"===document.visibilityState&&_taskTick()}),window.addEventListener("focus",_taskTick),window.addEventListener("pageshow",_taskTick),document.addEventListener("click",e=>{const t=document.getElementById("mobileNavCollapse"),n=document.getElementById("mnbToggler");t&&t.classList.contains("open")&&(t.contains(e.target)||n&&n.contains(e.target)||closeMobileNav())});const SUPA_URL="https://lvzcctsqcpikisdzztot.supabase.co",SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2emNjdHNxY3Bpa2lzZHp6dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4OTQsImV4cCI6MjA5NzI4NTg5NH0.Z1GejKEAkFuJmum-amd5zin8TFEIaeptroRtjFmojdw";let supa=null,_user=null,_cloudOK=!1,_realtimeChannel=null;const _dirty=new Set;let _legacy=!1;try{const e=localStorage.getItem("m_sync_dirty");null===e?_legacy=!0:JSON.parse(e).forEach(e=>_dirty.add(e))}catch(e){_legacy=!0}function _saveDirty(){try{localStorage.setItem("m_sync_dirty",JSON.stringify([..._dirty]))}catch(e){}}const _ver={},_inflight={},_again={},_sent={},_seen={},_retry={};let _rtLive=!1,_rtRetry=null;const _ts=e=>e?new Date(e).getTime():0;function _canon(e){return void 0===e?"u":e&&"object"==typeof e?Array.isArray(e)?"["+e.map(_canon).join(",")+"]":"{"+Object.keys(e).sort().map(t=>JSON.stringify(t)+":"+_canon(e[t])).join(",")+"}":JSON.stringify(e)}const _isObj=e=>!!e&&"object"==typeof e&&!Array.isArray(e),_idArr=e=>Array.isArray(e)&&e.every(e=>e&&"object"==typeof e&&void 0!==e.id);function _m3(e,t,n){const o=_canon(t),a=_canon(n),i=_canon(e);if(o===a)return t;if(o===i)return n;if(a===i)return t;if(_isObj(t)&&_isObj(n)){const o=_isObj(e)?e:{},a={};return new Set([...Object.keys(n),...Object.keys(t)]).forEach(e=>{const i=_m3(o[e],t[e],n[e]);void 0!==i&&(a[e]=i)}),a}if(_idArr(t)&&_idArr(n)){const o=new Map((_idArr(e)?e:[]).map(e=>[e.id,e])),a=new Map(t.map(e=>[e.id,e])),i=new Map(n.map(e=>[e.id,e])),s=new Set,r=[];return[...n,...t].forEach(e=>{if(s.has(e.id))return;s.add(e.id);const t=_m3(o.get(e.id),a.get(e.id),i.get(e.id));void 0!==t&&r.push(t)}),r}return t}function _isDirty(e,t){return _dirty.has(e)||_legacy&&_getLocalTs(e)>t}let _syncReady=!1,_pendingPushKeys=new Set,_lastCloudValues={};const LOCAL_ONLY=new Set(["tasks","meds","medLog","taskRemindersFired"]),GUARD_KEYS=["habs","tasks"],DEVICE_KEYS=new Set(["guestMode","hadSession"]);function _isEmptyValue(e){return null==e||(Array.isArray(e)?0===e.length:"object"==typeof e&&0===Object.keys(e).length)}let _supaP=null;function loadSupa(){return _supaP||(_supaP=new Promise(e=>{const t=()=>{try{"undefined"!=typeof supabase&&(supa=supabase.createClient(SUPA_URL,SUPA_KEY),_cloudOK=!0)}catch(e){console.warn("Supabase init failed, continuing in local-only mode:",e)}e(_cloudOK)};if("undefined"!=typeof supabase)return t();const n=document.createElement("script");n.crossOrigin="anonymous",n.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js",n.async=!0,n.onload=t,n.onerror=()=>e(!1),document.head.appendChild(n)}),_supaP)}function getAllKeys(){const e=["habs","hd","us","as","bfLog","ml","plans","hl","cd","scheds","tasks","pd","plog","bestSt","customWidgets","dashCfg","miles","aic","myProj","phases","upscTitle","customBooks","theme","customColors","navHidden","navOrder","navLabels","pomSessions","upscHidden","roadHead","period","pomSubjects","pomLive","freeLayout","profilePic","hubNotes"];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_ch_")&&e.push(n.replace("m_",""))}return e}function push(e,t){if(!_user||!_cloudOK||LOCAL_ONLY.has(e)||DEVICE_KEYS.has(e))return Promise.resolve();if(!_syncReady&&!t)return _pendingPushKeys.add(e),Promise.resolve();if(_inflight[e])return _again[e]=!0,_inflight[e];const n=_doPush(e,t).finally(()=>{if(delete _inflight[e],_again[e])return _again[e]=!1,push(e,t)});return _inflight[e]=n,n}async function _doPush(e,t){const n=S.g(e);if(null===n)return;if(GUARD_KEYS.includes(e)&&_isEmptyValue(n)&&!_isEmptyValue(_lastCloudValues[e]))try{await supa.from("user_data").upsert({user_id:_user.id,data_key:e+"__backup",data_value:_lastCloudValues[e],updated_at:(new Date).toISOString()},{onConflict:"user_id,data_key"}),console.warn(`Backed up previous '${e}' before overwriting with an empty value. Restore with restoreFromBackup("${e}") if this wasn't intentional.`)}catch(e){console.warn("Backup-before-overwrite failed:",e)}const o=_ver[e]||0,a=Date.now();(_sent[e]=_sent[e]||[]).push(a),_sent[e].length>8&&_sent[e].shift();try{const{error:t}=await supa.from("user_data").upsert({user_id:_user.id,data_key:e,data_value:n,updated_at:new Date(a).toISOString()},{onConflict:"user_id,data_key"});if(t)throw t;_seen[e]=a,_retry[e]=0,(_ver[e]||0)===o&&_dirty.delete(e)&&_saveDirty()}catch(n){console.warn("Push failed, will retry:",n);const o=_retry[e]=(_retry[e]||0)+1;setTimeout(()=>push(e,t),Math.min(3e4,1e3*Math.pow(2,o)))}}/* ===== v7: sign-out waits until everything is confirmed in the cloud ===== */
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&pomRun&&!extOwnsPomoAudio())try{updateLiveNotification(!0)}catch(e){}if(!document.hidden&&pomRun){const e=JSON.parse(localStorage.getItem(POM_KEY)||"{}");e.endTs&&(pomRem=Math.max(0,Math.round((e.endTs-Date.now())/1e3)),pomRem<=0&&completeIfExpired()),updatePomUI(),extOwnsPomoAudio()||updateLiveNotification()}}),window.addEventListener("pageshow",()=>{loadPomState(),updatePomUI(),extOwnsPomoAudio()||updateLiveNotification()});let _liveNotifTimer=null;function startLiveNotifLoop(){if(extOwnsPomoAudio())return;if(!("Notification"in window)||"granted"!==Notification.permission)return;if(!pomRun)return;clearTimeout(_liveNotifTimer);const e=()=>{updateLiveNotification(),pomRun&&(_liveNotifTimer=setTimeout(e,15e3))};e()}function stopLiveNotifLoop(){clearTimeout(_liveNotifTimer),_liveNotifTimer=null,closeLiveNotification()}function closeLiveNotification(){window.__lnT=0;window.__lnS=null;window.__lnR=0;"serviceWorker"in navigator&&navigator.serviceWorker.ready.then(e=>{e.getNotifications({tag:"m2028-live"}).then(e=>e.forEach(e=>e.close()))}).catch(()=>{})}const IS_IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||"MacIntel"===navigator.platform&&navigator.maxTouchPoints>1,IS_STANDALONE=!0===window.navigator.standalone||!!(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches);function iosNotifHelp(){if(document.getElementById("iosNotifOv"))return;const e=document.createElement("div");e.className="ov op",e.id="iosNotifOv",e.style.zIndex="100000",e.innerHTML='<div class="mo" style="max-width:370px"><div class="mot">Turn on notifications on iPhone</div><div style="font-size:13px;color:var(--m2);line-height:1.6;margin-bottom:12px">iPhone only allows web-app notifications after the app is added to your Home Screen (iOS 16.4 or newer).<ol style="margin:10px 0 0 18px;padding:0"><li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button, then <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>Open <b>M2028</b> from the new Home Screen icon (not from Safari).</li><li>Tap <b>Account</b> then <b>Notifications</b>, and choose <b>Allow</b>.</li></ol></div><div style="font-size:12px;color:var(--mt);line-height:1.5;margin-bottom:14px">After you tap Allow, reminders are delivered by push, so they can arrive even when M2028 is closed. If they stop, check iPhone Settings, Notifications, M2028.</div><button class="btn b-ai" id="iosNotifOk" style="width:100%">Got it</button></div>',document.body.appendChild(e);const t=()=>e.parentNode&&e.parentNode.removeChild(e);e.querySelector("#iosNotifOk").onclick=t,e.addEventListener("click",n=>{n.target===e&&t()})}function reqNotif(e){if(IS_IOS&&(!("Notification"in window)||!IS_STANDALONE))return void(e!==!0&&iosNotifHelp());if("Notification"in window)return"granted"===Notification.permission?(e!==!0&&banner("Notifications already on!"),void schedNotifs()):void("denied"!==Notification.permission?Notification.requestPermission().then(e=>{const t=document.getElementById("nBtn");"granted"===e?(banner("Notifications enabled!"),t&&(t.textContent="Notifications On"),schedNotifs(),startLiveNotifLoop(),IS_IOS&&window.m2028PushRegister&&setTimeout(window.m2028PushRegister,300)):(banner("Notifications blocked."),t&&(t.textContent="Notifications Blocked"))}):banner(IS_IOS?"Notifications are blocked. Open the iPhone Settings app, tap Notifications, choose M2028, and turn on Allow Notifications.":"Blocked. Enable in phone Settings → Apps → Browser → Notifications."));banner("Notifications are not supported in this browser.")}function schedNotifs(){return;if("granted"!==Notification.permission)return;const e=new Date;[{h:6,m:30,t:"📰 Hindu time",b:"30 min — read The Hindu now"},{h:16,m:30,t:"📚 Study time",b:"4:30 PM — AI/Python Pomodoro"},{h:18,m:0,t:"💪 Workout time",b:"6 PM — Mon/Wed/Fri workout"},{h:19,m:30,t:"📖 NCERT time",b:"7:30 PM — NCERT Pomodoro"},{h:20,m:30,t:"🔄 Revision time",b:"10 min revision before bed"}].forEach(t=>{const n=new Date;n.setHours(t.h,t.m,0,0);const o=n-e;o>0&&setTimeout(()=>sendNotif(t.t,t.b),o)});const t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,0,0,10,0);setTimeout(()=>{onNewDay(),schedNotifs()},n-t)}function onNewDay(){try{renderDash()}catch(e){}try{renderHabits()}catch(e){}try{renderTasks()}catch(e){}try{renderCal()}catch(e){}sendNotif("🌅 Good morning!","New day — habits reset. Let's go!")}function warmAudio(){const e=getAudioCtx();if(e){"suspended"===e.state&&e.resume().catch(()=>{});try{const t=e.createOscillator(),n=e.createGain();t.connect(n),n.connect(e.destination),n.gain.setValueAtTime(0,e.currentTime),t.start(),t.stop(e.currentTime+.001)}catch(e){}}}document.addEventListener("click",warmAudio),document.addEventListener("touchend",warmAudio),document.addEventListener("visibilitychange",()=>{if(!document.hidden){const e=getAudioCtx();e&&"suspended"===e.state&&e.resume().catch(()=>{})}});const _idle=(e,t)=>"requestIdleCallback"in window?requestIdleCallback(e,{timeout:t||1e3}):setTimeout(e,50);function init(){document.getElementById("bfDate").value=TK(),"Notification"in window&&"granted"===Notification.permission&&(document.getElementById("nBtn").textContent="Notifications On",schedNotifs()),function e(){const t=new Date,n=new Date(t.getFullYear(),t.getMonth(),t.getDate()+1,0,0,15,0);setTimeout(()=>{try{renderDash()}catch(e){}try{renderHabits()}catch(e){}try{renderTasks()}catch(e){}try{renderCal()}catch(e){}e()},n-t)}(),applyTheme(),migrateChecklistWidgets(),applyDashCfg(),applyUpscTitle(),initNSDR(),applyNavPos(),loadPomState(),renderDash(),renderTasks();const e=[migrateAiTrack,checkAutoScorecard,checkDailyQuotePopup],t=()=>{const n=e.shift();if(n){try{n()}catch(e){}e.length&&_idle(t,400)}};setTimeout(()=>_idle(t,1500),300),_taskTick(),updatePomUI(),pomRun&&startLiveNotifLoop()}function _taskTick(){checkTaskReminders(),window.checkMedReminders&&window.checkMedReminders(),document.hidden||(showTaskAlerts(),window.showMedAlerts&&window.showMedAlerts())}setInterval(syncQuoteText,6e4),setInterval(_taskTick,15e3),document.addEventListener("visibilitychange",()=>{"visible"===document.visibilityState&&_taskTick()}),window.addEventListener("focus",_taskTick),window.addEventListener("pageshow",_taskTick),document.addEventListener("click",e=>{const t=document.getElementById("mobileNavCollapse"),n=document.getElementById("mnbToggler");t&&t.classList.contains("open")&&(t.contains(e.target)||n&&n.contains(e.target)||closeMobileNav())});const SUPA_URL="https://lvzcctsqcpikisdzztot.supabase.co",SUPA_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2emNjdHNxY3Bpa2lzZHp6dG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDk4OTQsImV4cCI6MjA5NzI4NTg5NH0.Z1GejKEAkFuJmum-amd5zin8TFEIaeptroRtjFmojdw";let supa=null,_user=null,_cloudOK=!1,_realtimeChannel=null;const _dirty=new Set;let _legacy=!1;try{const e=localStorage.getItem("m_sync_dirty");null===e?_legacy=!0:JSON.parse(e).forEach(e=>_dirty.add(e))}catch(e){_legacy=!0}function _saveDirty(){try{localStorage.setItem("m_sync_dirty",JSON.stringify([..._dirty]))}catch(e){}}const _ver={},_inflight={},_again={},_sent={},_seen={},_retry={};let _rtLive=!1,_rtRetry=null;const _ts=e=>e?new Date(e).getTime():0;function _canon(e){return void 0===e?"u":e&&"object"==typeof e?Array.isArray(e)?"["+e.map(_canon).join(",")+"]":"{"+Object.keys(e).sort().map(t=>JSON.stringify(t)+":"+_canon(e[t])).join(",")+"}":JSON.stringify(e)}const _isObj=e=>!!e&&"object"==typeof e&&!Array.isArray(e),_idArr=e=>Array.isArray(e)&&e.every(e=>e&&"object"==typeof e&&void 0!==e.id);function _m3(e,t,n){const o=_canon(t),a=_canon(n),i=_canon(e);if(o===a)return t;if(o===i)return n;if(a===i)return t;if(_isObj(t)&&_isObj(n)){const o=_isObj(e)?e:{},a={};return new Set([...Object.keys(n),...Object.keys(t)]).forEach(e=>{const i=_m3(o[e],t[e],n[e]);void 0!==i&&(a[e]=i)}),a}if(_idArr(t)&&_idArr(n)){const o=new Map((_idArr(e)?e:[]).map(e=>[e.id,e])),a=new Map(t.map(e=>[e.id,e])),i=new Map(n.map(e=>[e.id,e])),s=new Set,r=[];return[...n,...t].forEach(e=>{if(s.has(e.id))return;s.add(e.id);const t=_m3(o.get(e.id),a.get(e.id),i.get(e.id));void 0!==t&&r.push(t)}),r}return t}function _isDirty(e,t){return _dirty.has(e)||_legacy&&_getLocalTs(e)>t}let _syncReady=!1,_pendingPushKeys=new Set,_lastCloudValues={};const LOCAL_ONLY=new Set(["tasks","meds","medLog","taskRemindersFired"]),GUARD_KEYS=["habs","tasks"],DEVICE_KEYS=new Set(["guestMode","hadSession"]);function _isEmptyValue(e){return null==e||(Array.isArray(e)?0===e.length:"object"==typeof e&&0===Object.keys(e).length)}let _supaP=null;function loadSupa(){return _supaP||(_supaP=new Promise(e=>{const t=()=>{try{"undefined"!=typeof supabase&&(supa=supabase.createClient(SUPA_URL,SUPA_KEY),_cloudOK=!0)}catch(e){console.warn("Supabase init failed, continuing in local-only mode:",e)}e(_cloudOK)};if("undefined"!=typeof supabase)return t();const n=document.createElement("script");n.crossOrigin="anonymous",n.src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js",n.async=!0,n.onload=t,n.onerror=()=>e(!1),document.head.appendChild(n)}),_supaP)}function getAllKeys(){const e=["habs","hd","us","as","bfLog","ml","plans","hl","cd","scheds","tasks","pd","plog","bestSt","customWidgets","dashCfg","miles","aic","myProj","phases","upscTitle","customBooks","theme","customColors","navHidden","navOrder","navLabels","pomSessions","upscHidden","roadHead","period","pomSubjects","pomLive","freeLayout","profilePic","hubNotes"];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_ch_")&&e.push(n.replace("m_",""))}return e}const _pushDebTimer={},_pushDebResolvers={},PUSH_DEBOUNCE_MS=600;function push(e,t){if(!_user||!_cloudOK||LOCAL_ONLY.has(e)||DEVICE_KEYS.has(e))return Promise.resolve();if(!_syncReady&&!t)return _pendingPushKeys.add(e),Promise.resolve();if(t)return _pushNow(e,t);return new Promise(r=>{(_pushDebResolvers[e]=_pushDebResolvers[e]||[]).push(r),clearTimeout(_pushDebTimer[e]),_pushDebTimer[e]=setTimeout(()=>{delete _pushDebTimer[e];const rs=_pushDebResolvers[e]||[];delete _pushDebResolvers[e];_pushNow(e).then(()=>rs.forEach(r=>r()))},PUSH_DEBOUNCE_MS)})}function _pushNow(e,t){if(_inflight[e])return _again[e]=!0,_inflight[e];const n=_doPush(e,t).finally(()=>{if(delete _inflight[e],_again[e])return _again[e]=!1,_pushNow(e,t)});return _inflight[e]=n,n}async function _doPush(e,t){const n=S.g(e);if(null===n)return;if(GUARD_KEYS.includes(e)&&_isEmptyValue(n)&&!_isEmptyValue(_lastCloudValues[e]))try{await supa.from("user_data").upsert({user_id:_user.id,data_key:e+"__backup",data_value:_lastCloudValues[e],updated_at:(new Date).toISOString()},{onConflict:"user_id,data_key"}),console.warn(`Backed up previous '${e}' before overwriting with an empty value. Restore with restoreFromBackup("${e}") if this wasn't intentional.`)}catch(e){console.warn("Backup-before-overwrite failed:",e)}const o=_ver[e]||0,a=Date.now();(_sent[e]=_sent[e]||[]).push(a),_sent[e].length>8&&_sent[e].shift();try{const{error:t}=await supa.from("user_data").upsert({user_id:_user.id,data_key:e,data_value:n,updated_at:new Date(a).toISOString()},{onConflict:"user_id,data_key"});if(t)throw t;_seen[e]=a,_retry[e]=0,(_ver[e]||0)===o&&_dirty.delete(e)&&_saveDirty()}catch(n){console.warn("Push failed, will retry:",n);const o=_retry[e]=(_retry[e]||0)+1;setTimeout(()=>push(e,t),Math.min(3e4,1e3*Math.pow(2,o)))}}/* ===== v7: sign-out waits until everything is confirmed in the cloud ===== */
 async function flushAllToCloud(all){
   if(!_user||!_cloudOK)return!0;
   if(!_syncReady){try{await Promise.race([pull(),new Promise(r=>setTimeout(r,6e3))])}catch(e){}}
@@ -6656,48 +6657,118 @@ document.addEventListener("click",function(e){
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  // Screen time follows the account: the laptop (where the extension runs) saves today's numbers, the phone shows them.
+  // Screen time follows the account, but is kept PER DEVICE: each laptop that runs the extension writes
+  // into its own bucket (screenTimeDevices[deviceId]) instead of one shared number, so signing into the
+  // same account on a second computer adds its time instead of overwriting the first computer's.
   var _stPushAt = 0, _stPushTot = -1;
+  function stDeviceTag(st) {
+    var d = st && st.device;
+    return (d && d.id) ? { id: d.id, name: d.name || 'Device' } : { id: 'legacy', name: 'This device' };
+  }
+  // Devices that haven't pushed in 30+ days (uninstalled, replaced, sold, etc.) are dropped automatically
+  // the next time ANY device pushes — keeps the map from growing forever if you cycle through machines.
+  var STALE_DEVICE_MS = 30 * 24 * 60 * 60 * 1000;
+  function pruneStaleDevices(map) {
+    var now = Date.now(), out = {};
+    Object.keys(map || {}).forEach(function(id) {
+      var d = map[id];
+      if (d && (now - (d.at || 0)) <= STALE_DEVICE_MS) out[id] = d;
+    });
+    return out;
+  }
   function pushScreenTime(today, st) {
     try {
       if (typeof S === 'undefined' || !S.s || !localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token')) return;
       var tot = Math.round(st.totalSeconds || 0), now = Date.now();
       if (!tot || (tot === _stPushTot) || (now - _stPushAt < 30000 && tot - _stPushTot < 300)) return;
-      var cl = S.g('screenTime');
+      var dev = stDeviceTag(st);
+      var map = pruneStaleDevices(S.g('screenTimeDevices') || {});
+      var cl = map[dev.id];
       if (cl && cl.date === today && (cl.totalSeconds || 0) >= tot) { _stPushTot = tot; return; }
       var doms = {}, ent = Object.entries(st.domains || {}).sort(function(a, b) { return (b[1].seconds || 0) - (a[1].seconds || 0); }).slice(0, 15);
       ent.forEach(function(x) { doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: x[1].category || 'other', title: x[1].title || '' }; });
       _stPushAt = now; _stPushTot = tot;
-      S.s('screenTime', { date: today, totalSeconds: tot, domains: doms, at: now });
+      map = Object.assign({}, map);
+      map[dev.id] = { name: dev.name, date: today, totalSeconds: tot, domains: doms, at: now };
+      S.s('screenTimeDevices', map);
     } catch (e) {}
   }
+  // Sum every device's numbers for today into one combined view (total, top sites, per-device list).
+  // Folds in this tab's own live numbers too, since they can be a little ahead of the last throttled push.
+  function combinedScreenTimeToday(today, liveStats) {
+    var map = {};
+    try { map = (typeof S !== 'undefined' && S.g) ? (S.g('screenTimeDevices') || {}) : {}; } catch (e) {}
+    if (liveStats && liveStats.totalSeconds) {
+      var dev = stDeviceTag(liveStats);
+      var existing = map[dev.id];
+      if (!existing || existing.date !== today || (existing.totalSeconds || 0) < liveStats.totalSeconds) {
+        map = Object.assign({}, map);
+        map[dev.id] = { name: dev.name, date: today, totalSeconds: liveStats.totalSeconds, domains: liveStats.domains || {} };
+      }
+    }
+    var devices = Object.keys(map).map(function(id) { return Object.assign({ id: id }, map[id]); }).filter(function(d) { return d.date === today && d.totalSeconds; });
+    var totalSeconds = 0, domains = {};
+    devices.forEach(function(d) {
+      totalSeconds += d.totalSeconds || 0;
+      Object.entries(d.domains || {}).forEach(function(x) {
+        var k = x[0], v = x[1] || {};
+        var cur = domains[k] || { seconds: 0, title: v.title || k, category: v.category || 'other' };
+        cur.seconds += v.seconds || 0;
+        if (v.title) cur.title = v.title;
+        if (v.category) cur.category = v.category;
+        domains[k] = cur;
+      });
+    });
+    return { totalSeconds: totalSeconds, domains: domains, devices: devices };
+  }
+  function renderDeviceBreakdown(devices, liveStats) {
+    var el = document.getElementById('wDeviceBreakdown');
+    if (!el) return;
+    if (!devices || devices.length < 2) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var myId = stDeviceTag(liveStats || {}).id;
+    devices = devices.slice().sort(function(a, b) { return (b.totalSeconds || 0) - (a.totalSeconds || 0); });
+    el.style.display = 'block';
+    el.innerHTML = '<div style="font-size:10px;font-weight:600;color:var(--mt);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px">By Device</div>' +
+      devices.map(function(d) {
+        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:11px;gap:8px">' +
+          '<span style="color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (d.id === myId ? '📍 ' : '') + escAttr(d.name || 'Device') + '</span>' +
+          '<span style="color:var(--m2);font-weight:600;flex-shrink:0">' + fmtSec(d.totalSeconds || 0) + '</span>' +
+          '</div>';
+      }).join('') +
+      '<button class="btn b-gh sm" style="margin-top:6px;width:100%" onclick="renameThisDevice()">✏️ Rename this device</button>';
+  }
+  window.renameThisDevice = function() {
+    try {
+      var cur = null;
+      try { cur = (JSON.parse(localStorage.getItem('m2028_time_stats') || '{}')[getTodayKey()] || {}).device; } catch (e) {}
+      var name = prompt('Name for this device (shown when you check screen time from another device):', (cur && cur.name) || '');
+      if (name && name.trim()) window.postMessage({ from: 'M2028_PAGE', type: 'SET_DEVICE_NAME', name: name.trim() }, '*');
+    } catch (e) {}
+  };
   window.renderScreenTimeWidget = async function() {
     var today = getTodayKey();
-    var stats = null;
+    var liveStats = null;
 
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       try {
         var res = await new Promise(function(r) { chrome.storage.local.get(['m2028_time_stats'], r); });
-        stats = (res && res.m2028_time_stats) ? res.m2028_time_stats[today] : null;
+        liveStats = (res && res.m2028_time_stats) ? res.m2028_time_stats[today] : null;
       } catch(e) {}
     }
 
-    if (!stats) {
+    if (!liveStats) {
       try {
         var local = JSON.parse(localStorage.getItem('m2028_time_stats') || '{}');
-        stats = local[today] || null;
+        liveStats = local[today] || null;
       } catch(e) {}
     }
 
-    if (stats && stats.totalSeconds) {
-      pushScreenTime(today, stats);          // this device tracks time (laptop + extension): share it with the account
-    } else {
-      try {                                  // no tracker here (phone): show what the laptop saved today
-        var cl = S.g('screenTime');
-        if (cl && cl.date === today && cl.totalSeconds) stats = cl;
-      } catch(e) {}
+    if (liveStats && liveStats.totalSeconds) {
+      pushScreenTime(today, liveStats);      // this device tracks time (laptop + extension): share its bucket with the account
     }
-    if (!stats || !stats.totalSeconds) stats = { totalSeconds: 0, domains: {} };
+    // Combine every device's bucket for today (this one included) instead of showing just one device's number.
+    var stats = combinedScreenTimeToday(today, liveStats);
+    if (!stats || !stats.totalSeconds) stats = { totalSeconds: 0, domains: {}, devices: [] };
 
     var totalEl = document.getElementById('wScreenTimeVal');
     var scoreEl = document.getElementById('wProdScoreVal');
@@ -6757,6 +6828,7 @@ document.addEventListener("click",function(e){
         }
       }
     }
+    renderDeviceBreakdown(stats.devices, liveStats);
   };
 
   // Hub Modal Handlers
@@ -9953,6 +10025,7 @@ html{scrollbar-gutter:stable}
     if(!v||typeof v!=='object')return;
     var t=today(),day=v[t]||(v.totalSeconds!=null?v:null);
     if(!day||!day.totalSeconds)return;
+    if(d.device)day=Object.assign({},day,{device:d.device});
     try{var m=JSON.parse(localStorage.getItem('m2028_time_stats')||'{}');m[t]=day;localStorage.setItem('m2028_time_stats',JSON.stringify(m));}catch(x){}
     render();
   });

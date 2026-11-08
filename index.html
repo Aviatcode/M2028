@@ -2514,7 +2514,7 @@ function _mLay(base,local,cloud){
   });
   return out;
 }
-function mergeCloudValue(e,t,n){const o=_lastCloudValues[e];_lastCloudValues[e]=t;if("freeLayout"===e){const _l=S.g(e);if(_l&&"object"==typeof _l&&!Array.isArray(_l)&&Object.keys(_l).length){_dirty.has(e)&&_canon(_l)!==_canon(t)&&push(e);return!1}}if("theme"===e&&null!==localStorage.getItem("m_theme"))return!1;const a=S.g(e),i=_ts(n);let s;if("pd"===e)s={...a||{}},Object.keys(t||{}).forEach(e=>{s[e]=Math.max(s[e]||0,t[e]||0)});else if("pomSessions"===e){const e=new Set((a||[]).map(sessionSig));s=(a||[]).slice(),(t||[]).forEach(t=>{const n=sessionSig(t);e.has(n)||(s.push(t),e.add(n))}),s.sort((e,t)=>((e.d||"")+(e.t||"")).localeCompare((t.d||"")+(t.t||"")))}else if("pomLive"===e||"profilePic"===e)s=(t&&t.u||0)>=(a&&a.u||0)?t:a;else s=null!==a&&_isDirty(e,i)?"freeLayout"===e?_mLay(o,a,t):_m3(o,a,t):t;const r=_canon(s)===_canon(a),d=_canon(s)!==_canon(t);return r?(d?push(e):_dirty.delete(e)&&_saveDirty(),!1):(d?S.s(e,s):(_origS(e,s),_setLocalTs(e,i||Date.now()),_dirty.delete(e)&&_saveDirty()),!0)}async function pushAll(e){if(_user&&_cloudOK){banner("Syncing to cloud...");try{for(const t of getAllKeys())await push(t,e);banner("✓ All data backed up to cloud")}catch(e){banner("Sync failed — data still saved locally."),console.warn("pushAll error:",e)}}else banner("Cloud sync unavailable right now — data still saved locally.")}async function doManualSync(){const e=document.getElementById("syncBtn");e&&(e.disabled=!0,e.textContent="🔄 Syncing...");try{await pull(),await pushAll(!0);try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner("✓ Synced")}finally{e&&(e.disabled=!1,e.textContent="🔄 Sync")}}function _getLocalTs(e){try{return JSON.parse(localStorage.getItem("m_sync_ts")||"{}")[e]||0}catch(e){return 0}}function _setLocalTs(e,t){try{const n=JSON.parse(localStorage.getItem("m_sync_ts")||"{}");n[e]=t||Date.now(),localStorage.setItem("m_sync_ts",JSON.stringify(n))}catch(e){}}const _pendRefresh=new Set;let _refT=null;function _queueRefresh(e){e.forEach(e=>_pendRefresh.add(e)),clearTimeout(_refT),_refT=setTimeout(_flushRefresh,30)}function _typing(e){const t=document.activeElement;return!(!(t&&e&&e.contains(t))||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}function _syncCW(){const e=document.getElementById("dashWidgets");if(!e)return!0;const t=S.go("customWidgets",[]).filter(e=>!1!==e.enabled&&(!e.tab||"dash"===e.tab)),n=Array.from(e.querySelectorAll('.dash-w[data-wid^="cw:"]')).map(e=>e.dataset.wid.slice(3));if(n.length!==t.length||!t.every(e=>n.includes(e.id)))return!_typing(e)&&(applyDashCfg(),!0);let o=!0;return t.forEach(t=>{_typing(e.querySelector(`.dash-w[data-wid="cw:${t.id}"]`))?o=!1:rerenderSingleCWWidget(t.id)}),o}function _flushRefresh(){const e=new Set(_pendRefresh);if(_pendRefresh.clear(),!e.size)return;const t=e=>{try{e()}catch(e){}},n=(...t)=>t.some(t=>e.has(t)),o=document.getElementById("dashWidgets");let a=!1;n("habs","hd")&&(t(()=>renderHabits()),t(()=>renderCal()),a=!0);const i=_typing(document.getElementById("tskList"));n("tasks")&&(i?_pendRefresh.add("tasks"):t(()=>renderTasks())),n("customWidgets")&&!_syncCW()&&_pendRefresh.add("customWidgets"),n("dashCfg")&&(_typing(o)?_pendRefresh.add("dashCfg"):t(()=>applyDashCfg())),n("theme","customColors")&&t(()=>ccApplyAll());const s=["habs","hd","tasks","customWidgets","dashCfg","theme","customColors"];[...e].some(e=>!s.includes(e))&&(t(()=>renderHabits()),i||t(()=>renderTasks()),a=!0),a&&t(()=>renderDash())}function setupRealtimeSync(){if(_user&&_cloudOK&&supa){teardownRealtimeSync();try{const e=supa.channel("user_data_"+_user.id);_realtimeChannel=e,e.on("postgres_changes",{event:"*",schema:"public",table:"user_data",filter:`user_id=eq.${_user.id}`},e=>{const t=e.new;t&&t.data_key&&(t.data_key.startsWith("enc_")?window.dispatchEvent(new Event("m2028-enc-changed")):void 0!==t.data_value?_applyRows([t]):pollChanges())}).subscribe(t=>{if(_realtimeChannel===e)if("SUBSCRIBED"===t){const e=_rtLive;_rtLive=!0,clearTimeout(_rtRetry),e||(_syncReady?pollChanges():pull())}else"CHANNEL_ERROR"!==t&&"TIMED_OUT"!==t&&"CLOSED"!==t||(_rtLive=!1,clearTimeout(_rtRetry),_rtRetry=setTimeout(()=>{_user&&!_rtLive&&setupRealtimeSync()},4e3))})}catch(e){console.warn("Realtime sync setup failed, falling back to polling:",e)}}}function teardownRealtimeSync(){clearTimeout(_rtRetry),_rtLive=!1;const e=_realtimeChannel;if(_realtimeChannel=null,e&&supa)try{supa.removeChannel(e)}catch(e){}}const _origS=S.s.bind(S);function _markLocal(e){_ver[e]=(_ver[e]||0)+1,LOCAL_ONLY.has(e)||DEVICE_KEYS.has(e)||_dirty.add(e),_saveDirty(),_setLocalTs(e,Date.now())}function stashLocalOnly(){try{const u=getLastLocalUid();if(!u)return!0;const st={};LOCAL_ONLY.forEach(k=>{const v=localStorage.getItem("m_"+k);null!==v&&(st[k]=v)});if(Object.keys(st).length){const sk="m2028_lo_"+u;let old={};try{old=JSON.parse(localStorage.getItem(sk))||{}}catch(x){}localStorage.setItem(sk,JSON.stringify({...old,...st}))}LOCAL_ONLY.forEach(k=>localStorage.removeItem("m_"+k));return!0}catch(x){return!1}}
+function _mergeDevices(a,t){a=a&&"object"==typeof a?a:{};t=t&&"object"==typeof t?t:{};const o={};Object.keys(a).concat(Object.keys(t)).forEach(id=>{if(o[id])return;const x=a[id],y=t[id];if(!x||!y){o[id]=x||y;return}const n=Object.assign({},(y.at||0)>=(x.at||0)?y:x),m=(y.nmAt||0)>(x.nmAt||0)?y:x;void 0!==m.nm?(n.nm=m.nm,n.nmAt=m.nmAt):(delete n.nm,delete n.nmAt);const f=Math.min(x.first||1/0,y.first||1/0);isFinite(f)&&(n.first=f);o[id]=n});return o}function mergeCloudValue(e,t,n){const o=_lastCloudValues[e];_lastCloudValues[e]=t;if("freeLayout"===e){const _l=S.g(e);if(_l&&"object"==typeof _l&&!Array.isArray(_l)&&Object.keys(_l).length){_dirty.has(e)&&_canon(_l)!==_canon(t)&&push(e);return!1}}if("theme"===e&&null!==localStorage.getItem("m_theme"))return!1;const a=S.g(e),i=_ts(n);let s;if("pd"===e)s={...a||{}},Object.keys(t||{}).forEach(e=>{s[e]=Math.max(s[e]||0,t[e]||0)});else if("pomSessions"===e){const e=new Set((a||[]).map(sessionSig));s=(a||[]).slice(),(t||[]).forEach(t=>{const n=sessionSig(t);e.has(n)||(s.push(t),e.add(n))}),s.sort((e,t)=>((e.d||"")+(e.t||"")).localeCompare((t.d||"")+(t.t||"")))}else if("screenTimeDevices"===e)s=_mergeDevices(a,t);else if("pomLive"===e||"profilePic"===e)s=(t&&t.u||0)>=(a&&a.u||0)?t:a;else s=null!==a&&_isDirty(e,i)?"freeLayout"===e?_mLay(o,a,t):_m3(o,a,t):t;const r=_canon(s)===_canon(a),d=_canon(s)!==_canon(t);return r?(d?push(e):_dirty.delete(e)&&_saveDirty(),!1):(d?S.s(e,s):(_origS(e,s),_setLocalTs(e,i||Date.now()),_dirty.delete(e)&&_saveDirty()),!0)}async function pushAll(e){if(_user&&_cloudOK){banner("Syncing to cloud...");try{for(const t of getAllKeys())await push(t,e);banner("✓ All data backed up to cloud")}catch(e){banner("Sync failed — data still saved locally."),console.warn("pushAll error:",e)}}else banner("Cloud sync unavailable right now — data still saved locally.")}async function doManualSync(){const e=document.getElementById("syncBtn");e&&(e.disabled=!0,e.textContent="🔄 Syncing...");try{await pull(),await pushAll(!0);try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner("✓ Synced")}finally{e&&(e.disabled=!1,e.textContent="🔄 Sync")}}function _getLocalTs(e){try{return JSON.parse(localStorage.getItem("m_sync_ts")||"{}")[e]||0}catch(e){return 0}}function _setLocalTs(e,t){try{const n=JSON.parse(localStorage.getItem("m_sync_ts")||"{}");n[e]=t||Date.now(),localStorage.setItem("m_sync_ts",JSON.stringify(n))}catch(e){}}const _pendRefresh=new Set;let _refT=null;function _queueRefresh(e){e.forEach(e=>_pendRefresh.add(e)),clearTimeout(_refT),_refT=setTimeout(_flushRefresh,30)}function _typing(e){const t=document.activeElement;return!(!(t&&e&&e.contains(t))||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}function _syncCW(){const e=document.getElementById("dashWidgets");if(!e)return!0;const t=S.go("customWidgets",[]).filter(e=>!1!==e.enabled&&(!e.tab||"dash"===e.tab)),n=Array.from(e.querySelectorAll('.dash-w[data-wid^="cw:"]')).map(e=>e.dataset.wid.slice(3));if(n.length!==t.length||!t.every(e=>n.includes(e.id)))return!_typing(e)&&(applyDashCfg(),!0);let o=!0;return t.forEach(t=>{_typing(e.querySelector(`.dash-w[data-wid="cw:${t.id}"]`))?o=!1:rerenderSingleCWWidget(t.id)}),o}function _flushRefresh(){const e=new Set(_pendRefresh);if(_pendRefresh.clear(),!e.size)return;const t=e=>{try{e()}catch(e){}},n=(...t)=>t.some(t=>e.has(t)),o=document.getElementById("dashWidgets");let a=!1;n("habs","hd")&&(t(()=>renderHabits()),t(()=>renderCal()),a=!0);const i=_typing(document.getElementById("tskList"));n("tasks")&&(i?_pendRefresh.add("tasks"):t(()=>renderTasks())),n("customWidgets")&&!_syncCW()&&_pendRefresh.add("customWidgets"),n("dashCfg")&&(_typing(o)?_pendRefresh.add("dashCfg"):t(()=>applyDashCfg())),n("theme","customColors")&&t(()=>ccApplyAll());const s=["habs","hd","tasks","customWidgets","dashCfg","theme","customColors"];[...e].some(e=>!s.includes(e))&&(t(()=>renderHabits()),i||t(()=>renderTasks()),a=!0),a&&t(()=>renderDash())}function setupRealtimeSync(){if(_user&&_cloudOK&&supa){teardownRealtimeSync();try{const e=supa.channel("user_data_"+_user.id);_realtimeChannel=e,e.on("postgres_changes",{event:"*",schema:"public",table:"user_data",filter:`user_id=eq.${_user.id}`},e=>{const t=e.new;t&&t.data_key&&(t.data_key.startsWith("enc_")?window.dispatchEvent(new Event("m2028-enc-changed")):void 0!==t.data_value?_applyRows([t]):pollChanges())}).subscribe(t=>{if(_realtimeChannel===e)if("SUBSCRIBED"===t){const e=_rtLive;_rtLive=!0,clearTimeout(_rtRetry),e||(_syncReady?pollChanges():pull())}else"CHANNEL_ERROR"!==t&&"TIMED_OUT"!==t&&"CLOSED"!==t||(_rtLive=!1,clearTimeout(_rtRetry),_rtRetry=setTimeout(()=>{_user&&!_rtLive&&setupRealtimeSync()},4e3))})}catch(e){console.warn("Realtime sync setup failed, falling back to polling:",e)}}}function teardownRealtimeSync(){clearTimeout(_rtRetry),_rtLive=!1;const e=_realtimeChannel;if(_realtimeChannel=null,e&&supa)try{supa.removeChannel(e)}catch(e){}}const _origS=S.s.bind(S);function _markLocal(e){_ver[e]=(_ver[e]||0)+1,LOCAL_ONLY.has(e)||DEVICE_KEYS.has(e)||_dirty.add(e),_saveDirty(),_setLocalTs(e,Date.now())}function stashLocalOnly(){try{const u=getLastLocalUid();if(!u)return!0;const st={};LOCAL_ONLY.forEach(k=>{const v=localStorage.getItem("m_"+k);null!==v&&(st[k]=v)});if(Object.keys(st).length){const sk="m2028_lo_"+u;let old={};try{old=JSON.parse(localStorage.getItem(sk))||{}}catch(x){}localStorage.setItem(sk,JSON.stringify({...old,...st}))}LOCAL_ONLY.forEach(k=>localStorage.removeItem("m_"+k));return!0}catch(x){return!1}}
 function restoreLocalOnly(uid){try{const sk="m2028_lo_"+uid,raw=localStorage.getItem(sk);if(!raw)return;const st=JSON.parse(raw),left={},blank=v=>null===v||""===v||"[]"===v||"{}"===v||"null"===v;Object.keys(st).forEach(k=>{LOCAL_ONLY.has(k)&&(blank(localStorage.getItem("m_"+k))?localStorage.setItem("m_"+k,st[k]):left[k]=st[k])});Object.keys(left).length?localStorage.setItem(sk,JSON.stringify(left)):localStorage.removeItem(sk);try{renderTasks()}catch(x){}}catch(x){}}
 function clearLocalAppData(){stashLocalOnly();const e=[];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_")&&!LOCAL_ONLY.has(n.slice(2))&&"m_theme"!==n&&"m_customColors"!==n&&"m_wallpaper"!==n&&"m_wpDim"!==n&&e.push(n)}e.forEach(e=>localStorage.removeItem(e)),_dirty.clear();try{localStorage.removeItem(POM_KEY)}catch(e){}}function getLastLocalUid(){try{return localStorage.getItem("m2028_uid")||null}catch(e){return null}}function setLastLocalUid(e){try{e?localStorage.setItem("m2028_uid",e):localStorage.removeItem("m2028_uid")}catch(e){}}function guardAccountSwitch(e){if(!e)return!1;_syncReady=!1,_lastCloudValues={};const t=getLastLocalUid(),sw=t&&t!==e.id;return sw&&clearLocalAppData(),restoreLocalOnly(e.id),setLastLocalUid(e.id),!!sw}function togglePw(){const e=document.getElementById("liPw"),t=document.getElementById("pwEye");e.type="password"===e.type?"text":"password",t.textContent="password"===e.type?"👁":"🙈"}async function doSignIn(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("liBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e&&t){o.textContent="Signing in...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signInWithPassword({email:e,password:t});if(o.textContent="Sign In",o.disabled=!1,i)return void(n.textContent=i.message.includes("Invalid")?"Wrong email or password.":i.message);_user=a.user;const s=guardAccountSwitch(_user);S.d("guestMode"),S.s("hadSession",!0),showApp(),await pull(),setupRealtimeSync(),init(),s&&banner("Switched account — loaded your data fresh.")}catch(e){o.textContent="Sign In",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter email and password.";else n.textContent='Cloud sync is unavailable right now. Tap "Continue as Guest" to keep working — your data will stay on this device only.'}async function doSignUp(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("suBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e)if(!t||t.length<6)n.textContent="Password must be at least 6 characters.";else{o.textContent="Creating...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signUp({email:e,password:t,options:{emailRedirectTo:"https://aviatcode.github.io/M2028/"}});if(o.textContent="Create Account",o.disabled=!1,i)return void(n.textContent=i.message);if(a.user&&a.user.confirmed_at)return _user=a.user,guardAccountSwitch(_user),showApp(),await pull(),setupRealtimeSync(),void init();n.style.color="var(--ai)",n.textContent="✓ Account created! Check your email, confirm it, then Sign In."}catch(e){o.textContent="Create Account",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter your email.";else n.textContent='Cloud sync is unavailable right now. Tap "Continue as Guest" to keep working — your data will stay on this device only.'}function wipeGuestCache(){try{const ok=stashLocalOnly(),k=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&((n.startsWith("m_")&&(ok||!LOCAL_ONLY.has(n.slice(2))))||n==="pom_state"||n==="m2028_uid"||n.startsWith("sb-"))&&k.push(n)}k.forEach(n=>localStorage.removeItem(n))}catch(e){}try{sessionStorage.clear()}catch(e){}try{"caches"in window&&caches.keys().then(a=>a.forEach(n=>caches.delete(n))).catch(()=>{})}catch(e){}_dirty.clear();for(const o of[_ver,_inflight,_again,_sent,_seen,_retry])Object.keys(o).forEach(n=>delete o[n]);_pendingPushKeys.clear();try{clearInterval(pomInt);pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;pomTot=4;_sub=null}catch(e){}try{document.getElementById("ccStyle")&&document.getElementById("ccStyle").remove();document.documentElement.classList.remove("ucolors","ucac","redx","pre-light","pre-pink","pre-glass");window.applyWallpaper&&window.applyWallpaper()}catch(e){}}
 function guestMode(){try{teardownRealtimeSync()}catch(e){console.warn("teardown failed",e)}try{wipeGuestCache()}catch(e){console.warn("Guest cleanup failed",e)}_user=null,_syncReady=!1,_lastCloudValues={};try{S.s("guestMode",!0),S.d("hadSession")}catch(e){console.warn("Could not save guest flag",e)}showApp();try{init()}catch(e){console.warn("init failed",e)}banner("Guest mode: your data is saved on this device only. Sign in to save it to your account.")}async function doSignOut(){if(!_user&&!confirm("Leave guest mode?\n\nGuest data stays saved on this device and comes back the next time you tap Continue as Guest. Sign in to keep it in an account."))return;if(!(await _preSignOutFlush()))return;if(teardownRealtimeSync(),_cloudOK)try{await supa.auth.signOut()}catch(e){}_user=null,_syncReady=!1,_lastCloudValues={},clearLocalAppData(),setLastLocalUid(null),S.d("guestMode"),S.d("hadSession"),document.getElementById("appShell").style.display="none",document.getElementById("loginScr").style.display="flex",document.getElementById("liEmail").value="",document.getElementById("liPw").value="",closeMo("acctMo")}function showLoginScreen(e){const t=document.getElementById("loginScr"),n=document.getElementById("appShell"),o=document.getElementById("liErr");n&&(n.style.display="none"),t&&(t.style.display="flex"),o&&e&&(o.style.color="var(--bd)",o.textContent=e)}function showApp(){document.getElementById("loginScr").style.display="none",document.getElementById("appShell").style.display="block",setTimeout(()=>applyDashCfg(),50)}async function startup(){const e=S.go("guestMode",!1),t=S.go("hadSession",!1);if(e||t)return _user=null,init(),void(t&&setTimeout(function r(){window.m2028RestoreSession?window.m2028RestoreSession():setTimeout(r,100)},150));const n=document.getElementById("loginScr");n&&(n.style.display="flex");const o=document.getElementById("appShell");o&&(o.style.display="none"),loadSupa().then(e=>{if(e)return;const t=document.getElementById("liErr");t&&(t.style.color="var(--bd)",t.textContent='⚠️ Cloud sync unavailable (network/blocker). You can still tap "Continue as Guest".')})}S.s=(e,t)=>{_origS(e,t),_markLocal(e),_user&&_cloudOK&&push(e)},S.sLocalOnly=(e,t)=>{_origS(e,t),_markLocal(e)},S.sPushOnly=e=>{_user&&_cloudOK&&push(e)},startup(),function(){let e=!1;["wheel","touchstart","keydown","mousedown"].forEach(t=>window.addEventListener(t,()=>e=!0,{passive:!0,once:!0})),[0,150,600,1500,3e3].forEach(t=>setTimeout(()=>{e||window.scrollTo(0,0)},t))}();let _tick=0;setInterval(()=>{if(!_user||document.hidden)return;_tick++;const e=Date.now()-(window.__m2028Last||Date.now())>3e5,t=_rtLive?e?200:60:e?20:5;_tick%t===0&&pollChanges()},3e3),setInterval(()=>{_user&&!document.hidden&&pull()},18e5);let _lastResumePull=0;function _resumePull(){if(!_user||!_cloudOK)return;const e=Date.now();e-_lastResumePull<1500||(_lastResumePull=e,_realtimeChannel||setupRealtimeSync(),_syncReady?pollChanges():pull(),_dirty.size&&_dirty.forEach(e=>push(e)))}document.addEventListener("visibilitychange",()=>{document.hidden||_resumePull()}),window.addEventListener("pagehide",()=>{try{teardownRealtimeSync()}catch(e){}}),window.addEventListener("focus",_resumePull),window.addEventListener("pageshow",_resumePull),window.addEventListener("online",_resumePull),document.addEventListener("focusout",()=>{_pendRefresh.size&&setTimeout(_flushRefresh,150)});let _tabRerenderTimer=null;window.addEventListener("storage",e=>{e.key&&e.key.startsWith("m_")&&(clearTimeout(_tabRerenderTimer),_tabRerenderTimer=setTimeout(()=>{try{renderDash(),renderHabits(),renderTasks(),applyDashCfg()}catch(e){}},150))});;
@@ -6661,13 +6661,15 @@ document.addEventListener("click",function(e){
   // into its own bucket (screenTimeDevices[deviceId]) instead of one shared number, so signing into the
   // same account on a second computer adds its time instead of overwriting the first computer's.
   var _stPushAt = 0, _stPushTot = -1;
+  var MAX_DEVICES = 5;
+  var STALE_DEVICE_MS = 30 * 24 * 60 * 60 * 1000;
+  var SVG_EDIT = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  function esc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function stDeviceTag(st) {
     var d = st && st.device;
     return (d && d.id) ? { id: d.id, name: d.name || 'Device' } : { id: 'legacy', name: 'This device' };
   }
-  // Devices that haven't pushed in 30+ days (uninstalled, replaced, sold, etc.) are dropped automatically
-  // the next time ANY device pushes — keeps the map from growing forever if you cycle through machines.
-  var STALE_DEVICE_MS = 30 * 24 * 60 * 60 * 1000;
+  // Devices that haven't pushed in 30+ days are dropped the next time ANY device pushes.
   function pruneStaleDevices(map) {
     var now = Date.now(), out = {};
     Object.keys(map || {}).forEach(function(id) {
@@ -6676,39 +6678,56 @@ document.addEventListener("click",function(e){
     });
     return out;
   }
+  function liveDeviceIds(map) { return Object.keys(map || {}).filter(function(id) { var d = map[id]; return d && !d.rm; }); }
   function pushScreenTime(today, st) {
     try {
       if (typeof S === 'undefined' || !S.s || !localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token')) return;
       var tot = Math.round(st.totalSeconds || 0), now = Date.now();
-      if (!tot || (tot === _stPushTot) || (now - _stPushAt < 30000 && tot - _stPushTot < 300)) return;
+      if (!tot) return;
+      if ((tot === _stPushTot && now - _stPushAt < 300000) || (now - _stPushAt < 30000 && tot - _stPushTot < 300)) return;
       var dev = stDeviceTag(st);
       var map = pruneStaleDevices(S.g('screenTimeDevices') || {});
-      var cl = map[dev.id];
-      if (cl && cl.date === today && (cl.totalSeconds || 0) >= tot) { _stPushTot = tot; return; }
+      var cl = map[dev.id], known = !!(cl && !cl.rm);
+      // 5 devices per account. A 6th laptop is not added until one is removed from the widget.
+      if (!known && liveDeviceIds(map).length >= MAX_DEVICES) { window.__stDevFull = true; return; }
+      window.__stDevFull = false;
+      // Same number as before: only re-send every 5 minutes, so a bucket lost to a race heals itself.
+      if (known && cl.date === today && (cl.totalSeconds || 0) >= tot && now - (cl.at || 0) < 300000) { _stPushTot = tot; return; }
       var doms = {}, ent = Object.entries(st.domains || {}).sort(function(a, b) { return (b[1].seconds || 0) - (a[1].seconds || 0); }).slice(0, 15);
       ent.forEach(function(x) { doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: x[1].category || 'other', title: x[1].title || '' }; });
       _stPushAt = now; _stPushTot = tot;
       map = Object.assign({}, map);
-      map[dev.id] = { name: dev.name, date: today, totalSeconds: tot, domains: doms, at: now };
+      var e = { name: dev.name, date: today, totalSeconds: tot, domains: doms, at: now, first: (cl && cl.first) || now };
+      if (cl && cl.nm !== undefined) { e.nm = cl.nm; e.nmAt = cl.nmAt; }
+      map[dev.id] = e;
       S.s('screenTimeDevices', map);
     } catch (e) {}
   }
-  // Sum every device's numbers for today into one combined view (total, top sites, per-device list).
-  // Folds in this tab's own live numbers too, since they can be a little ahead of the last throttled push.
+  // Every registered device (up to 5) with today's own time, plus the combined total / top sites.
   function combinedScreenTimeToday(today, liveStats) {
-    var map = {};
+    var map = {}, myId = null;
     try { map = (typeof S !== 'undefined' && S.g) ? (S.g('screenTimeDevices') || {}) : {}; } catch (e) {}
     if (liveStats && liveStats.totalSeconds) {
-      var dev = stDeviceTag(liveStats);
-      var existing = map[dev.id];
-      if (!existing || existing.date !== today || (existing.totalSeconds || 0) < liveStats.totalSeconds) {
-        map = Object.assign({}, map);
-        map[dev.id] = { name: dev.name, date: today, totalSeconds: liveStats.totalSeconds, domains: liveStats.domains || {} };
+      var dev = stDeviceTag(liveStats), ex = map[dev.id], known = !!(ex && !ex.rm);
+      if (known || liveDeviceIds(map).length < MAX_DEVICES) {
+        myId = dev.id;
+        if (!known || ex.date !== today || (ex.totalSeconds || 0) < liveStats.totalSeconds) {
+          map = Object.assign({}, map);
+          var o = { name: dev.name, date: today, totalSeconds: liveStats.totalSeconds, domains: liveStats.domains || {}, first: (ex && ex.first) || window.__stFirst || (window.__stFirst = Date.now()) };
+          if (ex && ex.nm !== undefined) { o.nm = ex.nm; o.nmAt = ex.nmAt; }
+          map[dev.id] = o;
+        }
       }
     }
-    var devices = Object.keys(map).map(function(id) { return Object.assign({ id: id }, map[id]); }).filter(function(d) { return d.date === today && d.totalSeconds; });
+    var now = Date.now();
+    var all = liveDeviceIds(map).map(function(id) { return Object.assign({ id: id }, map[id]); })
+      .filter(function(d) { return (now - (d.at || now)) <= STALE_DEVICE_MS; })
+      .sort(function(a, b) { return ((a.first || 0) - (b.first || 0)) || (a.id < b.id ? -1 : 1); })
+      .slice(0, MAX_DEVICES);
+    all.forEach(function(d, i) { d.n = i + 1; d.todaySeconds = d.date === today ? (d.totalSeconds || 0) : 0; });
     var totalSeconds = 0, domains = {};
-    devices.forEach(function(d) {
+    all.forEach(function(d) {
+      if (d.date !== today) return;
       totalSeconds += d.totalSeconds || 0;
       Object.entries(d.domains || {}).forEach(function(x) {
         var k = x[0], v = x[1] || {};
@@ -6719,30 +6738,66 @@ document.addEventListener("click",function(e){
         domains[k] = cur;
       });
     });
-    return { totalSeconds: totalSeconds, domains: domains, devices: devices };
+    return { totalSeconds: totalSeconds, domains: domains, all: all, myId: myId };
   }
-  function renderDeviceBreakdown(devices, liveStats) {
+  function deviceLabel(d) { return (d.nm && String(d.nm).trim()) || ('Device ' + d.n); }
+  function renderDeviceBreakdown(all, myId) {
     var el = document.getElementById('wDeviceBreakdown');
     if (!el) return;
-    if (!devices || devices.length < 2) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    var myId = stDeviceTag(liveStats || {}).id;
-    devices = devices.slice().sort(function(a, b) { return (b.totalSeconds || 0) - (a.totalSeconds || 0); });
+    window.__stMyId = myId;
+    var full = !myId && all && all.length >= MAX_DEVICES && window.__stDevFull;
+    if (!all || !all.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    var key = JSON.stringify([all.map(function(d) { return [d.id, deviceLabel(d), fmtSec(d.todaySeconds), d.name]; }), myId, !!full]);
+    if (el.__dk === key) return;     // nothing changed: do not rebuild the rows
+    el.__dk = key;
     el.style.display = 'block';
-    el.innerHTML = '<div style="font-size:10px;font-weight:600;color:var(--mt);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px">By Device</div>' +
-      devices.map(function(d) {
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:3px 0;font-size:11px;gap:8px">' +
-          '<span style="color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (d.id === myId ? '📍 ' : '') + escAttr(d.name || 'Device') + '</span>' +
-          '<span style="color:var(--m2);font-weight:600;flex-shrink:0">' + fmtSec(d.totalSeconds || 0) + '</span>' +
-          '</div>';
+    var btn = 'class="btn b-gh sm" style="padding:2px 6px;min-width:0;line-height:1;display:inline-flex;align-items:center"';
+    el.innerHTML = '<div style="font-size:10px;font-weight:600;color:var(--mt);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px">Devices (' + all.length + '/' + MAX_DEVICES + ')</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 5px;margin-bottom:3px;font-size:12px;border-bottom:1px solid var(--b)"><b style="color:var(--tx)">Total' + (all.length > 1 ? ' (all devices)' : '') + '</b><b style="color:var(--ai);font-variant-numeric:tabular-nums">' + fmtSec(all.reduce(function(t, d) { return t + (d.todaySeconds || 0); }, 0)) + '</b></div>' +
+      all.map(function(d) {
+        var me = d.id === myId;
+        return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px">' +
+          '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)">' +
+            (me ? '<span title="This device" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ai);margin-right:5px;vertical-align:middle"></span>' : '') +
+            '<b>' + esc(deviceLabel(d)) + '</b>' + (d.name ? ' <span style="color:var(--mt)">' + esc(d.name) + '</span>' : '') +
+          '</span>' +
+          '<span style="color:var(--m2);font-weight:600;flex-shrink:0;font-variant-numeric:tabular-nums">' + fmtSec(d.todaySeconds) + '</span>' +
+          '<button ' + btn + ' data-act="ren" data-id="' + esc(d.id) + '" title="Rename">' + SVG_EDIT + '</button>' +
+          (me ? '' : '<button ' + btn + ' data-act="rm" data-id="' + esc(d.id) + '" title="Remove this device">&times;</button>') +
+        '</div>';
       }).join('') +
-      '<button class="btn b-gh sm" style="margin-top:6px;width:100%" onclick="renameThisDevice()">✏️ Rename this device</button>';
+      (full ? '<div style="font-size:10.5px;color:var(--mt);margin-top:4px">This computer is not listed: the account already has 5 devices. Remove one to add it.</div>' : '');
+    el.onclick = function(ev) {
+      var b = ev.target.closest ? ev.target.closest('[data-act]') : null;
+      if (!b) return;
+      if (b.getAttribute('data-act') === 'ren') window.renameDevice(b.getAttribute('data-id'));
+      else window.removeDevice(b.getAttribute('data-id'));
+    };
   }
-  window.renameThisDevice = function() {
+  window.renameDevice = function(id) {
     try {
-      var cur = null;
-      try { cur = (JSON.parse(localStorage.getItem('m2028_time_stats') || '{}')[getTodayKey()] || {}).device; } catch (e) {}
-      var name = prompt('Name for this device (shown when you check screen time from another device):', (cur && cur.name) || '');
-      if (name && name.trim()) window.postMessage({ from: 'M2028_PAGE', type: 'SET_DEVICE_NAME', name: name.trim() }, '*');
+      var map = Object.assign({}, S.g('screenTimeDevices') || {}), d = map[id];
+      if (!d) return;
+      var cur = (d.nm && String(d.nm).trim()) || '';
+      var name = prompt('Name for this device (leave empty to go back to "Device 1", "Device 2"…):', cur);
+      if (name === null) return;
+      name = name.trim().slice(0, 24);
+      map[id] = Object.assign({}, d, { nm: name, nmAt: Date.now() });
+      S.s('screenTimeDevices', map);
+      if (id === window.__stMyId && name) window.postMessage({ from: 'M2028_PAGE', type: 'SET_DEVICE_NAME', name: name }, '*');
+      window.renderScreenTimeWidget();
+    } catch (e) {}
+  };
+  window.removeDevice = function(id) {
+    try {
+      if (id === window.__stMyId) return;
+      var map = Object.assign({}, S.g('screenTimeDevices') || {}), d = map[id];
+      if (!d) return;
+      if (!confirm('Remove this device from the list? Its time for today disappears. If that computer is still using M2028 it is added back automatically, as long as there is room.')) return;
+      map[id] = { rm: 1, at: Date.now(), first: d.first || 0, nm: d.nm, nmAt: d.nmAt };
+      if (map[id].nm === undefined) { delete map[id].nm; delete map[id].nmAt; }
+      S.s('screenTimeDevices', map);
+      window.renderScreenTimeWidget();
     } catch (e) {}
   };
   window.renderScreenTimeWidget = async function() {
@@ -6768,7 +6823,7 @@ document.addEventListener("click",function(e){
     }
     // Combine every device's bucket for today (this one included) instead of showing just one device's number.
     var stats = combinedScreenTimeToday(today, liveStats);
-    if (!stats || !stats.totalSeconds) stats = { totalSeconds: 0, domains: {}, devices: [] };
+    if (!stats) stats = { totalSeconds: 0, domains: {}, all: [], myId: null };
 
     var totalEl = document.getElementById('wScreenTimeVal');
     var scoreEl = document.getElementById('wProdScoreVal');
@@ -6828,7 +6883,7 @@ document.addEventListener("click",function(e){
         }
       }
     }
-    renderDeviceBreakdown(stats.devices, liveStats);
+    renderDeviceBreakdown(stats.all, stats.myId);
   };
 
   // Hub Modal Handlers
@@ -7867,6 +7922,10 @@ document.addEventListener("click",function(e){
     });
   }
 
+  function toastOnce(k, m) {
+    try { var f = 'm2028_toast_' + k + '_' + latest; if (sessionStorage.getItem(f)) return; sessionStorage.setItem(f, '1'); } catch (e) {}
+    toast(m, true, 20000);
+  }
   // ---------- one-click install / update: the page writes the files into a folder you pick once ----------
   var linkedName = null, nextSteps = null;
   function oneClickOK() { return typeof window.showDirectoryPicker === 'function' && !STORE; }
@@ -7939,7 +7998,7 @@ document.addEventListener("click",function(e){
         try { h = await window.showDirectoryPicker({ id: 'm2028ext', mode: 'readwrite' }); }
         catch (e) {
           if (e && e.name === 'AbortError') return;
-          setStatus('Your browser would not open that folder. Pick or create a normal folder, for example inside Documents.', true); return;
+          setStatus('Your browser would not open that folder. Chrome does not let websites write inside AppData, Program Files or other system folders. Choose a normal folder such as C:\\Users\\you\\M2028-Extension (a new folder in your user folder or in Documents).', true); return;
         }
         await putDirHandle(h);
       }
@@ -7949,7 +8008,7 @@ document.addEventListener("click",function(e){
       if (isInstalled() && cur) {
         var fv = await folderVersion(h);
         if (fv === null || (fv !== cur && fv !== latest)) {
-          if (!silent) setStatus('This is not the folder Chrome loaded the extension from' + (fv ? ' (it holds v' + fv + ', Chrome runs v' + cur + ')' : ' (no M2028 files in it)') + '. Click \u201cUse a different folder\u201d and choose the folder shown as \u201cLoaded from\u201d on the extension\u2019s Details page at ' + EXT_URL + '.', true);
+          if (silent) toastOnce('wrongfolder', 'The automatic update could not run: the linked folder is not the one Chrome loaded the extension from. Click Update available, then Use a different folder.'); else setStatus('This is not the folder Chrome loaded the extension from' + (fv ? ' (it holds v' + fv + ', Chrome runs v' + cur + ')' : ' (no M2028 files in it)') + '. Click \u201cUse a different folder\u201d and choose the folder shown as \u201cLoaded from\u201d on the extension\u2019s Details page at ' + EXT_URL + '.', true);
           return;
         }
       }
@@ -8070,7 +8129,7 @@ document.addEventListener("click",function(e){
   }
   function cpBtn(txt) { return ' <button class="cp" data-copy="' + ea(txt) + '">Copy</button>'; }
   function stepsHtml(update) {
-    var path = !isWin ? '~/M2028-Extension' : '%LocalAppData%\\M2028-Extension';
+    var path = !isWin ? '~/M2028-Extension' : '%UserProfile%\\M2028-Extension';
     var h = '<ol>';
     if (STORE) {
       return update ? '<ol><li>Nothing to do: the store updates the extension automatically.</li></ol>'
@@ -8157,13 +8216,13 @@ document.addEventListener("click",function(e){
     var lbl = document.getElementById('extOpenBtnLbl'); if (!lbl) return;
     var es = window.m2028ExtState || {}, installed = document.documentElement.hasAttribute('data-m2028-ext');
     var hasNew = extHasNew();
-    lbl.textContent = hasNew ? '\uD83E\uDDE9 Update available' : installed ? '\u26A1 Open Hub' : '\uD83E\uDDE9 Extension';
+    lbl.textContent = installed ? '\u26A1 Open Hub' : '\uD83E\uDDE9 Extension';
     var btn = document.getElementById('extOpenBtn');
-    if (btn) btn.style.color = hasNew ? 'var(--ai,#4fd8a0)' : '';
+    if (btn) btn.style.color = '';
   }
   window.m2028ExtAction = function () {
     var installed = isInstalled(), hasNew = extHasNew();
-    if (installed && !hasNew) { if (typeof openExtensionHubModal === 'function') openExtensionHubModal(); return; }
+    if (installed) { if (typeof openExtensionHubModal === 'function') openExtensionHubModal(); return; }
     if (oneClickOK() && !UNSUPPORTED) { oneClick(false); return; }   // install / update straight away, no steps popup
     if (installed && !UNSUPPORTED) {                                  // update in a browser without folder access: a short note, not the steps popup
       try { navigator.clipboard.writeText(installCmd()); } catch (e) {}
@@ -8173,20 +8232,49 @@ document.addEventListener("click",function(e){
     window.m2028ExtOpen();                                            // first-time install only
   };
   window.m2028ExtDlRender = function () { syncExtBtn(); if (popOpen && !busy) paint(); };
-  setInterval(function () { fetchLatest().then(syncExtBtn); }, 600000);
+  setInterval(function () { fetchLatest().then(function () { syncExtBtn(); autoUpdate(); }); }, 600000);
   fetchLatest().then(syncExtBtn);
   // quietly check for updates (the widget button shows "Update available"); nothing pops up by itself
   setTimeout(function () { fetchLatest().then(syncExtBtn); }, 4500);
   // Auto-update: when the extension is older than the site AND the folder is already allowed, update with no click and no popup.
+  var _permHandle = null, _gestureArmed = false;
+  function markAuto() { try { localStorage.setItem('m2028_ext_auto', JSON.stringify({ v: latest, at: Date.now() })); } catch (e) {} }
+  // Chrome forgets folder permission when the browser restarts. The first click you make after that asks once
+  // ("Allow on every visit" makes it permanent), then the update runs by itself.
+  function armPermissionGesture(h) {
+    _permHandle = h;
+    if (_gestureArmed) return;
+    _gestureArmed = true;
+    try {
+      var f = 'm2028_hint_perm_' + latest;
+      if (!sessionStorage.getItem(f)) {
+        sessionStorage.setItem(f, '1');
+        toast('M2028 extension update is ready. Click anywhere on this page, then in the Chrome box that appears choose \u201cAllow on every visit\u201d (or \u201cEdit files\u201d). It updates by itself after that.', false, 25000);
+      }
+    } catch (e) {}
+    var go = function () {
+      document.removeEventListener('click', go, true); document.removeEventListener('keydown', go, true);
+      _gestureArmed = false;
+      var hh = _permHandle;
+      if (!hh || busy || !extHasNew()) return;
+      hh.requestPermission({ mode: 'readwrite' }).then(function (r) {
+        if (r === 'granted') { toast('Updating the extension\u2026 this page will refresh in a moment.', false, 6000); markAuto(); oneClick(false, true); }
+        else toast('Update skipped. Click anywhere on the page again and choose Allow when you want it.', true, 8000);
+      }).catch(function () {});
+    };
+    document.addEventListener('click', go, true);
+    document.addEventListener('keydown', go, true);
+  }
   function autoUpdate() {
     if (!oneClickOK() || UNSUPPORTED || busy || popOpen || !extHasNew()) return;
     var g = null; try { g = JSON.parse(localStorage.getItem('m2028_ext_auto')); } catch (e) {}
-    if (g && g.v === latest && Date.now() - g.at < 1800000) return;     // tried this version a moment ago: do not loop
+    if (g && g.v === latest && Date.now() - g.at < 600000) return;     // tried this version a moment ago: do not loop
     getDirHandle().then(function (h) {
       if (!h) return;
       return hasPerm(h).then(function (ok) {
-        if (!ok || busy || !extHasNew()) return;
-        try { localStorage.setItem('m2028_ext_auto', JSON.stringify({ v: latest, at: Date.now() })); } catch (e) {}
+        if (busy || !extHasNew()) return;
+        if (!ok) { armPermissionGesture(h); return; }
+        markAuto();
         oneClick(false, true);
       });
     });

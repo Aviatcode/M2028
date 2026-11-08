@@ -34,7 +34,9 @@ $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $Base = 'https://aviatcode.github.io/M2028'
-$Dir  = Join-Path $env:LOCALAPPDATA 'M2028-Extension'
+# Not inside AppData: Chrome refuses to let a website write there, which is what stops the one-click update on the site.
+$Dir  = Join-Path $env:USERPROFILE 'M2028-Extension'
+$OldDir = Join-Path $env:LOCALAPPDATA 'M2028-Extension'
 $Tmp  = "$Dir.new"
 $required = 'manifest.json','background.js','content.js','detect.js','wallpaper-bridge.js','popup.html','popup.js','block-ui.js','blocked.html','blocked.js','options.html','options.js','favicon-32.png','icon-192.png'
 $optional = 'popup.css','options.css','leaf-icons.css','stickers.js','offscreen.html','offscreen.js','index.html','pom-duo.webp','sussurus1.mp3','icon-512.png','apple-touch-icon.png','favicon.ico'
@@ -163,6 +165,11 @@ if ($Schedule) {
 }
 
 if ($Quiet) { return }
+if ((Test-Path (Join-Path $OldDir 'manifest.json')) -and ($OldDir -ne $Dir)) {
+  Write-Host ''
+  Write-Host "Your extension is currently loaded from the old folder: $OldDir" -ForegroundColor Yellow
+  Write-Host "Switch once: on the extensions page click Remove on the M2028 card, then Load unpacked and choose $Dir. Your settings are kept, because the extension keeps the same ID." -ForegroundColor Yellow
+}
 
 # No windows are opened. Put the folder path on the clipboard so "Load unpacked" is just Ctrl+V.
 $copied = $false

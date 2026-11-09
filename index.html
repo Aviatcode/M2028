@@ -1273,8 +1273,11 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 <button type="button" class="btn b-gh set-btn" onclick="m2028Backup.export()" title="Download all your data as one file">⬇️ Backup</button>
 <button type="button" class="btn b-gh set-btn" onclick="document.getElementById('m2028BkIn').click()" title="Restore from a backup file">⬆️ Restore</button>
 <input type="file" id="m2028BkIn" accept="application/json,.json" style="display:none" onchange="m2028Backup.import(this)">
+<button type="button" class="btn b-gh set-btn" id="installHelpBtn" onclick="m2028InstallHelp()" title="Add M2028 to your Home Screen">Install app</button>
 </div>
 <button type="button" class="btn b-rd set-btn set-danger" id="signOutBtn" onclick="doSignOut()">Sign Out</button>
+<button type="button" class="btn b-gh set-btn set-danger" id="forgetDeviceBtn" onclick="doForgetDevice()" style="margin-top:8px">Forget me on this device</button>
+<div style="font-size:11px;color:var(--mt);text-align:center;margin-top:5px">(Everything will be backed up.)</div>
 </div>
 </div>
 <div class="ov" id="colorMo" onclick="if(event.target===this)ccClose()">
@@ -10195,6 +10198,89 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(again);
   window.addEventListener('load',function(){setTimeout(again,300)});
   setTimeout(again,400);
+})();
+</script>
+<script id="m2028-forget-device">
+/* Forget me on this device: back everything up first, free this device's slot, sign out and clear this device.
+   The account keeps all data, and every other device receives it through the normal sync into its own local copy. */
+(function () {
+  window.doForgetDevice = async function () {
+    var btn = document.getElementById('forgetDeviceBtn');
+    var signedIn = false; try { signedIn = !!(typeof _user !== 'undefined' && _user); } catch (e) {}
+    if (!signedIn) {
+      try { if (window.m2028Backup) m2028Backup.export(); } catch (e) {}
+      alert('You are in guest mode, so your data lives only on this device. A backup file was downloaded. Sign in to keep it in an account and use it on other devices.');
+      return;
+    }
+    if (!confirm('Forget me on this device?\n\n1. Everything is saved to your account first, and a backup file is downloaded.\n2. Your other devices keep all of it.\n3. This device is signed out and its local copy is removed.\n\nContinue?')) return;
+    var label = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Backing up\u2026'; }
+    try {
+      try { if (window.m2028Backup) m2028Backup.export(); } catch (e) {}
+      // free this computer's slot in the Devices list (the other devices keep their own timers)
+      try {
+        var id = window.__stMyId, map = Object.assign({}, S.g('screenTimeDevices') || {});
+        if (id && map[id]) {
+          var d = map[id], t = { rm: 1, at: Date.now(), first: d.first || 0 };
+          if (d.nm !== undefined) { t.nm = d.nm; t.nmAt = d.nmAt; }
+          map[id] = t; S.s('screenTimeDevices', map);
+        }
+      } catch (e) {}
+      // upload everything, then sign out and clear this device (the existing sign-out stops syncing before it clears, so nothing is deleted in the account)
+      await window.doSignOut();
+      var stillIn = false; try { stillIn = !!(typeof _user !== 'undefined' && _user); } catch (e) {}
+      if (stillIn) return;                                   // cancelled (for example offline): nothing was removed
+      try { localStorage.removeItem('m2028_time_stats'); } catch (e) {}
+      try { sessionStorage.clear(); } catch (e) {}
+      try { if ('caches' in window) caches.keys().then(function (a) { a.forEach(function (n) { caches.delete(n); }); }); } catch (e) {}
+    } finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
+  };
+})();
+</script>
+<script id="m2028-install-help">
+/* "Install app" guide: step-by-step Add to Home Screen for iPhone/iPad, short guide for other devices.
+   The Install app button in Account hides itself once M2028 is already installed. */
+(function () {
+  var ua = navigator.userAgent || '';
+  var IOS = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var STAND = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  var SHARE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  function hideBtn() { var b = document.getElementById('installHelpBtn'); if (b && STAND) b.style.display = 'none'; }
+  hideBtn(); document.addEventListener('DOMContentLoaded', hideBtn);
+  window.m2028InstallHelp = function () {
+    if (document.getElementById('instHelpOv')) return;
+    var steps = IOS
+      ? '<li>Open this page in <b>Safari</b> (Chrome on iPhone also works from iOS 16.4).</li>' +
+        '<li>Tap the <b>Share</b> button ' + SHARE + ' (the square with an arrow, in the bottom bar; on iPad it is at the top right).</li>' +
+        '<li>Scroll down and tap <b>Add to Home Screen</b>. If you cannot see it, tap <b>View More</b> first.</li>' +
+        '<li>Leave <b>Open as Web App</b> switched on and tap <b>Add</b>.</li>' +
+        '<li>Open <b>M2028</b> from the new icon on your Home Screen. Always open it from there, not from Safari.</li>' +
+        '<li>To get reminders: <b>Account</b>, then <b>Alerts</b>, then <b>Allow</b>. iPhone only allows this from the Home Screen app (iOS 16.4 or newer).</li>'
+      : '<li><b>Android (Chrome):</b> tap the <b>menu</b> (three dots), then <b>Install app</b> or <b>Add to Home screen</b>.</li>' +
+        '<li><b>Windows or Mac (Chrome, Edge, Brave):</b> click the <b>install icon</b> at the right end of the address bar, or the browser menu, then <b>Install M2028</b>.</li>' +
+        '<li><b>Mac (Safari):</b> <b>File</b>, then <b>Add to Dock</b>.</li>';
+    var e = document.createElement('div'); e.className = 'ov op'; e.id = 'instHelpOv'; e.style.zIndex = '100000';
+    e.innerHTML = '<div class="mo" style="max-width:380px"><div class="mot">Install M2028 on ' + (IOS ? 'your iPhone' : 'this device') + '</div>' +
+      '<ol style="font-size:13px;color:var(--m2);line-height:1.65;margin:0 0 14px 18px;padding:0">' + steps + '</ol>' +
+      '<button class="btn b-ai" id="instHelpOk" style="width:100%">Got it</button></div>';
+    document.body.appendChild(e);
+    var c = function () { if (e.parentNode) e.parentNode.removeChild(e); };
+    e.querySelector('#instHelpOk').onclick = c;
+    e.addEventListener('click', function (ev) { if (ev.target === e) c(); });
+  };
+  // On an iPhone that has not installed the app yet, show the guide once every 3 days, after sign-in / guest.
+  if (IOS && !STAND) {
+    setTimeout(function () {
+      try {
+        var shell = document.getElementById('appShell');
+        if (!shell || shell.style.display === 'none') return;
+        var last = +localStorage.getItem('m2028_ios_inst_seen') || 0;
+        if (Date.now() - last < 3 * 864e5) return;
+        localStorage.setItem('m2028_ios_inst_seen', String(Date.now()));
+        window.m2028InstallHelp();
+      } catch (e) {}
+    }, 6000);
+  }
 })();
 </script>
 </body>

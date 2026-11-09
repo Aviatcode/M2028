@@ -3,8 +3,10 @@
    - Periodic Background Sync / stored list stay as a backup. */
 (function(){
 var DB='m2028-reminders';
-/* iPhone/iPad revoke a push subscription if a push arrives and no notification is shown, so on iOS we always show one */
-var IOS=/iP(hone|ad|od)/.test((self.navigator&&self.navigator.userAgent)||'');
+/* iPhone/iPad and Safari on Mac revoke a push subscription if pushes arrive and no notification is shown, so there we always show one */
+var UA=(self.navigator&&self.navigator.userAgent)||'';
+/* Safari on Mac behaves like iPhone here: a push with no notification shown counts against the subscription, so always show one. */
+var IOS=/iP(hone|ad|od)/.test(UA)||(/Safari/.test(UA)&&!/Chrome|Chromium|CriOS|Edg|OPR|Android/.test(UA));
 function db(){return new Promise(function(ok,no){var r=indexedDB.open(DB,1);r.onupgradeneeded=function(){r.result.createObjectStore('kv')};r.onsuccess=function(){ok(r.result)};r.onerror=function(){no(r.error)}})}
 function put(k,v){return db().then(function(d){return new Promise(function(ok){var t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=ok;t.onerror=ok})})}
 function get(k){return db().then(function(d){return new Promise(function(ok){var q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){ok(q.result)};q.onerror=function(){ok()}})})}

@@ -926,11 +926,17 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 <div class="mo" style="max-width:400px;max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
 <div style="padding:18px 18px 12px;border-bottom:1px solid var(--b);flex-shrink:0">
 <div style="display:flex;align-items:center;justify-content:space-between">
-<div class="mot" style="margin-bottom:0">🎨 Settings</div>
+<div class="mot" style="margin-bottom:0">Customize</div>
 <button onclick="closeMo('dashCfgMo')" style="background:var(--s2);border:1px solid var(--b);border-radius:50%;width:30px;height:30px;color:var(--m2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>
 </div>
 </div>
 <div style="flex:1;overflow-y:auto;padding:14px 18px">
+<div class="cz-sx"><div class="set-grid">
+<button type="button" class="btn b-gh set-btn" id="themeBtn" onclick="toggleTheme()" title="Switch theme" aria-label="Switch theme">🌙</button>
+<button type="button" class="btn b-gh set-btn" onclick="navTo('dashCfgMo','wallpaperMo',openWallpaperMo)">🖼️ Wallpaper</button>
+<button type="button" class="btn b-gh set-btn" onclick="navTo('dashCfgMo','colorMo',openColorMo)">🎨 Colors</button>
+<button type="button" class="btn b-gh set-btn" id="stickerBtn" onclick="toggleStickers()">🌸 Stickers</button>
+</div></div>
 <button class="btn b-gh" style="width:100%;margin-bottom:14px" onclick="window.__back&&delete window.__back.dashCfgMo;closeMo('dashCfgMo');toggleReorderMode()">🧩 Rearrange Widgets</button>
 <div style="font-size:11px;color:var(--m2);margin-bottom:9px">Toggle built-in widgets on/off</div>
 <div id="dashCfgList"></div>
@@ -953,7 +959,7 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 <button onclick="setCWType('note')" id="cwt-note" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">📝<br><span style="font-size:10px">Note Pad</span></button>
 <button onclick="setCWType('links')" id="cwt-links" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">🔗<br><span style="font-size:10px">Link Buttons</span></button>
 <button onclick="setCWType('checklist')" id="cwt-checklist" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">✅<br><span style="font-size:10px">Checklist</span></button>
-<button onclick="enableMedWidget()" id="cwt-meds" title="Doses, reminders &amp; buy-more alerts" style="padding:12px 8px;border-radius:9px;border:1px solid var(--ai);background:var(--a2);color:var(--ai);cursor:pointer;font-family:inherit;text-align:center;font-size:13px;font-weight:700">💊<br><span style="font-size:10px">Medicine Tracker</span></button>
+<button onclick="enableMedWidget()" id="cwt-meds" title="Doses, reminders &amp; buy-more alerts" style="padding:12px 8px;border-radius:9px;border:1px solid var(--b);background:var(--s2);color:var(--m2);cursor:pointer;font-family:inherit;text-align:center;font-size:13px">💊<br><span style="font-size:10px">Medicine Tracker</span></button>
 </div>
 <div id="cwTypeHint" style="font-size:11px;color:var(--mt);margin-bottom:11px;padding:8px 10px;background:var(--s2);border-radius:7px;min-height:32px">← Tap a type above to begin</div>
 <div style="margin-bottom:9px">
@@ -1246,8 +1252,8 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 <button type="button" class="pv-act pv-del" id="dpRm" onclick="dpRemove()">Remove</button>
 </div>
 <div class="pv-menu">
-<button type="button" class="pv-m pv-cust" id="pvCust" onclick="navTo('profMo','dashCfgMo')"><svg class="pv-mi" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l1.9-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 1.9 1.5a7.7 7.7 0 0 0 0 3l-1.9 1.5 2 3.4 2.3-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4z"/></svg><span>Settings</span></button>
-<button type="button" class="pv-m" onclick="navTo('profMo','acctMo')"><span class="pv-mi">🎨</span><span>Customize</span></button>
+<button type="button" class="pv-m pv-cust" id="pvCust" onclick="navTo('profMo','dashCfgMo')"><span class="pv-mi">🎨</span><span>Customize</span></button>
+<button type="button" class="pv-m" onclick="navTo('profMo','acctMo')"><svg class="pv-mi" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l1.9-1.5-2-3.4-2.3.9a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.6 7.6 0 0 0-2.6 1.5l-2.3-.9-2 3.4 1.9 1.5a7.7 7.7 0 0 0 0 3l-1.9 1.5 2 3.4 2.3-.9a7.6 7.6 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.6 7.6 0 0 0 2.6-1.5l2.3.9 2-3.4z"/></svg><span>Settings</span></button>
 </div>
 </div>
 </div>
@@ -1261,24 +1267,22 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 </div>
 <div class="ov" id="acctMo" onclick="if(event.target===this)closeMo('acctMo')">
 <div class="mo set-mo">
-<div class="set-head"><div class="mot">Customize</div><button type="button" class="set-x" onclick="closeMo('acctMo')" aria-label="Back"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<div class="set-head"><div class="mot">Settings</div><button type="button" class="set-x" onclick="closeMo('acctMo')" aria-label="Back"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
 <div class="set-acct"><div class="set-acct-t"><div class="set-email" id="acctEmail">—</div><div class="set-status" id="acctStatus"></div></div></div>
 <div class="set-grid">
-<button type="button" class="btn b-gh set-btn" id="themeBtn" onclick="toggleTheme()" title="Switch theme" aria-label="Switch theme">🌙</button>
-<button type="button" class="btn b-gh set-btn" onclick="navTo('acctMo','wallpaperMo',openWallpaperMo)">🖼️ Wallpaper</button>
-<button type="button" class="btn b-gh set-btn" onclick="navTo('acctMo','colorMo',openColorMo)">🎨 Colors</button>
-<button type="button" class="btn b-gh set-btn" id="stickerBtn" onclick="toggleStickers()">🌸 Stickers</button>
 <button type="button" class="btn b-gh set-btn" id="syncBtn" onclick="doManualSync()">🔄 Sync</button>
 <button type="button" class="btn b-gh set-btn" onclick="reqNotif()" id="nBtn" title="Turn on reminders and timer alerts">🔔 Alerts</button>
 <button type="button" class="btn b-gh set-btn" onclick="m2028Backup.export()" title="Download all your data as one file">⬇️ Backup</button>
 <button type="button" class="btn b-gh set-btn" onclick="document.getElementById('m2028BkIn').click()" title="Restore from a backup file">⬆️ Restore</button>
 <input type="file" id="m2028BkIn" accept="application/json,.json" style="display:none" onchange="m2028Backup.import(this)">
-<button type="button" class="btn b-gh set-btn" id="installHelpBtn" onclick="m2028InstallHelp()" title="Add M2028 to your Home Screen">Install app</button>
 </div>
-<button type="button" class="btn b-rd set-btn set-danger" id="signOutBtn" onclick="doSignOut()">Sign Out</button>
-<button type="button" class="btn b-gh set-btn set-danger" id="forgetDeviceBtn" onclick="doForgetDevice()" style="margin-top:8px">Forget me on this device</button>
-<div style="font-size:11px;color:var(--mt);text-align:center;margin-top:5px">(Everything will be backed up.)</div>
-<button type="button" class="btn b-gh set-btn set-danger" id="resetGuestBtn" onclick="resetGuestData()" style="margin-top:10px;display:none">Reset guest data</button>
+<div class="set-sec2">Account</div>
+<div class="set-grid">
+<button type="button" class="btn b-gh set-btn" id="signOutBtn" onclick="doSignOut()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg><span>Sign out</span></button>
+<button type="button" class="btn b-gh set-btn set-soft-dg" id="forgetDeviceBtn" onclick="doForgetDevice()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M9 7.5l6 5M15 7.5l-6 5"/></svg><span>Forget device</span></button>
+</div>
+<div class="set-note">(Everything will be backed up.)</div>
+<button type="button" class="btn b-gh set-btn set-danger" id="resetGuestBtn" onclick="resetGuestData()" style="margin-top:4px;display:none">Reset guest data</button>
 <details id="advAcct" style="margin-top:16px;text-align:center"><summary style="cursor:pointer;list-style:none;font-size:10.5px;color:var(--mt);opacity:.55;padding:6px">More</summary><button type="button" id="delAcctBtn" onclick="m2028DeleteOpen()" style="background:none;border:none;color:var(--rd);font-size:12px;cursor:pointer;text-decoration:underline;padding:8px">Delete account</button></details>
 </div>
 </div>
@@ -2521,8 +2525,8 @@ function _mLay(base,local,cloud){
 }
 function _mergeDevices(a,t){a=a&&"object"==typeof a?a:{};t=t&&"object"==typeof t?t:{};const o={};Object.keys(a).concat(Object.keys(t)).forEach(id=>{if(o[id])return;const x=a[id],y=t[id];if(!x||!y){o[id]=x||y;return}const n=Object.assign({},(y.at||0)>=(x.at||0)?y:x),m=(y.nmAt||0)>(x.nmAt||0)?y:x;void 0!==m.nm?(n.nm=m.nm,n.nmAt=m.nmAt):(delete n.nm,delete n.nmAt);const f=Math.min(x.first||1/0,y.first||1/0);isFinite(f)&&(n.first=f);o[id]=n});return o}function mergeCloudValue(e,t,n){const o=_lastCloudValues[e];_lastCloudValues[e]=t;if("freeLayout"===e){const _l=S.g(e);if(_l&&"object"==typeof _l&&!Array.isArray(_l)&&Object.keys(_l).length){_dirty.has(e)&&_canon(_l)!==_canon(t)&&push(e);return!1}}if("theme"===e&&null!==localStorage.getItem("m_theme"))return!1;const a=S.g(e),i=_ts(n);let s;if("pd"===e)s={...a||{}},Object.keys(t||{}).forEach(e=>{s[e]=Math.max(s[e]||0,t[e]||0)});else if("pomSessions"===e){const e=new Set((a||[]).map(sessionSig));s=(a||[]).slice(),(t||[]).forEach(t=>{const n=sessionSig(t);e.has(n)||(s.push(t),e.add(n))}),s.sort((e,t)=>((e.d||"")+(e.t||"")).localeCompare((t.d||"")+(t.t||"")))}else if("screenTimeDevices"===e)s=_mergeDevices(a,t);else if("pomLive"===e||"profilePic"===e)s=(t&&t.u||0)>=(a&&a.u||0)?t:a;else s=null!==a&&_isDirty(e,i)?"freeLayout"===e?_mLay(o,a,t):_m3(o,a,t):t;const r=_canon(s)===_canon(a),d=_canon(s)!==_canon(t);return r?(d?push(e):_dirty.delete(e)&&_saveDirty(),!1):(d?S.s(e,s):(_origS(e,s),_setLocalTs(e,i||Date.now()),_dirty.delete(e)&&_saveDirty()),!0)}async function pushAll(e){if(_user&&_cloudOK){banner("Syncing to cloud...");try{for(const t of getAllKeys())await push(t,e);banner("✓ All data backed up to cloud")}catch(e){banner("Sync failed — data still saved locally."),console.warn("pushAll error:",e)}}else banner("Cloud sync unavailable right now — data still saved locally.")}async function doManualSync(){const e=document.getElementById("syncBtn");e&&(e.disabled=!0,e.textContent="🔄 Syncing...");try{await pull(),await pushAll(!0);try{renderDash(),renderHabits(),renderTasks()}catch(e){}banner("✓ Synced")}finally{e&&(e.disabled=!1,e.textContent="🔄 Sync")}}function _getLocalTs(e){try{return JSON.parse(localStorage.getItem("m_sync_ts")||"{}")[e]||0}catch(e){return 0}}function _setLocalTs(e,t){try{const n=JSON.parse(localStorage.getItem("m_sync_ts")||"{}");n[e]=t||Date.now(),localStorage.setItem("m_sync_ts",JSON.stringify(n))}catch(e){}}const _pendRefresh=new Set;let _refT=null;function _queueRefresh(e){e.forEach(e=>_pendRefresh.add(e)),clearTimeout(_refT),_refT=setTimeout(_flushRefresh,30)}function _typing(e){const t=document.activeElement;return!(!(t&&e&&e.contains(t))||"INPUT"!==t.tagName&&"TEXTAREA"!==t.tagName&&!t.isContentEditable)}function _syncCW(){const e=document.getElementById("dashWidgets");if(!e)return!0;const t=S.go("customWidgets",[]).filter(e=>!1!==e.enabled&&(!e.tab||"dash"===e.tab)),n=Array.from(e.querySelectorAll('.dash-w[data-wid^="cw:"]')).map(e=>e.dataset.wid.slice(3));if(n.length!==t.length||!t.every(e=>n.includes(e.id)))return!_typing(e)&&(applyDashCfg(),!0);let o=!0;return t.forEach(t=>{_typing(e.querySelector(`.dash-w[data-wid="cw:${t.id}"]`))?o=!1:rerenderSingleCWWidget(t.id)}),o}function _flushRefresh(){const e=new Set(_pendRefresh);if(_pendRefresh.clear(),!e.size)return;const t=e=>{try{e()}catch(e){}},n=(...t)=>t.some(t=>e.has(t)),o=document.getElementById("dashWidgets");let a=!1;n("habs","hd")&&(t(()=>renderHabits()),t(()=>renderCal()),a=!0);const i=_typing(document.getElementById("tskList"));n("tasks")&&(i?_pendRefresh.add("tasks"):t(()=>renderTasks())),n("customWidgets")&&!_syncCW()&&_pendRefresh.add("customWidgets"),n("dashCfg")&&(_typing(o)?_pendRefresh.add("dashCfg"):t(()=>applyDashCfg())),n("theme","customColors")&&t(()=>ccApplyAll());const s=["habs","hd","tasks","customWidgets","dashCfg","theme","customColors"];[...e].some(e=>!s.includes(e))&&(t(()=>renderHabits()),i||t(()=>renderTasks()),a=!0),a&&t(()=>renderDash())}function setupRealtimeSync(){if(_user&&_cloudOK&&supa){teardownRealtimeSync();try{const e=supa.channel("user_data_"+_user.id);_realtimeChannel=e,e.on("postgres_changes",{event:"*",schema:"public",table:"user_data",filter:`user_id=eq.${_user.id}`},e=>{const t=e.new;t&&t.data_key&&(t.data_key.startsWith("enc_")?window.dispatchEvent(new Event("m2028-enc-changed")):void 0!==t.data_value?_applyRows([t]):pollChanges())}).subscribe(t=>{if(_realtimeChannel===e)if("SUBSCRIBED"===t){const e=_rtLive;_rtLive=!0,clearTimeout(_rtRetry),e||(_syncReady?pollChanges():pull())}else"CHANNEL_ERROR"!==t&&"TIMED_OUT"!==t&&"CLOSED"!==t||(_rtLive=!1,clearTimeout(_rtRetry),_rtRetry=setTimeout(()=>{_user&&!_rtLive&&setupRealtimeSync()},4e3))})}catch(e){console.warn("Realtime sync setup failed, falling back to polling:",e)}}}function teardownRealtimeSync(){clearTimeout(_rtRetry),_rtLive=!1;const e=_realtimeChannel;if(_realtimeChannel=null,e&&supa)try{supa.removeChannel(e)}catch(e){}}const _origS=S.s.bind(S);function _markLocal(e){_ver[e]=(_ver[e]||0)+1,LOCAL_ONLY.has(e)||DEVICE_KEYS.has(e)||_dirty.add(e),_saveDirty(),_setLocalTs(e,Date.now())}function stashLocalOnly(){try{const u=getLastLocalUid();if(!u)return!0;const st={};LOCAL_ONLY.forEach(k=>{const v=localStorage.getItem("m_"+k);null!==v&&(st[k]=v)});if(Object.keys(st).length){const sk="m2028_lo_"+u;let old={};try{old=JSON.parse(localStorage.getItem(sk))||{}}catch(x){}localStorage.setItem(sk,JSON.stringify({...old,...st}))}LOCAL_ONLY.forEach(k=>localStorage.removeItem("m_"+k));return!0}catch(x){return!1}}
 function restoreLocalOnly(uid){try{const sk="m2028_lo_"+uid,raw=localStorage.getItem(sk);if(!raw)return;const st=JSON.parse(raw),left={},blank=v=>null===v||""===v||"[]"===v||"{}"===v||"null"===v;Object.keys(st).forEach(k=>{LOCAL_ONLY.has(k)&&(blank(localStorage.getItem("m_"+k))?localStorage.setItem("m_"+k,st[k]):left[k]=st[k])});Object.keys(left).length?localStorage.setItem(sk,JSON.stringify(left)):localStorage.removeItem(sk);try{renderTasks()}catch(x){}}catch(x){}}
-function clearLocalAppData(){stashLocalOnly();const e=[];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_")&&!LOCAL_ONLY.has(n.slice(2))&&"m_theme"!==n&&"m_customColors"!==n&&"m_wallpaper"!==n&&"m_wpDim"!==n&&e.push(n)}e.forEach(e=>localStorage.removeItem(e)),_dirty.clear();try{localStorage.removeItem(POM_KEY)}catch(e){}}function getLastLocalUid(){try{return localStorage.getItem("m2028_uid")||null}catch(e){return null}}function setLastLocalUid(e){try{e?localStorage.setItem("m2028_uid",e):localStorage.removeItem("m2028_uid")}catch(e){}}function guardAccountSwitch(e){if(!e)return!1;_syncReady=!1,_lastCloudValues={};const t=getLastLocalUid(),sw=t&&t!==e.id;return sw&&clearLocalAppData(),restoreLocalOnly(e.id),setLastLocalUid(e.id),!!sw}function togglePw(){const e=document.getElementById("liPw"),t=document.getElementById("pwEye");e.type="password"===e.type?"text":"password",t.textContent="password"===e.type?"👁":"🙈"}async function doSignIn(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("liBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e&&t){o.textContent="Signing in...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signInWithPassword({email:e,password:t});if(o.textContent="Sign In",o.disabled=!1,i)return void(n.textContent=i.message.includes("Invalid")?"Wrong email or password.":i.message);_user=a.user;const s=guardAccountSwitch(_user);S.d("guestMode"),S.s("hadSession",!0),showApp(),await pull(),setupRealtimeSync(),init(),s&&banner("Switched account — loaded your data fresh.")}catch(e){o.textContent="Sign In",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter email and password.";else n.textContent='Cloud sync is unavailable right now. Tap "Continue as Guest" to keep working — your data will stay on this device only.'}async function doSignUp(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("suBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e)if(!t||t.length<6)n.textContent="Password must be at least 6 characters.";else{o.textContent="Creating...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signUp({email:e,password:t,options:{emailRedirectTo:"https://aviatcode.github.io/M2028/"}});if(o.textContent="Create Account",o.disabled=!1,i)return void(n.textContent=i.message);if(a.user&&a.user.confirmed_at)return _user=a.user,guardAccountSwitch(_user),showApp(),await pull(),setupRealtimeSync(),void init();n.style.color="var(--ai)",n.textContent="✓ Account created! Check your email, confirm it, then Sign In."}catch(e){o.textContent="Create Account",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter your email.";else n.textContent='Cloud sync is unavailable right now. Tap "Continue as Guest" to keep working — your data will stay on this device only.'}function wipeGuestCache(){try{const ok=stashLocalOnly(),k=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&((n.startsWith("m_")&&(ok||!LOCAL_ONLY.has(n.slice(2))))||n==="pom_state"||n==="m2028_uid"||n.startsWith("sb-"))&&k.push(n)}k.forEach(n=>localStorage.removeItem(n))}catch(e){}try{sessionStorage.clear()}catch(e){}try{"caches"in window&&caches.keys().then(a=>a.forEach(n=>caches.delete(n))).catch(()=>{})}catch(e){}_dirty.clear();for(const o of[_ver,_inflight,_again,_sent,_seen,_retry])Object.keys(o).forEach(n=>delete o[n]);_pendingPushKeys.clear();try{clearInterval(pomInt);pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;pomTot=4;_sub=null}catch(e){}try{document.getElementById("ccStyle")&&document.getElementById("ccStyle").remove();document.documentElement.classList.remove("ucolors","ucac","redx","pre-light","pre-pink","pre-glass");window.applyWallpaper&&window.applyWallpaper()}catch(e){}}
-function guestMode(){try{teardownRealtimeSync()}catch(e){console.warn("teardown failed",e)}try{wipeGuestCache()}catch(e){console.warn("Guest cleanup failed",e)}_user=null,_syncReady=!1,_lastCloudValues={};try{S.s("guestMode",!0),S.d("hadSession")}catch(e){console.warn("Could not save guest flag",e)}showApp();try{init()}catch(e){console.warn("init failed",e)}banner("Guest mode: your data is saved on this device only. Sign in to save it to your account.")}async function doSignOut(e){if(!0!==e&&!confirm(_user?"Sign out?\n\nYour account data stays in your account. A backup file is downloaded first, and a hidden copy of anything that is only on this device (tasks, medicines) is kept for 30 days for you only.":"Leave guest mode?\n\nGuest data is deleted from this device. A backup file is downloaded first."))return;if(!(await _preSignOutFlush()))return;try{window.m2028Backup&&m2028Backup.export()}catch(x){}if(teardownRealtimeSync(),_cloudOK)try{await supa.auth.signOut()}catch(e){}_user=null,_syncReady=!1,_lastCloudValues={},clearLocalAppData(),setLastLocalUid(null),S.d("guestMode"),S.d("hadSession"),(window.m2028LeftoverWipe&&window.m2028LeftoverWipe()),document.getElementById("appShell").style.display="none",document.getElementById("loginScr").style.display="flex",document.getElementById("liEmail").value="",document.getElementById("liPw").value="",closeMo("acctMo")}function showLoginScreen(e){const t=document.getElementById("loginScr"),n=document.getElementById("appShell"),o=document.getElementById("liErr");n&&(n.style.display="none"),t&&(t.style.display="flex"),o&&e&&(o.style.color="var(--bd)",o.textContent=e)}function showApp(){document.getElementById("loginScr").style.display="none",document.getElementById("appShell").style.display="block",setTimeout(()=>applyDashCfg(),50)}async function startup(){const e=S.go("guestMode",!1),t=S.go("hadSession",!1);if(e||t)return _user=null,init(),void(t&&setTimeout(function r(){window.m2028RestoreSession?window.m2028RestoreSession():setTimeout(r,100)},150));const n=document.getElementById("loginScr");n&&(n.style.display="flex");const o=document.getElementById("appShell");o&&(o.style.display="none"),loadSupa().then(e=>{if(e)return;const t=document.getElementById("liErr");t&&(t.style.color="var(--bd)",t.textContent='⚠️ Cloud sync unavailable (network/blocker). You can still tap "Continue as Guest".')})}S.s=(e,t)=>{_origS(e,t),_markLocal(e),_user&&_cloudOK&&push(e)},S.sLocalOnly=(e,t)=>{_origS(e,t),_markLocal(e)},S.sPushOnly=e=>{_user&&_cloudOK&&push(e)},startup(),function(){let e=!1;["wheel","touchstart","keydown","mousedown"].forEach(t=>window.addEventListener(t,()=>e=!0,{passive:!0,once:!0})),[0,150,600,1500,3e3].forEach(t=>setTimeout(()=>{e||window.scrollTo(0,0)},t))}();let _tick=0;setInterval(()=>{if(!_user||document.hidden)return;_tick++;const e=Date.now()-(window.__m2028Last||Date.now())>3e5,t=_rtLive?e?200:60:e?20:5;_tick%t===0&&pollChanges()},3e3),setInterval(()=>{_user&&!document.hidden&&pull()},18e5);let _lastResumePull=0;function _resumePull(){if(!_user||!_cloudOK)return;const e=Date.now();e-_lastResumePull<1500||(_lastResumePull=e,_realtimeChannel||setupRealtimeSync(),_syncReady?pollChanges():pull(),_dirty.size&&_dirty.forEach(e=>push(e)))}document.addEventListener("visibilitychange",()=>{document.hidden||_resumePull()}),window.addEventListener("pagehide",()=>{try{teardownRealtimeSync()}catch(e){}}),window.addEventListener("focus",_resumePull),window.addEventListener("pageshow",_resumePull),window.addEventListener("online",_resumePull),document.addEventListener("focusout",()=>{_pendRefresh.size&&setTimeout(_flushRefresh,150)});let _tabRerenderTimer=null;window.addEventListener("storage",e=>{e.key&&e.key.startsWith("m_")&&(clearTimeout(_tabRerenderTimer),_tabRerenderTimer=setTimeout(()=>{try{renderDash(),renderHabits(),renderTasks(),applyDashCfg()}catch(e){}},150))});;
+function clearLocalAppData(){stashLocalOnly();const e=[];for(let t=0;t<localStorage.length;t++){const n=localStorage.key(t);n&&n.startsWith("m_")&&!LOCAL_ONLY.has(n.slice(2))&&"m_wallpaper"!==n&&"m_wpDim"!==n&&e.push(n)}e.forEach(e=>localStorage.removeItem(e)),_dirty.clear();try{localStorage.removeItem(POM_KEY)}catch(e){}}function getLastLocalUid(){try{return localStorage.getItem("m2028_uid")||null}catch(e){return null}}function setLastLocalUid(e){try{e?localStorage.setItem("m2028_uid",e):localStorage.removeItem("m2028_uid")}catch(e){}}function guardAccountSwitch(e){if(!e)return!1;_syncReady=!1,_lastCloudValues={};const t=getLastLocalUid(),sw=t&&t!==e.id;return sw&&clearLocalAppData(),restoreLocalOnly(e.id),setLastLocalUid(e.id),!!sw}function togglePw(){const e=document.getElementById("liPw"),t=document.getElementById("pwEye");e.type="password"===e.type?"text":"password",t.textContent="password"===e.type?"👁":"🙈"}async function doSignIn(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("liBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e&&t){o.textContent="Signing in...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signInWithPassword({email:e,password:t});if(o.textContent="Sign In",o.disabled=!1,i)return void(n.textContent=i.message.includes("Invalid")?"Wrong email or password.":i.message);_user=a.user;const s=guardAccountSwitch(_user);S.d("guestMode"),S.s("hadSession",!0),showApp(),await pull(),setupRealtimeSync(),init(),s&&banner("Switched account — loaded your data fresh.")}catch(e){o.textContent="Sign In",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter email and password.";else n.textContent='Cloud sync is unavailable right now. Tap "Continue as Guest" to keep working — your data will stay on this device only.'}async function doSignUp(){const e=document.getElementById("liEmail").value.trim(),t=document.getElementById("liPw").value,n=document.getElementById("liErr"),o=document.getElementById("suBtn");if(n.style.color="var(--rd)",n.textContent="",_cloudOK||(n.textContent="Connecting…",_supaP=null,await loadSupa(),n.textContent=""),_cloudOK)if(e)if(!t||t.length<6)n.textContent="Password must be at least 6 characters.";else{o.textContent="Creating...",o.disabled=!0;try{const{data:a,error:i}=await supa.auth.signUp({email:e,password:t,options:{emailRedirectTo:"https://aviatcode.github.io/M2028/"}});if(o.textContent="Create Account",o.disabled=!1,i)return void(n.textContent=i.message);if(a.user&&a.user.confirmed_at)return _user=a.user,guardAccountSwitch(_user),showApp(),await pull(),setupRealtimeSync(),void init();n.style.color="var(--ai)",n.textContent="✓ Account created! Check your email, confirm it, then Sign In."}catch(e){o.textContent="Create Account",o.disabled=!1,n.textContent="Could not reach the server. Check your connection and try again."}}else n.textContent="Enter your email.";else n.textContent='Cloud sync is unavailable right now. Tap "Continue as Guest" to keep working — your data will stay on this device only.'}function wipeGuestCache(){try{const ok=stashLocalOnly(),k=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);n&&((n.startsWith("m_")&&(ok||!LOCAL_ONLY.has(n.slice(2))))||n==="pom_state"||n==="m2028_uid"||n.startsWith("sb-"))&&k.push(n)}k.forEach(n=>localStorage.removeItem(n))}catch(e){}try{sessionStorage.clear()}catch(e){}try{"caches"in window&&caches.keys().then(a=>a.forEach(n=>caches.delete(n))).catch(()=>{})}catch(e){}_dirty.clear();for(const o of[_ver,_inflight,_again,_sent,_seen,_retry])Object.keys(o).forEach(n=>delete o[n]);_pendingPushKeys.clear();try{clearInterval(pomInt);pomRun=!1;pomMode="focus";pomPhaseLen=PF;pomRem=PF;pomCur=0;pomTot=4;_sub=null}catch(e){}try{document.getElementById("ccStyle")&&document.getElementById("ccStyle").remove();document.documentElement.classList.remove("ucolors","ucac","redx","pre-light","pre-pink","pre-glass");window.applyWallpaper&&window.applyWallpaper()}catch(e){}}
+function guestMode(){try{teardownRealtimeSync()}catch(e){console.warn("teardown failed",e)}try{wipeGuestCache()}catch(e){console.warn("Guest cleanup failed",e)}_user=null,_syncReady=!1,_lastCloudValues={};try{S.s("guestMode",!0),S.d("hadSession")}catch(e){console.warn("Could not save guest flag",e)}showApp();try{init()}catch(e){console.warn("init failed",e)}banner("Guest mode: your data is saved on this device only. Sign in to save it to your account.")}async function doSignOut(e){if(!0!==e&&!confirm(_user?"Sign out?\n\nYour account data stays in your account. A backup file is downloaded first, and a hidden copy of anything that is only on this device (tasks, medicines) is kept for 30 days for you only.":"Leave guest mode?\n\nGuest data is deleted from this device. A backup file is downloaded first."))return;if(!(await _preSignOutFlush()))return;try{window.m2028Backup&&m2028Backup.export()}catch(x){}if(teardownRealtimeSync(),_cloudOK)try{await supa.auth.signOut()}catch(e){}_user=null,_syncReady=!1,_lastCloudValues={},clearLocalAppData(),setLastLocalUid(null),S.d("guestMode"),S.d("hadSession"),(window.m2028LeftoverWipe&&window.m2028LeftoverWipe()),(window.m2028Repaint&&window.m2028Repaint()),document.getElementById("appShell").style.display="none",document.getElementById("loginScr").style.display="flex",document.getElementById("liEmail").value="",document.getElementById("liPw").value="",closeMo("acctMo")}function showLoginScreen(e){const t=document.getElementById("loginScr"),n=document.getElementById("appShell"),o=document.getElementById("liErr");n&&(n.style.display="none"),t&&(t.style.display="flex"),o&&e&&(o.style.color="var(--bd)",o.textContent=e)}function showApp(){document.getElementById("loginScr").style.display="none",document.getElementById("appShell").style.display="block",setTimeout(()=>applyDashCfg(),50)}async function startup(){const e=S.go("guestMode",!1),t=S.go("hadSession",!1);if(e||t)return _user=null,init(),void(t&&setTimeout(function r(){window.m2028RestoreSession?window.m2028RestoreSession():setTimeout(r,100)},150));const n=document.getElementById("loginScr");n&&(n.style.display="flex");const o=document.getElementById("appShell");o&&(o.style.display="none"),loadSupa().then(e=>{if(e)return;const t=document.getElementById("liErr");t&&(t.style.color="var(--bd)",t.textContent='⚠️ Cloud sync unavailable (network/blocker). You can still tap "Continue as Guest".')})}S.s=(e,t)=>{_origS(e,t),_markLocal(e),_user&&_cloudOK&&push(e)},S.sLocalOnly=(e,t)=>{_origS(e,t),_markLocal(e)},S.sPushOnly=e=>{_user&&_cloudOK&&push(e)},startup(),function(){let e=!1;["wheel","touchstart","keydown","mousedown"].forEach(t=>window.addEventListener(t,()=>e=!0,{passive:!0,once:!0})),[0,150,600,1500,3e3].forEach(t=>setTimeout(()=>{e||window.scrollTo(0,0)},t))}();let _tick=0;setInterval(()=>{if(!_user||document.hidden)return;_tick++;const e=Date.now()-(window.__m2028Last||Date.now())>3e5,t=_rtLive?e?200:60:e?20:5;_tick%t===0&&pollChanges()},3e3),setInterval(()=>{_user&&!document.hidden&&pull()},18e5);let _lastResumePull=0;function _resumePull(){if(!_user||!_cloudOK)return;const e=Date.now();e-_lastResumePull<1500||(_lastResumePull=e,_realtimeChannel||setupRealtimeSync(),_syncReady?pollChanges():pull(),_dirty.size&&_dirty.forEach(e=>push(e)))}document.addEventListener("visibilitychange",()=>{document.hidden||_resumePull()}),window.addEventListener("pagehide",()=>{try{teardownRealtimeSync()}catch(e){}}),window.addEventListener("focus",_resumePull),window.addEventListener("pageshow",_resumePull),window.addEventListener("online",_resumePull),document.addEventListener("focusout",()=>{_pendRefresh.size&&setTimeout(_flushRefresh,150)});let _tabRerenderTimer=null;window.addEventListener("storage",e=>{e.key&&e.key.startsWith("m_")&&(clearTimeout(_tabRerenderTimer),_tabRerenderTimer=setTimeout(()=>{try{renderDash(),renderHabits(),renderTasks(),applyDashCfg()}catch(e){}},150))});;
 
 /* ===== M2028 v6 patch ===== */
 (function(){
@@ -6683,10 +6687,26 @@ document.addEventListener("click",function(e){
     });
     return out;
   }
+  function stMyUid() { try { return (typeof _user !== 'undefined' && _user && _user.id) || ''; } catch (e) { return ''; } }
+  // The extension in this browser belongs to ONE account: the first one that signs in here. Another account or a guest on this
+  // browser does not get its screen time.
+  function stLinked() {
+    var u = stMyUid(), o = '';
+    try { o = localStorage.getItem('m2028_st_owner') || ''; } catch (e) {}
+    if (!o) { if (u) { try { localStorage.setItem('m2028_st_owner', u); } catch (e) {} } return true; }
+    return o === u;
+  }
+  window.m2028LinkScreenTime = function () {
+    var u = stMyUid(); if (!u) return;
+    if (!confirm('Add this browser\u2019s screen time to this account from now on?\n\nIt will stop going to the account it is linked to now.')) return;
+    try { localStorage.setItem('m2028_st_owner', u); } catch (e) {}
+    try { window.renderScreenTimeWidget(); } catch (e) {}
+  };
   function liveDeviceIds(map) { return Object.keys(map || {}).filter(function(id) { var d = map[id]; return d && !d.rm; }); }
   function pushScreenTime(today, st) {
     try {
       if (typeof S === 'undefined' || !S.s || !localStorage.getItem('sb-lvzcctsqcpikisdzztot-auth-token')) return;
+      if (!stLinked()) return;
       var tot = Math.round(st.totalSeconds || 0), now = Date.now();
       if (!tot) return;
       if ((tot === _stPushTot && now - _stPushAt < 300000) || (now - _stPushAt < 30000 && tot - _stPushTot < 300)) return;
@@ -6712,6 +6732,9 @@ document.addEventListener("click",function(e){
   function combinedScreenTimeToday(today, liveStats) {
     var map = {}, myId = null;
     try { map = (typeof S !== 'undefined' && S.g) ? (S.g('screenTimeDevices') || {}) : {}; } catch (e) {}
+    var linked = stLinked();
+    window.__stOther = !linked && !!stMyUid() && !!(liveStats && liveStats.totalSeconds);
+    if (!linked) liveStats = null;
     if (liveStats && liveStats.totalSeconds) {
       var dev = stDeviceTag(liveStats), ex = map[dev.id], known = !!(ex && !ex.rm);
       if (known || liveDeviceIds(map).length < MAX_DEVICES) {
@@ -6751,8 +6774,9 @@ document.addEventListener("click",function(e){
     if (!el) return;
     window.__stMyId = myId;
     var full = !myId && all && all.length >= MAX_DEVICES && window.__stDevFull;
-    if (!all || !all.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    var key = JSON.stringify([all.map(function(d) { return [d.id, deviceLabel(d), fmtSec(d.todaySeconds), d.name]; }), myId, !!full]);
+    if ((!all || !all.length) && !window.__stOther) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    all = all || [];
+    var key = JSON.stringify([all.map(function(d) { return [d.id, deviceLabel(d), fmtSec(d.todaySeconds), d.name]; }), myId, !!full, !!window.__stOther]);
     if (el.__dk === key) return;     // nothing changed: do not rebuild the rows
     el.__dk = key;
     el.style.display = 'block';
@@ -6771,11 +6795,14 @@ document.addEventListener("click",function(e){
           (me ? '' : '<button ' + btn + ' data-act="rm" data-id="' + esc(d.id) + '" title="Remove this device">&times;</button>') +
         '</div>';
       }).join('') +
-      (full ? '<div style="font-size:10.5px;color:var(--mt);margin-top:4px">This computer is not listed: the account already has 5 devices. Remove one to add it.</div>' : '');
+      (full ? '<div style="font-size:10.5px;color:var(--mt);margin-top:4px">This computer is not listed: the account already has 5 devices. Remove one to add it.</div>' : '') +
+      (window.__stOther ? '<div style="font-size:10.5px;color:var(--mt);margin-top:6px;line-height:1.5">This browser\u2019s screen time belongs to another account, so it is not added here. <a href="#" data-act="link" style="color:var(--ai)">Add it to this account instead</a></div>' : '');
     el.onclick = function(ev) {
       var b = ev.target.closest ? ev.target.closest('[data-act]') : null;
       if (!b) return;
-      if (b.getAttribute('data-act') === 'ren') window.renameDevice(b.getAttribute('data-id'));
+      var act = b.getAttribute('data-act');
+      if (act === 'link') { ev.preventDefault(); window.m2028LinkScreenTime(); }
+      else if (act === 'ren') window.renameDevice(b.getAttribute('data-id'));
       else window.removeDevice(b.getAttribute('data-id'));
     };
   }
@@ -9712,7 +9739,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
    same owner returns. Clean, already-uploaded account data is NOT restored from here - it comes from the cloud, so nothing stale can overwrite it.
    If the save does not verify, the wipe is skipped, so nothing is ever destroyed unsaved. */
 (function () {
-  var P = 'm2028_vault_', SKIP = { m_guestMode: 1, m_hadSession: 1, m_wallpaper: 1, m_wpDim: 1 };
+  var P = 'm2028_vault_', SKIP = { m_guestMode: 1, m_hadSession: 1, m_wallpaper: 1, m_wpDim: 1 }, APPEAR = { m_theme: 1, m_customColors: 1 };
   function g(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function put(k, v) { try { localStorage.setItem(k, v); return localStorage.getItem(k) === v; } catch (e) { return false; } }
   function owner() { var u = g('m2028_uid'); if (u) return u; try { if (S.go('guestMode', false)) return 'guest'; } catch (e) {} return null; }
@@ -9728,7 +9755,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     if (SKIP[k]) return false;
     if (c.guest) return k.indexOf('m_') === 0 || k === 'pom_state';
     if (k.indexOf('m_') !== 0 || k === 'm_sync_dirty' || k === 'm_sync_ts') return false;
-    return LOCAL_ONLY.has(k.slice(2)) || !c.synced[k] || !!c.dirty[k];
+    return !!APPEAR[k] || LOCAL_ONLY.has(k.slice(2)) || !c.synced[k] || !!c.dirty[k];
   }
   // Hidden copies expire: after 30 days a left-behind copy is deleted for good (it is only ever given back to the same account).
   var TTL = 30 * 864e5, TK = 'm2028_vault_ttl';
@@ -9761,9 +9788,10 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
     var c = ctx(o, d.m_sync_dirty), failed = 0, back = [];
     Object.keys(d).forEach(function (k) {
       if (k === 'm_sync_dirty' || !wanted(c, k)) return;
-      if (g(k) !== null) return;              // something newer is already here: never overwrite it
+      if (g(k) !== null && !APPEAR[k]) return; // something newer is already here: never overwrite it (theme and colours are the exception: they are always the owner's own)
       if (put(k, d[k])) back.push(k); else failed++;
     });
+    if (back.some(function (k) { return APPEAR[k]; })) { try { applyTheme(); } catch (e) {} try { ccApplyAll(); } catch (e) {} }
     if (!c.guest) {                           // changes that never uploaded: mark them waiting again so they upload after sign-in
       var any = false; back.forEach(function (k) { if (c.dirty[k]) { try { _dirty.add(k.slice(2)); any = true; } catch (e) {} } });
       if (any) { try { _saveDirty(); } catch (e) {} }
@@ -9798,11 +9826,17 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   var AK = 'm_wallpaper', DK = 'm_wpDim', OK = 'm2028_wp_owner', SL = 'm2028_wp_';
   function g(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function s(k, v) { try { if (v === null || v === undefined) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  // A wallpaper is a big picture: parking it in localStorage next to the live copy can fail silently (about 5 MB in total), which lost it.
+  // So every owner's wallpaper also lives in IndexedDB, and comes back from there when the quick copy is missing.
+  function wdb() { return new Promise(function (ok, no) { var r = indexedDB.open('m2028-wp', 1); r.onupgradeneeded = function () { r.result.createObjectStore('kv'); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); }
+  function wput(o, v) { if (!o) return; wdb().then(function (d) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put({ v: v, at: Date.now() }, o); t.oncomplete = function () { d.close(); }; }).catch(function () {}); }
+  function wdel(o) { if (!o) return; wdb().then(function (d) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').delete(o); t.oncomplete = function () { d.close(); }; }).catch(function () {}); }
+  function wback(n) { wdb().then(function (d) { var q = d.transaction('kv').objectStore('kv').get(n); q.onsuccess = function () { d.close(); var r = q.result && q.result.v; if (r && /^data:image\//.test(r.wp) && !hasWp() && (g(OK) === n || g(OK) === null)) { s(AK, r.wp); if (r.dim !== null && r.dim !== undefined) s(DK, r.dim); s(OK, n); apply(); } }; q.onerror = function () { d.close(); }; }).catch(function () {}); }
   function uidNow() { return g('m2028_uid') || ''; }
   function owner() { return uidNow() || 'guest'; }
   function hasWp() { var w = g(AK); return !!w && /^data:image\//.test(w); }
   function apply() { try { (window.__applyWpNow || window.applyWallpaper)(); } catch (e) {} try { window.wpRefreshUI && window.wpRefreshUI(); } catch (e) {} }
-  function park(o) { if (o && hasWp()) { s(SL + o, JSON.stringify({ wp: g(AK), dim: g(DK) })); } }
+  function park(o) { if (o && hasWp()) { s(SL + o, JSON.stringify({ wp: g(AK), dim: g(DK) })); wput(o, { wp: g(AK), dim: g(DK) }); } }
   function load(o) {
     var raw = g(SL + o); if (!raw) return false;
     try { var d = JSON.parse(raw); if (d && /^data:image\//.test(d.wp)) { s(AK, d.wp); if (d.dim !== null && d.dim !== undefined) s(DK, d.dim); s(SL + o, null); return true; } } catch (e) {}
@@ -9810,13 +9844,13 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
   }
   function switchTo(n) {
     var cur = g(OK);
-    if (cur === n) { if (!hasWp()) { load(n); } apply(); return; }
+    if (cur === n) { if (!hasWp()) { load(n); if (!hasWp()) wback(n); } apply(); return; }
     if (cur === null && hasWp()) { s(OK, n); apply(); return; }       // unowned (older) wallpaper: it belongs to whoever is using the app
     if (cur && hasWp()) park(cur);
     s(AK, null); s(DK, null);
-    load(n); s(OK, n); apply();
+    load(n); s(OK, n); apply(); if (!hasWp()) wback(n);
   }
-  function commit() { if (hasWp()) s(OK, owner()); }
+  function commit() { if (hasWp()) { s(OK, owner()); if (uidNow()) wput(owner(), { wp: g(AK), dim: g(DK) }); } }
   function wrap(name, fn) { var o = window[name]; if (typeof o !== 'function') return; window[name] = fn(o); }
 
   wrap('guardAccountSwitch', function (o) { return function (u) { var r = o.apply(this, arguments); try { if (u && u.id) switchTo(String(u.id)); } catch (e) {} return r; }; });
@@ -9831,7 +9865,7 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
       s(AK, null); s(DK, null); s(OK, null); apply(); } } catch (e) {} return r; }; });
   wrap('wpPick', function (o) { return async function () { var r = await o.apply(this, arguments); commit(); return r; }; });
   wrap('wpSetDim', function (o) { return function () { var r = o.apply(this, arguments); commit(); return r; }; });
-  wrap('wpRemove', function (o) { return function () { var r = o.apply(this, arguments); s(SL + owner(), null); if (!hasWp()) s(OK, owner()); return r; }; });
+  wrap('wpRemove', function (o) { return function () { var r = o.apply(this, arguments); s(SL + owner(), null); wdel(owner()); if (!hasWp()) s(OK, owner()); return r; }; });
 
   // startup: tag an untagged wallpaper with whoever is using the app; fix a stale tag
   try {
@@ -10231,7 +10265,7 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
       return;
     }
     if (!confirm('Forget me on this device?\n\n1. Everything is saved to your account first, and a backup file is downloaded.\n2. Your other devices keep all of it.\n3. This device is signed out and its local copy is removed.\n\nContinue?')) return;
-    var label = btn ? btn.textContent : '';
+    var label = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.textContent = 'Backing up\u2026'; }
     try {
       // free this computer's slot in the Devices list (the other devices keep their own timers)
@@ -10250,7 +10284,7 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
       try { localStorage.removeItem('m2028_time_stats'); } catch (e) {}
       try { sessionStorage.clear(); } catch (e) {}
       try { if ('caches' in window) caches.keys().then(function (a) { a.forEach(function (n) { caches.delete(n); }); }); } catch (e) {}
-    } finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
+    } finally { if (btn) { btn.disabled = false; btn.innerHTML = label; } }
   };
 })();
 </script>
@@ -10260,6 +10294,7 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
 (function () {
   var ua = navigator.userAgent || '';
   var IOS = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var FIREFOX = /Firefox/.test(ua) && !/Seamonkey/.test(ua);
   var STAND = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   var SHARE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
   var INSTALLED = false; try { INSTALLED = localStorage.getItem('m2028_installed') === '1'; } catch (e) {}
@@ -10278,6 +10313,10 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
         '<li>Leave <b>Open as Web App</b> switched on and tap <b>Add</b>.</li>' +
         '<li>Open <b>M2028</b> from the new icon on your Home Screen. Always open it from there, not from Safari.</li>' +
         '<li>To get reminders: <b>Account</b>, then <b>Alerts</b>, then <b>Allow</b>. iPhone only allows this from the Home Screen app (iOS 16.4 or newer).</li>'
+      : FIREFOX
+      ? '<li><b>Firefox</b> does not offer the one-click install icon that Chrome/Edge/Brave have. Two options:</li>' +
+        '<li>Type <code>about:preferences#experimental</code> in the address bar and turn on <b>Add sites to your taskbar</b> \u2014 then reload this page and look for the taskbar icon in the address bar. This is an experimental Firefox feature and may not be available on every build yet.</li>' +
+        '<li>For a guaranteed one-click install, open this page in <b>Chrome, Edge, or Brave</b> instead and use the install icon at the right end of the address bar.</li>'
       : '<li><b>Android (Chrome):</b> tap the <b>menu</b> (three dots), then <b>Install app</b> or <b>Add to Home screen</b>.</li>' +
         '<li><b>Windows or Mac (Chrome, Edge, Brave):</b> click the <b>install icon</b> at the right end of the address bar, or the browser menu, then <b>Install M2028</b>.</li>' +
         '<li><b>Mac (Safari):</b> <b>File</b>, then <b>Add to Dock</b>.</li>';
@@ -10299,6 +10338,19 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
         var last = +localStorage.getItem('m2028_ios_inst_seen') || 0;
         if (Date.now() - last < 3 * 864e5) return;
         localStorage.setItem('m2028_ios_inst_seen', String(Date.now()));
+        window.m2028InstallHelp();
+      } catch (e) {}
+    }, 6000);
+  }
+  // Firefox desktop never fires beforeinstallprompt, so it would otherwise get no install nudge at all.
+  // Show the same guide (now Firefox-aware) exactly once, ever, after sign-in / guest.
+  if (FIREFOX && !IOS && !STAND) {
+    setTimeout(function () {
+      try {
+        var shell = document.getElementById('appShell');
+        if (!shell || shell.style.display === 'none') return;
+        if (localStorage.getItem('m2028_ff_inst_seen')) return;
+        localStorage.setItem('m2028_ff_inst_seen', '1');
         window.m2028InstallHelp();
       } catch (e) {}
     }, 6000);
@@ -10331,7 +10383,7 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
       k.forEach(function (n) { localStorage.removeItem(n); });
     } catch (e) {}
     try { sessionStorage.clear(); } catch (e) {}
-    var dbs = ['m2028_notes', 'm2028_share_inbox', 'm2028-enc', 'm2028-outbox', 'm2028-reminders'];
+    var dbs = ['m2028_notes', 'm2028_share_inbox', 'm2028-enc', 'm2028-outbox', 'm2028-reminders', 'm2028-wp', 'm2028-notes-vault'];
     await Promise.all(dbs.map(function (n) {
       return new Promise(function (ok) {
         try { var r = indexedDB.deleteDatabase(n); r.onsuccess = r.onerror = r.onblocked = function () { ok(); }; setTimeout(ok, 1500); } catch (e) { ok(); }
@@ -10346,6 +10398,7 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
 /* After a sign-out or leaving guest mode: remove what the vault does not cover, so the next person (guest or another account)
    finds nothing of the previous user: screen-time stats, reminder lists and push subscription, outbox, private-note keys. */
 (function () {
+  window.m2028Repaint = function () { try { applyTheme(); } catch (e) {} try { ccApplyAll(); } catch (e) {} };
   window.m2028LeftoverWipe = function () {
     try {
       var k = [];
@@ -10454,7 +10507,7 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
       k.forEach(function (n) { localStorage.removeItem(n); });
     } catch (e) {}
     try { sessionStorage.clear(); } catch (e) {}
-    await Promise.all(['m2028_notes', 'm2028_share_inbox', 'm2028-enc', 'm2028-outbox', 'm2028-reminders'].map(function (n) {
+    await Promise.all(['m2028_notes', 'm2028_share_inbox', 'm2028-enc', 'm2028-outbox', 'm2028-reminders', 'm2028-wp', 'm2028-notes-vault'].map(function (n) {
       return new Promise(function (ok) { try { var r = indexedDB.deleteDatabase(n); r.onsuccess = r.onerror = r.onblocked = function () { ok(); }; setTimeout(ok, 1500); } catch (e) { ok(); } });
     }));
     try {
@@ -10518,6 +10571,158 @@ html body:not(.x):not(.xx) .tnb .nb.tnb-burger{flex:0 0 auto;margin-left:auto}
       }
     };
   };
+})();
+</script>
+<style id="m2028-cz-css">
+/* Customize window: the Theme / Wallpaper / Colors / Stickers buttons use the same look as the Settings buttons */
+html body #dashCfgMo .cz-sx{--sx-bg:#161923;--sx-tx:#f3f4f8;--sx-mt:#a9adc2;--sx-line:rgba(255,255,255,.13);--sx-row:rgba(255,255,255,.07);--sx-hov:rgba(255,255,255,.14);--sx-ok:#5fe0ae;--sx-pri-bg:#4fd8a0;--sx-pri-tx:#06241a;--sx-dg-bg:rgba(255,95,95,.14);--sx-dg-tx:#ff9393;--sx-dg-ln:rgba(255,120,120,.4);--sx-av:#2b3042}
+html body.light #dashCfgMo .cz-sx{--sx-bg:#ffffff;--sx-tx:#1a1a2e;--sx-mt:#5a5d74;--sx-line:rgba(0,0,0,.13);--sx-row:#f1f2f7;--sx-hov:#e4e6ef;--sx-ok:#0e7a52;--sx-pri-bg:#1a1a2e;--sx-pri-tx:#ffffff;--sx-dg-bg:#fdecec;--sx-dg-tx:#b3261e;--sx-dg-ln:rgba(179,38,30,.35);--sx-av:#e4e6ef}
+html body.pink #dashCfgMo .cz-sx{--sx-bg:#fff6fa;--sx-tx:#4a1230;--sx-mt:#8a4868;--sx-line:rgba(122,22,70,.22);--sx-row:#ffe8f1;--sx-hov:#ffd5e6;--sx-ok:#0f7a4f;--sx-pri-bg:#7a1646;--sx-pri-tx:#ffffff;--sx-dg-bg:#ffe3ea;--sx-dg-tx:#a8103a;--sx-dg-ln:rgba(168,16,58,.35);--sx-av:#ffd5e6}
+html body #dashCfgMo #themeBtn{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:36px;padding:0 14px;border-radius:20px;font-size:19px;line-height:1;background:var(--sx-bg)!important;color:var(--sx-tx)!important;border:1px solid var(--sx-line)!important;box-shadow:none!important}
+html body #dashCfgMo #themeBtn .leafico{width:1.2em;height:1.2em}
+html body #dashCfgMo .btn.set-btn{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:48px;padding:12px 14px;border-radius:12px;font-size:14px;font-weight:600;text-align:left;white-space:normal;line-height:1.25;background:var(--sx-row)!important;color:var(--sx-tx)!important;-webkit-text-fill-color:var(--sx-tx)!important;border:1px solid var(--sx-line)!important;box-shadow:none!important}
+html body #dashCfgMo .btn.set-btn:is(:hover,:active,:focus-visible),html body #dashCfgMo #themeBtn:is(:hover,:active,:focus-visible){background:var(--sx-hov)!important;color:var(--sx-tx)!important;-webkit-text-fill-color:var(--sx-tx)!important}
+html body #dashCfgMo .set-grid .btn.set-btn{min-height:42px;padding:8px 10px;font-size:13px;gap:6px}
+html body #dashCfgMo .set-grid .set-row{min-height:42px;padding:4px 6px 4px 12px;border-radius:12px}
+html body #dashCfgMo .set-grid .set-rl{font-size:13px}
+html body #dashCfgMo #themeBtn{min-width:40px;height:32px;padding:0 10px;font-size:16px}
+html body #dashCfgMo .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px}
+html body #dashCfgMo .set-grid .btn.set-btn,html body #dashCfgMo .set-grid #themeBtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-width:0;height:48px;min-height:48px;padding:0 8px;border-radius:14px;font-size:14px;font-weight:600;line-height:1;text-align:center;white-space:nowrap;cursor:pointer;transition:transform .12s,background .15s;-webkit-tap-highlight-color:transparent}
+html body #dashCfgMo .set-grid #themeBtn::after{content:"Theme";font-size:14px;font-weight:600}
+html body #dashCfgMo .set-grid .btn.set-btn:active{transform:scale(.96)}
+html body #dashCfgMo .set-grid .btn:disabled{opacity:.6}
+
+html body #dashCfgMo .cz-sx .set-grid{margin:0 0 14px}
+html body #dashCfgMo .cz-sx .set-grid #themeBtn,html body #dashCfgMo .cz-sx .set-grid .btn.set-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-width:0;height:48px;min-height:48px;padding:0 8px;border-radius:14px;font-size:14px;font-weight:600;line-height:1;background:var(--sx-row)!important;color:var(--sx-tx)!important;-webkit-text-fill-color:var(--sx-tx)!important;border:1px solid var(--sx-line)!important;box-shadow:none!important}
+html body #dashCfgMo .cz-sx .set-grid #themeBtn:is(:hover,:active,:focus-visible),html body #dashCfgMo .cz-sx .set-grid .btn.set-btn:is(:hover,:active,:focus-visible){background:var(--sx-hov)!important}
+html body #acctMo .set-grid .btn.set-btn.set-soft-dg{color:var(--sx-dg-tx)!important;-webkit-text-fill-color:var(--sx-dg-tx)!important}
+html body #acctMo .set-grid .btn.set-btn svg{flex:none}
+html body #acctMo .set-sec2{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--sx-mt);margin:6px 2px 8px}
+html body #acctMo .set-note{font-size:11px;color:var(--sx-mt);text-align:center;margin:-2px 0 10px}
+</style>
+<script id="m2028-notes-owner">
+/* Notes belong to one account. They live in one browser database, so a second account on the same browser used to see the first one's notes
+   and not its own. Now each account's notes are moved to a hidden per-account copy (IndexedDB "m2028-notes-vault", kept 30 days) when
+   that account signs out or another account takes over, and come back when the same account signs in again. A guest never keeps or inherits notes. */
+(function () {
+  var TAG = 'm2028_notes_owner', SETK = 'm2028_notes_settings', VDB = 'm2028-notes-vault', NDB = 'm2028_notes', TTL = 30 * 864e5;
+  var STORES = ['notes', 'folders', 'labels', 'blobs', 'meta'];
+  function g(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function sv(k, v) { try { if (v === null || v === undefined) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function uidNow() { return g('m2028_uid') || ''; }
+  function rq(r) { return new Promise(function (ok, no) { r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); }
+  function openV() { return new Promise(function (ok, no) { var r = indexedDB.open(VDB, 1); r.onupgradeneeded = function () { r.result.createObjectStore('kv'); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); }
+  function openN() { return new Promise(function (ok, no) { var r = indexedDB.open(NDB, 1); r.onupgradeneeded = function () { var d = r.result; ['notes', 'folders', 'labels', 'blobs'].forEach(function (n) { d.createObjectStore(n, { keyPath: 'id' }); }); d.createObjectStore('meta', { keyPath: 'k' }); }; r.onsuccess = function () { ok(r.result); }; r.onerror = function () { no(r.error); }; }); }
+  async function exists() { try { if (!indexedDB.databases) return true; var l = await indexedDB.databases(); return l.some(function (x) { return x.name === NDB; }); } catch (e) { return true; } }
+  async function dump() {
+    var d = await openN(), out = {}, n = 0;
+    for (var i = 0; i < STORES.length; i++) { var st = STORES[i]; if (!d.objectStoreNames.contains(st)) continue; out[st] = await rq(d.transaction(st).objectStore(st).getAll()); if (st !== 'meta') n += out[st].length; }
+    d.close(); return { stores: out, settings: g(SETK), count: n };
+  }
+  async function clearN() {
+    var d = await openN(), names = STORES.filter(function (n) { return d.objectStoreNames.contains(n); });
+    await new Promise(function (ok, no) { var t = d.transaction(names, 'readwrite'); names.forEach(function (n) { t.objectStore(n).clear(); }); t.oncomplete = ok; t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error); }; });
+    d.close(); sv(SETK, null);
+  }
+  async function vput(o, v) {
+    var d = await openV();
+    await new Promise(function (ok, no) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').put({ at: Date.now(), data: v }, o); t.oncomplete = ok; t.onerror = function () { no(t.error); }; });
+    var chk = await rq(d.transaction('kv').objectStore('kv').get(o)); d.close();
+    return !!(chk && chk.data && chk.data.count === v.count);
+  }
+  async function vget(o) { var d = await openV(), r = await rq(d.transaction('kv').objectStore('kv').get(o)); d.close(); return r; }
+  async function vdel(o) { var d = await openV(); await new Promise(function (ok) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').delete(o); t.oncomplete = ok; t.onerror = ok; }); d.close(); }
+  async function vpurge() {
+    var d = await openV(), keys = await rq(d.transaction('kv').objectStore('kv').getAllKeys()), now = Date.now();
+    for (var i = 0; i < keys.length; i++) { var r = await rq(d.transaction('kv').objectStore('kv').get(keys[i])); if (!r || now - (r.at || 0) > TTL || keys[i] === 'guest') { await new Promise(function (ok) { var t = d.transaction('kv', 'readwrite'); t.objectStore('kv').delete(keys[i]); t.oncomplete = ok; t.onerror = ok; }); } }
+    d.close();
+  }
+  function resetState() {
+    try { var st = window.M2028Notes && window.M2028Notes.state; if (st) { st.notes.length = 0; st.folders.length = 0; st.labels.length = 0; if (st.sel && st.sel.clear) st.sel.clear(); } } catch (e) {}
+    try { document.querySelectorAll('.nt-ov').forEach(function (o) { if (o.close) o.close(); else o.remove(); }); } catch (e) {}
+    window.__ntStale = true;
+  }
+  // move this owner's notes into their hidden copy and empty the shared database (nothing is emptied unless the copy verified)
+  async function stash(owner) {
+    if (!(await exists())) return true;
+    var data = await dump();
+    if (owner && owner !== 'guest' && data.count > 0) { if (!(await vput(owner, data))) return false; }
+    await clearN(); resetState(); return true;
+  }
+  async function restoreFor(o) {
+    var rec = await vget(o); if (!rec || !rec.data) return false;
+    var data = rec.data, d = await openN(), names = Object.keys(data.stores || {}).filter(function (n) { return d.objectStoreNames.contains(n); });
+    await new Promise(function (ok, no) { var t = d.transaction(names, 'readwrite'); names.forEach(function (n) { var os = t.objectStore(n); data.stores[n].forEach(function (row) { os.put(row); }); }); t.oncomplete = ok; t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error); }; });
+    d.close(); if (data.settings) sv(SETK, data.settings);
+    await vdel(o); return data.count > 0;
+  }
+  var chain = Promise.resolve();
+  function adopt(newOwner) {
+    chain = chain.then(async function () {
+      try {
+        await vpurge();
+        var tag = g(TAG);
+        if (tag && tag !== newOwner) { if (!(await stash(tag))) return; }
+        var restored = false;
+        if (newOwner !== 'guest' && tag !== newOwner) restored = await restoreFor(newOwner);
+        sv(TAG, newOwner);
+        if (restored || window.__ntStale) { window.__ntStale = false; location.reload(); }
+      } catch (e) {}
+    });
+    return chain;
+  }
+  function wrap(name, fn) { var o = window[name]; if (typeof o === 'function') window[name] = fn(o); }
+  wrap('guardAccountSwitch', function (o) { return function (u) { var r = o.apply(this, arguments); try { if (u && u.id) adopt(String(u.id)); } catch (e) {} return r; }; });
+  wrap('guestMode', function (o) { return function () { var r = o.apply(this, arguments); try { adopt('guest'); } catch (e) {} return r; }; });
+  wrap('doSignOut', function (o) { return async function () {
+    var guest = false; try { guest = !!S.go('guestMode', false); } catch (e) {}
+    var ow = uidNow() || (guest ? 'guest' : (g(TAG) || ''));
+    var r = await o.apply(this, arguments);
+    try { if (!uidNow() && !(S.g('guestMode')) && !(S.g('hadSession'))) { chain = chain.then(async function () { try { if (ow) await stash(ow); sv(TAG, null); } catch (e) {} }); await chain; } } catch (e) {}
+    return r; }; });
+})();
+</script>
+<script id="m2028-installcheck">
+/* Open the app with ?installcheck=1 at the end of its address to see why the browser does or does not offer "Install app". */
+(function () {
+  if (!/[?&]installcheck/.test(location.search)) return;
+  addEventListener('load', function () { setTimeout(async function () {
+    var rows = [];
+    function add(ok, t) { rows.push('<div style="margin:7px 0;font-size:13px"><b style="color:' + (ok ? '#35c98a' : '#ff6b6b') + '">' + (ok ? 'OK' : 'PROBLEM') + '</b> ' + t + '</div>'); }
+    add(location.protocol === 'https:' || location.hostname === 'localhost', 'Secure address (' + location.protocol + ')');
+    var link = document.querySelector('link[rel="manifest"]'), man = null;
+    add(!!link, 'Page links a manifest' + (link ? ': ' + link.getAttribute('href') : ''));
+    if (link) {
+      try {
+        var r = await fetch(link.href, { cache: 'no-store' });
+        add(r.ok, 'Manifest downloads (status ' + r.status + ', ' + (r.headers.get('content-type') || 'no type') + ')');
+        man = await r.json();
+      } catch (e) { add(false, 'Manifest could not be read: ' + e.message); }
+    }
+    if (man) {
+      add(!!(man.name || man.short_name), 'Manifest has a name');
+      add(/standalone|minimal-ui|fullscreen/.test(man.display || ''), 'Display mode is ' + man.display);
+      var sc = new URL(man.scope || './', link.href), su = new URL(man.start_url || './', link.href);
+      add(su.href.indexOf(sc.href) === 0, 'Start page is inside the scope (' + su.pathname + ' in ' + sc.pathname + ')');
+      var have = { 192: false, 512: false };
+      for (var i = 0; i < (man.icons || []).length; i++) {
+        var ic = man.icons[i], u = new URL(ic.src, link.href);
+        try { var ir = await fetch(u.href, { cache: 'no-store' }); var okk = ir.ok; add(okk, 'Icon ' + ic.sizes + ' ' + (ic.purpose || 'any') + ' loads (' + ir.status + '): ' + u.pathname); if (okk && /(^| )192x192( |$)/.test(ic.sizes)) have[192] = true; if (okk && /(^| )512x512( |$)/.test(ic.sizes)) have[512] = true; } catch (e) { add(false, 'Icon ' + u.pathname + ' failed'); }
+      }
+      add(have[192] && have[512], 'A working 192 and 512 icon are both present');
+      if (man.prefer_related_applications) add(false, 'prefer_related_applications is true: the browser will not offer install');
+    }
+    try { var reg = await navigator.serviceWorker.getRegistration(); add(!!(reg && reg.active), 'Service worker is active' + (reg ? ' (scope ' + reg.scope + ')' : '')); } catch (e) { add(false, 'Service worker unavailable'); }
+    var sa = navigator.standalone === true || (matchMedia && matchMedia('(display-mode: standalone)').matches);
+    add(!sa, sa ? 'You are inside the installed app already' : 'You are in a normal browser tab');
+    var inst = null; try { inst = localStorage.getItem('m2028_installed') === '1'; } catch (e) {}
+    add(!inst, inst ? 'This browser says the app was installed here before: Brave shows "Open in app" instead of Install' : 'Not marked as installed');
+    add(!!window.__m2028Bip, window.__m2028Bip ? 'The browser offered the install prompt (the Install icon should be in the address bar)' : 'The browser has not offered the install prompt yet (wait a few seconds and reload once)');
+    var o = document.createElement('div'); o.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+    o.innerHTML = '<div style="background:#161923;color:#f3f4f8;border:1px solid rgba(255,255,255,.15);border-radius:16px;max-width:480px;width:100%;max-height:85vh;overflow:auto;padding:18px"><div style="font-size:17px;font-weight:700;margin-bottom:6px">Install check</div>' + rows.join('') + '<button style="margin-top:10px;width:100%;padding:10px;border-radius:10px;border:0;background:#4fd8a0;color:#06241a;font-weight:700;cursor:pointer">Close</button></div>';
+    o.querySelector('button').onclick = function () { o.remove(); };
+    document.body.appendChild(o);
+  }, 3500); });
 })();
 </script>
 </body>

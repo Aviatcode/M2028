@@ -1241,6 +1241,9 @@
             // Same sites in the same order: only update numbers and bars. Rebuilding the rows would
             // recreate every favicon <img>, which flashes blank while it reloads.
             topList.forEach(([dom, data], i) => {
+              const im = _rows[i].querySelector('.site-favicon');
+              const want = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(dom)}&sz=32`;
+              if (im && im.getAttribute('src') !== want) { im.style.display = ''; im.__fbDone = false; im.setAttribute('src', want); }
               const t = _rows[i].querySelector('.site-time');
               const b = _rows[i].querySelector('.site-bar-fill');
               const txt = formatDuration(data.seconds);
@@ -1253,7 +1256,8 @@
               const pct = Math.round((data.seconds / maxSec) * 100);
               const cat = data.category || 'other';
               const catPrefix = catPrefixMap[cat] || 'oth';
-              const fav = data.favicon || `https://www.google.com/s2/favicons?domain=${dom}&sz=32`;
+              // Always the icon of THIS domain. The icon saved while browsing can belong to the previously open tab, which put the wrong logo next to a name.
+              const fav = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(dom)}&sz=32`;
 
               return `
                 <div class="site-row">

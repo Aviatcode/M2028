@@ -6733,7 +6733,12 @@ document.addEventListener("click",function(e){
     var map = {}, myId = null;
     try { map = (typeof S !== 'undefined' && S.g) ? (S.g('screenTimeDevices') || {}) : {}; } catch (e) {}
     var linked = stLinked();
-    window.__stOther = !linked && !!stMyUid() && !!(liveStats && liveStats.totalSeconds);
+    // Requiring totalSeconds > 0 meant the "belongs to another account" hint (and its "Add it to this
+    // account instead" link) stayed completely hidden until this browser had accumulated real tracked
+    // time today — so a device that was only just set up, or hasn't been actively used yet today, showed
+    // no sign anything needed fixing. liveStats existing at all already means the extension is reporting
+    // for today, which is enough to surface the mismatch and the fix for it.
+    window.__stOther = !linked && !!stMyUid() && !!liveStats;
     if (!linked) liveStats = null;
     if (liveStats && liveStats.totalSeconds) {
       var dev = stDeviceTag(liveStats), ex = map[dev.id], known = !!(ex && !ex.rm);

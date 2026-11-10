@@ -6678,6 +6678,19 @@ document.addEventListener("click",function(e){
     var d = st && st.device;
     return (d && d.id) ? { id: d.id, name: d.name || 'Device' } : { id: 'legacy', name: 'This device' };
   }
+  // Same wording the extension uses, so a name looks the same wherever it is created.
+  function defaultDeviceName() {
+    try {
+      var ua = navigator.userAgent || '', plat = String((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+      var os = /Mac/i.test(plat) ? 'Mac' : /Win/i.test(plat) ? 'Windows PC' : /CrOS/i.test(ua) ? 'Chromebook' : /Linux|X11/i.test(plat) ? 'Linux PC' : 'Computer';
+      var br = /Edg\//.test(ua) ? 'Edge' : (navigator.brave ? 'Brave' : /Chrome/.test(ua) ? 'Chrome' : 'Browser');
+      return os + ' (' + br + ')';
+    } catch (e) { return 'Computer'; }
+  }
+  // GitHub and GitHub Pages (this app lives on aviatcode.github.io) count as work, even for sites saved earlier as "other".
+  function effCat(dom, cat) {
+    return /(^|\.)(github\.com|github\.io|github\.dev|githubusercontent\.com|gitlab\.com)$/.test(String(dom || '')) ? 'productive' : (cat || 'other');
+  }
   // Devices that haven't pushed in 30+ days are dropped the next time ANY device pushes.
   function pruneStaleDevices(map) {
     var now = Date.now(), out = {};
@@ -6719,12 +6732,14 @@ document.addEventListener("click",function(e){
       // Same number as before: only re-send every 5 minutes, so a bucket lost to a race heals itself.
       if (known && cl.date === today && (cl.totalSeconds || 0) >= tot && now - (cl.at || 0) < 300000) { _stPushTot = tot; return; }
       var doms = {}, ent = Object.entries(st.domains || {}).sort(function(a, b) { return (b[1].seconds || 0) - (a[1].seconds || 0); }).slice(0, 15);
-      ent.forEach(function(x) { doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: x[1].category || 'other', title: x[1].title || '' }; });
+      ent.forEach(function(x) { doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: effCat(x[0], x[1].category), title: x[1].title || '' }; });
       _stPushAt = now; _stPushTot = tot;
       map = Object.assign({}, map);
       var e = { name: dev.name, date: today, totalSeconds: tot, domains: doms, at: now, first: (cl && cl.first) || now };
       if (cl && cl.nm !== undefined) { e.nm = cl.nm; e.nmAt = cl.nmAt; }
       map[dev.id] = e;
+      // Older versions put every computer into one shared bucket called 'legacy'. Now that this one has its own id, retire it.
+      if (dev.id !== 'legacy' && map.legacy && !map.legacy.rm) map.legacy = { rm: 1, at: now, first: map.legacy.first || 0 };
       S.s('screenTimeDevices', map);
     } catch (e) {}
   }
@@ -6753,7 +6768,9 @@ document.addEventListener("click",function(e){
       }
     }
     var now = Date.now();
-    var all = liveDeviceIds(map).map(function(id) { return Object.assign({ id: id }, map[id]); })
+    var _ids = liveDeviceIds(map);
+    if (_ids.some(function(i) { return i !== 'legacy'; })) _ids = _ids.filter(function(i) { return i !== 'legacy'; });
+    var all = _ids.map(function(id) { return Object.assign({ id: id }, map[id]); })
       .filter(function(d) { return (now - (d.at || now)) <= STALE_DEVICE_MS; })
       .sort(function(a, b) { return ((a.first || 0) - (b.first || 0)) || (a.id < b.id ? -1 : 1); })
       .slice(0, MAX_DEVICES);
@@ -6764,10 +6781,10 @@ document.addEventListener("click",function(e){
       totalSeconds += d.totalSeconds || 0;
       Object.entries(d.domains || {}).forEach(function(x) {
         var k = x[0], v = x[1] || {};
-        var cur = domains[k] || { seconds: 0, title: v.title || k, category: v.category || 'other' };
+        var cur = domains[k] || { seconds: 0, title: v.title || k, category: effCat(k, v.category) };
         cur.seconds += v.seconds || 0;
         if (v.title) cur.title = v.title;
-        if (v.category) cur.category = v.category;
+        cur.category = effCat(k, v.category || cur.category);
         domains[k] = cur;
       });
     });
@@ -6811,18 +6828,34 @@ document.addEventListener("click",function(e){
       else window.removeDevice(b.getAttribute('data-id'));
     };
   }
-  window.renameDevice = function(id) {
+  window.renameDeviceTo = function(id, name) {
     try {
       var map = Object.assign({}, S.g('screenTimeDevices') || {}), d = map[id];
+      if (!d) return;
+      name = String(name || '').trim().slice(0, 24);
+      map[id] = Object.assign({}, d, { nm: name, nmAt: Date.now() });
+      S.s('screenTimeDevices', map);
+      if (id === window.__stMyId && name) {
+        window.postMessage({ from: 'M2028_PAGE', type: 'SET_DEVICE_NAME', name: name }, '*');
+        // on the extension's own page there is no content script to receive that message, so save it directly
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get(['m2028_device'], function(r) { var dv = r && r.m2028_device; if (dv && dv.id === id) chrome.storage.local.set({ m2028_device: Object.assign({}, dv, { named: true }) }); });
+          }
+          localStorage.setItem('m2028_dev_asked_' + id, '1');
+        } catch (e) {}
+      }
+      window.renderScreenTimeWidget();
+    } catch (e) {}
+  };
+  window.renameDevice = function(id) {
+    try {
+      var map = S.g('screenTimeDevices') || {}, d = map[id];
       if (!d) return;
       var cur = (d.nm && String(d.nm).trim()) || '';
       var name = prompt('Name for this device (leave empty to go back to "Device 1", "Device 2"…):', cur);
       if (name === null) return;
-      name = name.trim().slice(0, 24);
-      map[id] = Object.assign({}, d, { nm: name, nmAt: Date.now() });
-      S.s('screenTimeDevices', map);
-      if (id === window.__stMyId && name) window.postMessage({ from: 'M2028_PAGE', type: 'SET_DEVICE_NAME', name: name }, '*');
-      window.renderScreenTimeWidget();
+      window.renameDeviceTo(id, name);
     } catch (e) {}
   };
   window.removeDevice = function(id) {
@@ -6854,7 +6887,10 @@ document.addEventListener("click",function(e){
         if (liveStats && liveStats.totalSeconds) {
           var dev = res && res.m2028_device;
           if (!dev || !dev.id) {
-            dev = { id: 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: 'This device' };
+            dev = { id: 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: defaultDeviceName() };
+            try { chrome.storage.local.set({ m2028_device: dev }); } catch (e) {}
+          } else if (!dev.name || dev.name === 'This device') {
+            dev = Object.assign({}, dev, { name: defaultDeviceName() });
             try { chrome.storage.local.set({ m2028_device: dev }); } catch (e) {}
           }
           liveStats = Object.assign({}, liveStats, { device: dev });
@@ -6869,6 +6905,15 @@ document.addEventListener("click",function(e){
       } catch(e) {}
     }
 
+    if (liveStats && liveStats.totalSeconds && !(liveStats.device && liveStats.device.id)) {
+      var ld = null;
+      try { ld = JSON.parse(localStorage.getItem('m2028_device_local') || 'null'); } catch (e) {}
+      if (!ld || !ld.id) {
+        ld = { id: 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: defaultDeviceName() };
+        try { localStorage.setItem('m2028_device_local', JSON.stringify(ld)); } catch (e) {}
+      }
+      liveStats = Object.assign({}, liveStats, { device: ld });
+    }
     if (liveStats && liveStats.totalSeconds) {
       pushScreenTime(today, liveStats);      // this device tracks time (laptop + extension): share its bucket with the account
     }
@@ -6935,7 +6980,35 @@ document.addEventListener("click",function(e){
       }
     }
     renderDeviceBreakdown(stats.all, stats.myId);
+    askDeviceNameOnce(stats.all, stats.myId, liveStats && liveStats.device);
   };
+  // A computer that has never been named asks once, so two computers can't end up looking the same.
+  function askDeviceNameOnce(all, myId, dev) {
+    try {
+      if (!myId || myId === 'legacy' || window.__stAsking || document.hidden) return;
+      var map = S.g('screenTimeDevices') || {}, saved = map[myId];
+      if (!saved || saved.rm) return;                              // not shared to the account yet: ask on a later refresh
+      if (saved.nm && String(saved.nm).trim()) return;             // already named
+      if (dev && (dev.named || dev.asked)) return;
+      var k = 'm2028_dev_asked_' + myId;
+      if (localStorage.getItem(k)) return;
+      window.__stAsking = true;
+      setTimeout(function() {
+        try {
+          localStorage.setItem(k, '1');
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get(['m2028_device'], function(r) { var d = r && r.m2028_device; if (d && d.id === myId) chrome.storage.local.set({ m2028_device: Object.assign({}, d, { asked: true }) }); });
+          }
+          var name = prompt('New device detected.\n\nWhat should this computer be called in your Screen Time list? For example "My Mac" or "College laptop".\n(You can change it later with the pencil icon.)', (saved.name && saved.name !== 'This device') ? saved.name : defaultDeviceName());
+          if (name !== null) {
+            name = name.trim().slice(0, 24);
+            if (name) window.renameDeviceTo(myId, name);
+          }
+        } catch (e) {}
+        window.__stAsking = false;
+      }, 800);
+    } catch (e) {}
+  }
 
   // Hub Modal Handlers
   window.openExtensionHubModal = function(tab) {

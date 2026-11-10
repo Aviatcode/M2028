@@ -28,8 +28,9 @@
   const DEVICE_KEY = 'm2028_device';
   let deviceInfo = null;
   function defaultDeviceName() {
-    const ua = navigator.userAgent || '', plat = navigator.platform || '';
-    const os = /Mac/i.test(plat) ? 'Mac' : /Win/i.test(plat) ? 'Windows PC' : /Linux|X11/i.test(plat) ? 'Linux PC' : 'Computer';
+    const ua = navigator.userAgent || '';
+    const plat = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') + '';
+    const os = /Mac/i.test(plat) ? 'Mac' : /Win/i.test(plat) ? 'Windows PC' : /CrOS/i.test(ua) ? 'Chromebook' : /Linux|X11/i.test(plat) ? 'Linux PC' : 'Computer';
     const br = /Edg\//.test(ua) ? 'Edge' : (navigator.brave ? 'Brave' : /Chrome/.test(ua) ? 'Chrome' : 'Browser');
     return os + ' (' + br + ')';
   }
@@ -38,6 +39,7 @@
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) { cb({ id: '', name: defaultDeviceName() }); return; }
     chrome.storage.local.get([DEVICE_KEY], function (res) {
       let d = res && res[DEVICE_KEY];
+      if (d && d.id && (!d.name || d.name === 'This device')) { d = Object.assign({}, d, { name: defaultDeviceName() }); chrome.storage.local.set({ [DEVICE_KEY]: d }); }
       if (!d || !d.id || !d.name) {
         d = { id: 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8), name: defaultDeviceName() };
         chrome.storage.local.set({ [DEVICE_KEY]: d });
@@ -50,7 +52,7 @@
     name = String(name || '').trim().slice(0, 40);
     if (!name || typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
     ensureDevice(function (d) {
-      const next = { id: d.id, name: name };
+      const next = Object.assign({}, d, { id: d.id, name: name, named: true });
       chrome.storage.local.set({ [DEVICE_KEY]: next }, function () { deviceInfo = next; pushTimeToPage(true); });
     });
   }

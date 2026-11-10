@@ -1100,7 +1100,7 @@
           domain: domain,
           title: tab.title || (known && known.title) || '',
           favicon: tab.favIconUrl || (known && known.favicon) || '',
-          category: (known && known.category) || (resp.active && resp.active.domain === domain ? resp.active.category : '') || 'other',
+          category: (/(^|\.)(github\.com|github\.io|github\.dev|githubusercontent\.com)$/.test(domain) ? 'productive' : ((known && known.category) || (resp.active && resp.active.domain === domain ? resp.active.category : '') || 'other')),
           todayTotal: known ? (known.seconds || 0) : 0,
           startedAt: Date.now()
         };
@@ -1111,6 +1111,17 @@
     }
   }
 
+  // GitHub (and GitHub Pages such as aviatcode.github.io) is work: fixes sites already saved today as "other".
+  function fixDomainCategories(map) {
+    const out = {};
+    Object.keys(map || {}).forEach(function (d) {
+      const x = Object.assign({}, map[d]);
+      if (/(^|\.)(github\.com|github\.io|github\.dev|githubusercontent\.com)$/.test(d)) x.category = 'productive';
+      out[d] = x;
+    });
+    return out;
+  }
+
   function loadTrackerData() {
     sendBgMessage({ type: 'GET_TRACKER_DATA' }, function (resp) {
       if (!resp || !resp.success) return;
@@ -1118,7 +1129,7 @@
 
       const isToday = trackerRange === 'today';
       const totalSec = isToday ? resp.todayTotal : resp.weekTotal;
-      const domains = isToday ? resp.todayDomains : resp.weekDomains;
+      const domains = fixDomainCategories(isToday ? resp.todayDomains : resp.weekDomains);
       cachedDomainsData = domains || {};
       const active = resp.active;
 

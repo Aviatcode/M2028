@@ -18,6 +18,9 @@ const STORAGE_KEY_STOPWATCH = 'm2028_stopwatch_state';
 const CATEGORY_MAP = {
   // Productive / Work / Study / Dev
   'github.com': 'productive',
+  'github.io': 'productive',            // aviatcode.github.io (M2028 itself) and any GitHub Pages site
+  'github.dev': 'productive',
+  'githubusercontent.com': 'productive',
   'gitlab.com': 'productive',
   'stackoverflow.com': 'productive',
   'developer.mozilla.org': 'productive',
@@ -635,11 +638,17 @@ function getCategory(domain) {
   return 'other';
 }
 
+const MAX_FLUSH_GAP_SEC = 120;
+
 // Flush current tracking delta into chrome.storage.local
 async function flushTime() {
   // Idle (no mouse/keyboard) still counts while the focused tab is playing sound, so a daily limit works for videos and music.
   // A locked screen never counts.
-  const counting = isUserActive || (activeTabAudible && idleState !== 'locked');
+  // Ask Chrome for the real idle state instead of trusting the last event: when the PC sleeps or the screen locks,
+  // the 'idle' event can be missed and isUserActive would stay true for the whole night.
+  let liveIdle = idleState;
+  try { if (chrome.idle && chrome.idle.queryState) liveIdle = await chrome.idle.queryState(60); } catch (e) {}
+  const counting = (liveIdle === 'active' && isUserActive) || (activeTabAudible && liveIdle !== 'locked' && idleState !== 'locked');
   if (!currentDomain || !isWindowFocused || !counting) {
     sessionStartTime = Date.now();
     return;
@@ -648,6 +657,12 @@ async function flushTime() {
   const now = Date.now();
   const deltaSeconds = Math.floor((now - sessionStartTime) / 1000);
   if (deltaSeconds < 1) return;
+  // The heartbeat runs every 30 s, so a normal gap is well under 2 minutes. A bigger gap means the computer was asleep,
+  // hibernating or the browser was frozen: that time is not screen time, so drop it instead of adding it.
+  if (deltaSeconds > MAX_FLUSH_GAP_SEC) {
+    sessionStartTime = now;
+    return;
+  }
 
   sessionStartTime = now;
   const today = getTodayKey();
@@ -677,6 +692,7 @@ async function flushTime() {
     }
 
     stats[today].domains[domain].seconds += deltaSeconds;
+    stats[today].domains[domain].category = category;   // keep it current: category fixes now apply to sites already seen today
     if (currentTitle) stats[today].domains[domain].title = currentTitle;
     if (currentFavicon) stats[today].domains[domain].favicon = currentFavicon;
 
@@ -755,7 +771,22 @@ async function checkCurrentTab() {
 
 // Work out once whether the browser window is focused and the user is active,
 // so a service-worker restart never starts counting time in the background.
+// One-time cleanup (v2.5.6): earlier versions added the time the computer spent asleep / screen off to the day's total.
+// Today's number is wrong, so start today again from zero once. Only runs for a couple of days after this update.
+async function cleanSleepInflatedToday() {
+  try {
+    const r = await chrome.storage.local.get(['m2028_fix_sleepgap_1', STORAGE_KEY_STATS]);
+    if (r.m2028_fix_sleepgap_1) return;
+    await chrome.storage.local.set({ m2028_fix_sleepgap_1: Date.now() });
+    const today = getTodayKey();
+    if (today > '2026-11-13') return;
+    const stats = r[STORAGE_KEY_STATS] || {};
+    if (stats[today]) { delete stats[today]; await chrome.storage.local.set({ [STORAGE_KEY_STATS]: stats }); }
+  } catch (e) {}
+}
+
 async function initTrackingState() {
+  await cleanSleepInflatedToday();
   try {
     const win = await chrome.windows.getLastFocused();
     isWindowFocused = !!(win && win.focused);

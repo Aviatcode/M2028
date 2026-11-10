@@ -41,7 +41,16 @@
     communication: ['chat room', 'chat rooms', 'chatroom', 'random chat', 'video chat', 'group chat', 'instant messaging', 'messenger', 'direct message',
       'talk to strangers', 'chat with strangers', 'free chat', 'voice chat', 'join server', 'online users', 'chat now', 'start chatting']
   };
-  var NEED = { adult: 8, gambling: 9, entertainment: 9, social: 9, communication: 9 };
+  var NEED = { adult: 6, gambling: 7, entertainment: 9, social: 9, communication: 9 };
+
+  // Legal/age-gate disclaimers: near-universal on real adult & gambling sites (many are legally required to
+  // show them), almost never present on anything else. A hit here is treated as decisive on its own, the same
+  // way the RTA content-label meta tag already is below, so a thin new/unlisted site still gets caught even
+  // when its word count is too low to clear NEED on its own.
+  var DISCLAIMER_RE = {
+    adult: /\bmust be (at least )?(18|21)( years)?( old)?\s*(to\s+(enter|view|access|continue|browse|proceed))\b|18\s*u\.?s\.?c\.?\s*(section\s*)?2257|2257\s*statement|age[\s-]?verification|enter(ing)?\s+(this\s+)?(site|website)\s+(you\s+)?(confirm|certif|acknowledg)\w*|this\s+(site|website)\s+contains?\s+(adult|explicit|sexually\s+explicit)\s+(material|content)/i,
+    gambling: /responsible\s+gambl\w*|gambl(e|ing)\s+(responsibly|problem)|1-?800-?gambler|begambleaware|gamcare|gamstop|know\s+your\s+limit|play\s+responsibly|\bmust\s+be\s+(18|19|21)\+?\s*(years)?\s*(old\s*)?(or\s+older\s*)?to\s+(play|bet|gamble|wager)/i
+  };
   function compile(list) {
     return list.map(function (t) { return new RegExp('(^|[^a-z0-9])' + t.replace(/ /g, '\\s+') + '([^a-z0-9]|$)', 'g'); });
   }
@@ -87,33 +96,44 @@
     var headText = (document.title + ' ' + meta('description') + ' ' + meta('keywords') + ' ' + meta('og:title') + ' ' + heads + ' ' + location.pathname).toLowerCase();
     var bodyText = '';
     try { bodyText = ((document.body && document.body.innerText) || '').slice(0, 7000).toLowerCase(); } catch (e) {}
+    var combined = headText + ' ' + bodyText;
     var best = null;
     for (var i = 0; i < cats.length; i++) {
       var c = cats[i]; if (!RE[c]) continue;
       var st = structural(c, f, rating);
       if (st >= 100) return { cat: c, why: 'rating label', s: st };
+      if (DISCLAIMER_RE[c] && DISCLAIMER_RE[c].test(combined)) return { cat: c, why: 'legal disclaimer', s: 100 };
       var w = wordScore(c, headText, bodyText), total = w.s + st;
       if (total >= NEED[c] && w.head >= 1 && (!best || total > best.s)) best = { cat: c, why: 'page content', s: total };
     }
     return best;
   }
 
-  var cats = [], scans = 0, sent = false, lastHref = location.href, timer = null;
+  var cats = [], scans = 0, sent = false, lastHref = location.href, timer = null, pollTimer = null;
   function run() {
     if (sent || !cats.length || scans >= 8) return;
     scans++;
     var hit = scan(cats);
     if (!hit) return;
     sent = true;
+    clearInterval(pollTimer);
     try { chrome.runtime.sendMessage({ type: 'CONTENT_DETECTED', category: hit.cat, why: hit.why, score: hit.s, url: location.href }); } catch (e) {}
   }
   function later(ms) { clearTimeout(timer); timer = setTimeout(run, ms); }
+  // Belt-and-suspenders: some single-page sites render the real content well after load with no title
+  // change and no URL change (the two other triggers below), so also just look again every couple of
+  // seconds. Shares the same 8-scan cap as everything else, so this adds ~20s of extra coverage, not an
+  // unbounded loop.
+  function startPoll() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(function () { if (sent || scans >= 8) { clearInterval(pollTimer); return; } run(); }, 2500);
+  }
   function load() {
     try {
       chrome.storage.local.get('m2028_blocklist', function (r) {
         var list = (r && r.m2028_blocklist) || [];
         cats = Object.keys(WORDS).filter(function (c) { return list.some(function (b) { return b && b.target === 'category:' + c; }); });
-        if (cats.length) { scans = 0; sent = false; later(700); }
+        if (cats.length) { scans = 0; sent = false; later(700); startPoll(); }
       });
     } catch (e) {}
   }

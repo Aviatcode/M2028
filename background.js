@@ -594,6 +594,46 @@ let isUserActive = true;
 let idleState = 'active';        // 'active' | 'idle' | 'locked'
 let activeTabAudible = false;    // video/music playing in the focused tab
 
+// ---- Survive service-worker restarts ---------------------------------------------------------------------------------------
+// Chrome stops a Manifest V3 service worker after ~30 s without activity and starts a fresh one for the next event. The
+// variables above are then blank (no current site, a new start time), so the seconds since the last heartbeat were thrown
+// away and daily usage limits stopped counting. The tracker now saves where it is and picks up from there after a restart.
+const MAX_FLUSH_GAP_SEC = 120;
+const STORAGE_KEY_TRACKER = 'm2028_tracker_state';
+let _restoreP = null;
+function restoreTrackerOnce() {
+  if (!_restoreP) {
+    _restoreP = (async () => {
+      try {
+        const r = await chrome.storage.local.get(STORAGE_KEY_TRACKER);
+        const t = r && r[STORAGE_KEY_TRACKER];
+        if (!t || !t.domain) return;
+        currentDomain = t.domain;
+        currentTitle = t.title || '';
+        currentFavicon = t.favicon || '';
+        isWindowFocused = t.focused !== false;
+        isUserActive = t.active !== false;
+        idleState = t.idle || 'active';
+        activeTabAudible = !!t.audible;
+        const gapSec = (Date.now() - (Number(t.start) || 0)) / 1000;
+        // A normal gap (a missed heartbeat or two) is credited. A long one means sleep / hibernation: not credited.
+        sessionStartTime = (gapSec >= 0 && gapSec <= MAX_FLUSH_GAP_SEC) ? Number(t.start) : Date.now();
+      } catch (e) {}
+    })();
+  }
+  return _restoreP;
+}
+function persistTracker() {
+  try {
+    chrome.storage.local.set({
+      [STORAGE_KEY_TRACKER]: {
+        domain: currentDomain, title: currentTitle, favicon: currentFavicon, start: sessionStartTime,
+        focused: isWindowFocused, active: isUserActive, idle: idleState, audible: activeTabAudible, at: Date.now()
+      }
+    }).catch(() => {});
+  } catch (e) {}
+}
+
 // Helper: Get Today's Date String YYYY-MM-DD
 function getTodayKey() {
   const d = new Date();
@@ -638,19 +678,26 @@ function getCategory(domain) {
   return 'other';
 }
 
-const MAX_FLUSH_GAP_SEC = 120;
-
 // Flush current tracking delta into chrome.storage.local
 async function flushTime() {
+  await restoreTrackerOnce();
   // Idle (no mouse/keyboard) still counts while the focused tab is playing sound, so a daily limit works for videos and music.
   // A locked screen never counts.
   // Ask Chrome for the real idle state instead of trusting the last event: when the PC sleeps or the screen locks,
   // the 'idle' event can be missed and isUserActive would stay true for the whole night.
   let liveIdle = idleState;
-  try { if (chrome.idle && chrome.idle.queryState) liveIdle = await chrome.idle.queryState(60); } catch (e) {}
+  try {
+    if (chrome.idle && chrome.idle.queryState) {
+      liveIdle = await chrome.idle.queryState(60);
+      // Chrome's answer is the truth: this also repairs a flag that went stale because an idle/active event was missed.
+      idleState = liveIdle;
+      isUserActive = liveIdle === 'active';
+    }
+  } catch (e) {}
   const counting = (liveIdle === 'active' && isUserActive) || (activeTabAudible && liveIdle !== 'locked' && idleState !== 'locked');
   if (!currentDomain || !isWindowFocused || !counting) {
     sessionStartTime = Date.now();
+    persistTracker();
     return;
   }
 
@@ -661,6 +708,7 @@ async function flushTime() {
   // hibernating or the browser was frozen: that time is not screen time, so drop it instead of adding it.
   if (deltaSeconds > MAX_FLUSH_GAP_SEC) {
     sessionStartTime = now;
+    persistTracker();
     return;
   }
 
@@ -712,6 +760,10 @@ async function flushTime() {
         category: category,
         startedAt: sessionStartTime,
         todayTotal: stats[today].domains[domain].seconds
+      },
+      [STORAGE_KEY_TRACKER]: {
+        domain: currentDomain, title: currentTitle, favicon: currentFavicon, start: sessionStartTime,
+        focused: isWindowFocused, active: isUserActive, idle: idleState, audible: activeTabAudible, at: Date.now()
       }
     });
   } catch (err) {
@@ -728,6 +780,7 @@ async function updateActiveTarget(url, title, favicon) {
   currentTitle = title || '';
   currentFavicon = favicon || '';
   sessionStartTime = Date.now();
+  persistTracker();
 
   try {
     if (currentDomain) {
@@ -786,6 +839,7 @@ async function cleanSleepInflatedToday() {
 }
 
 async function initTrackingState() {
+  await restoreTrackerOnce();
   await cleanSleepInflatedToday();
   try {
     const win = await chrome.windows.getLastFocused();
@@ -798,8 +852,7 @@ async function initTrackingState() {
       isUserActive = state === 'active';
     } catch (e) {}
   }
-  await checkCurrentTab();
-  sessionStartTime = Date.now();
+  await checkCurrentTab();   // credits the time since the last heartbeat (restored above), then starts timing the current tab
 }
 
 // ============================================================
@@ -963,10 +1016,12 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // Window focus changed listener
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  await restoreTrackerOnce();
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
     await flushTime();
     isWindowFocused = false;
     sessionStartTime = Date.now();
+    persistTracker();
   } else {
     // Don't count the time the browser spent unfocused: reset the
     // session clock before flushing/rebasing on the newly focused tab.
@@ -980,15 +1035,18 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 if (chrome.idle) {
   chrome.idle.setDetectionInterval(60); // 60 seconds
   chrome.idle.onStateChanged.addListener(async (newState) => {
-    idleState = newState;
+    await restoreTrackerOnce();
     if (newState === 'active') {
+      idleState = newState;
       sessionStartTime = Date.now();
       isUserActive = true;
     } else {
-      await flushTime();
+      await flushTime();          // credit the time up to now, using the state we were in until this moment
+      idleState = newState;
       isUserActive = false;
       sessionStartTime = Date.now();
     }
+    persistTracker();
   });
 }
 
@@ -1189,9 +1247,14 @@ function nextPomoPhaseEnd(phaseEnd, lenMs) {
 }
 
 // Alarms: Heartbeat every 30 seconds to persist time continuously
-chrome.alarms.create('m2028_tracker_flush', { periodInMinutes: 0.5 });
+// Only create them when missing: creating an alarm that already exists restarts its countdown, and the worker wakes up (and
+// runs this line) often, so the heartbeat could be pushed back again and again.
+function ensureAlarm(name, info) {
+  try { chrome.alarms.get(name, (a) => { void chrome.runtime.lastError; if (!a) chrome.alarms.create(name, info); }); } catch (e) {}
+}
+ensureAlarm('m2028_tracker_flush', { periodInMinutes: 0.5 });
 // Keeps the toolbar badge (minutes left) counting down while the popup is closed
-chrome.alarms.create('m2028_pomo_tick', { periodInMinutes: 0.5 });
+ensureAlarm('m2028_pomo_tick', { periodInMinutes: 0.5 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'm2028_tracker_flush') {

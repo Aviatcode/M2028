@@ -186,7 +186,7 @@
   // =====================================================================
   // 1. Theme Engine: Dark, Light, Girl Mode (Pink) & Account Custom Palette
   // =====================================================================
-  const THEME_NEXT = { dark: 'light', light: 'pink', pink: 'dark' };
+  const THEME_NEXT = { dark: 'light', light: 'pink', pink: 'journal', journal: 'dark' }; // used only to recognise the website's theme names
   const THEME_ICON = { dark: '🌙', light: '☀️', pink: '<span class="leafico sk9" role="img" aria-label="Girl mode"></span>' };
 
   function applyCustomColors(colors, theme) {
@@ -359,6 +359,7 @@
     document.documentElement.setAttribute('data-theme', validTheme);
     document.body.classList.toggle('light', validTheme === 'light');
     document.body.classList.toggle('pink', validTheme === 'pink');
+    document.body.classList.toggle('journal', validTheme === 'journal');
 
     if (validTheme === 'light') {
       setRootFlags({ ucolors: true, ucac: true, redx: true, 'm-ready': false });
@@ -367,25 +368,15 @@
     } else if (validTheme === 'pink') {
       setRootFlags({ ucolors: false, ucac: false, redx: false, 'm-ready': true });
       if (typeof buildStickersCollage === 'function') buildStickersCollage();
+    } else if (validTheme === 'journal') {
+      setRootFlags({ ucolors: false, ucac: false, redx: false, 'm-ready': true });
+      const layer = document.getElementById('stkLayer');
+      if (layer) layer.innerHTML = '';
     } else {
       setRootFlags({ ucolors: true, ucac: true, redx: true, 'm-ready': true });
       const layer = document.getElementById('stkLayer');
       if (layer) layer.innerHTML = '';
     }
-    }
-
-    const themeBtn = themeChanged ? document.getElementById('themeToggleBtn') : null;
-    if (themeBtn) {
-      if (validTheme === 'light') {
-        themeBtn.title = 'Current: Light (Click for Girl Mode)';
-        themeBtn.innerHTML = '<span class="leafico sk9" role="img" aria-label="Girl mode"></span>';
-      } else if (validTheme === 'pink') {
-        themeBtn.title = 'Current: Girl Mode (Click for Dark Mode)';
-        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
-      } else {
-        themeBtn.title = 'Current: Dark (Click for Light Mode)';
-        themeBtn.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>';
-      }
     }
 
     // Check account holder's custom palette
@@ -413,13 +404,6 @@
     if (typeof updatePomoDisplay === 'function') {
       try { updatePomoDisplay(); } catch (_) {}
     }
-  }
-
-  function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') || 'dark';
-    const next = THEME_NEXT[current] || 'light';
-    S.set('theme', next);
-    paintTheme(next);
   }
 
   function initTheme() {
@@ -569,9 +553,6 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeNavMenu();
     });
-
-    const themeBtn = document.getElementById('themeToggleBtn');
-    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
     const openPlannerBtn = document.getElementById('openPlannerBtn');
     const openHubInsideBtn = document.getElementById('openHubInsideBtn');

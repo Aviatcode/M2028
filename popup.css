@@ -4426,3 +4426,39 @@ body .btn.b-gh:hover, body .btn.b-gh:focus-visible {
   background: color-mix(in srgb, var(--tx) 13%, var(--bg, transparent)) !important;
   border-color: color-mix(in srgb, var(--tx) 42%, transparent) !important;
 }
+
+
+/* =====================================================================
+   Journal theme (mirrors the website's Journal palette; the popup follows the website's theme)
+   ===================================================================== */
+body.journal, [data-theme="journal"] {
+  --bg: #17161a;
+  --s1: #1e1d22;
+  --s2: #26242b;
+  --s3: #322f38;
+  --b: rgba(236, 231, 224, 0.16);
+  --b2: rgba(236, 231, 224, 0.34);
+  --tx: #ece7e0;
+  --m2: #c9c3ba;
+  --mt: #948e86;
+  --ai: #e8a0b4;
+  --a2: rgba(232, 160, 180, 0.14);
+  --up: #a9b8e8;
+  --u2: rgba(169, 184, 232, 0.14);
+  --bd: #e8b48a;
+  --d2: rgba(232, 180, 138, 0.14);
+  --rd: #e58a8a;
+  --r2: rgba(229, 138, 138, 0.14);
+  --gd: #e8d08a;
+  --wn: #e8c07a;
+  --w2: rgba(232, 192, 122, 0.14);
+  --dn: #e8a0b4;
+  --card-bg: transparent;
+  --card-bd: rgba(236, 231, 224, 0.34);
+  --card-sh: none;
+  --pill-bg: transparent;
+  --pill-tx: #ece7e0;
+  --nav-bg: #17161a;
+  --wdot: transparent;
+}
+body.journal { background: var(--bg); color: var(--tx); }

@@ -8173,6 +8173,7 @@ document.addEventListener("click",function(e){
       var main = plan.files.filter(function (f) { return f.name !== 'manifest.json'; }), man = plan.files.filter(function (f) { return f.name === 'manifest.json'; });
       var all = main.concat(man);   // manifest last: a half-finished update never shows the new version
       for (var i = 0; i < all.length; i++) { say('Writing ' + (i + 1) + ' / ' + all.length + '\u2026'); await writeFile(h, all[i].name, all[i].data); }
+      try { var wsig = sigOf(plan.files); if (wsig) localStorage.setItem(SIG_KEY, wsig); } catch (e) {}
       if (isInstalled()) {
         try { localStorage.setItem('m2028_ext_updchk', JSON.stringify({ v: latest, at: Date.now(), f: h.name })); } catch (e) {}
         try { window.postMessage({ from: 'M2028_PAGE', type: 'EXT_RELOAD' }, '*'); } catch (e) {}
@@ -8217,6 +8218,26 @@ document.addEventListener("click",function(e){
 
   // ---------- popup (opened from the Extension button on the main page) ----------
   var latest = null, popOpen = false;
+  // The updater used to look ONLY at the version number in manifest.json, so changing popup.js / content.js / popup.css without bumping
+  // the version never counted as an update. latestSig is a fingerprint of the extension's own files; when it differs from the one
+  // saved after the last update, the extension counts as out of date even if the version number is unchanged.
+  var SIG_FILES = ['manifest.json', 'background.js', 'content.js', 'detect.js', 'wallpaper-bridge.js', 'popup.html', 'popup.js', 'popup.css', 'block-ui.js'];
+  var SIG_KEY = 'm2028_ext_sig', latestSig = null;
+  function sigOf(list) {
+    return list.filter(function (f) { return f && SIG_FILES.indexOf(f.name) > -1; })
+      .sort(function (a, b) { return a.name < b.name ? -1 : 1; })
+      .map(function (f) { return f.name + ':' + crc32(f.data).toString(36); }).join('|');
+  }
+  function fetchSig() {
+    return Promise.all(SIG_FILES.map(function (n) { return fetchFile(n).then(function (d) { return d ? { name: n, data: d } : null; }); }))
+      .then(function (l) { return sigOf(l) || null; }).catch(function () { return null; });
+  }
+  function sigStale() {
+    if (!latestSig) return false;
+    var st = null; try { st = localStorage.getItem(SIG_KEY); } catch (e) {}
+    return st !== latestSig;
+  }
+  function autoKey() { return String(latest) + '|' + (latestSig || ''); }
   // Paste your store links here once the extension is published; the popup then offers a one-click store install with automatic updates.
   var STORE_URLS = { edge: '', chrome: '' };   // e.g. edge: 'https://microsoftedge.microsoft.com/addons/detail/...'
   var UA = navigator.userAgent;
@@ -8257,12 +8278,16 @@ document.addEventListener("click",function(e){
   function extHasNew() {
     if (!isInstalled() || !latest) return false;
     var es = window.m2028ExtState || {};
-    if (es.version) return newer(latest, es.version);
-    return Date.now() - pageT0 > 12000;   // installed but never reported a version: an old build
+    if (es.version && newer(latest, es.version)) return true;
+    if (!es.version && Date.now() - pageT0 > 12000) return true;   // installed but never reported a version: an old build
+    return sigStale();                      // same version number, but the files on the site are different
   }
   function fetchLatest() {
     return fetch(new URL('manifest.json', location.href).href, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (m) { latest = m && m.version || null; }).catch(function () { latest = null; });
+      .then(function (m) { latest = m && m.version || null; })
+      .then(function () { return latest ? fetchSig() : null; })
+      .then(function (g) { latestSig = g; })
+      .catch(function () { latest = null; });
   }
   var POP_CSS = '#xdlOv{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}' +
     '#xdlBox{width:min(460px,100%);max-height:90vh;overflow:auto;background:var(--s1,#17181c);color:var(--tx,#eee);border:1px solid var(--b2,rgba(128,128,128,.3));border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);font-size:13px;line-height:1.5}' +
@@ -8390,7 +8415,7 @@ document.addEventListener("click",function(e){
   setTimeout(function () { fetchLatest().then(syncExtBtn); }, 4500);
   // Auto-update: when the extension is older than the site AND the folder is already allowed, update with no click and no popup.
   var _permHandle = null, _gestureArmed = false;
-  function markAuto() { try { localStorage.setItem('m2028_ext_auto', JSON.stringify({ v: latest, at: Date.now() })); } catch (e) {} }
+  function markAuto() { try { localStorage.setItem('m2028_ext_auto', JSON.stringify({ v: autoKey(), at: Date.now() })); } catch (e) {} }
   // Chrome forgets folder permission when the browser restarts. The first click you make after that asks once
   // ("Allow on every visit" makes it permanent), then the update runs by itself.
   function armPermissionGesture(h) {
@@ -8420,7 +8445,7 @@ document.addEventListener("click",function(e){
   function autoUpdate() {
     if (!oneClickOK() || UNSUPPORTED || busy || popOpen || !extHasNew()) return;
     var g = null; try { g = JSON.parse(localStorage.getItem('m2028_ext_auto')); } catch (e) {}
-    if (g && g.v === latest && Date.now() - g.at < 600000) return;     // tried this version a moment ago: do not loop
+    if (g && g.v === autoKey() && Date.now() - g.at < 600000) return;     // tried this version a moment ago: do not loop
     getDirHandle().then(function (h) {
       if (!h) return;
       return hasPerm(h).then(function (ok) {

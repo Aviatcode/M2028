@@ -215,19 +215,6 @@
           window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_PROFILE' }, '*');
         }
       }
-      // Theme chosen in the extension (popup / options): show it on the open website right away.
-      // (Changes copied from a website tab carry m_themeSrc / m_themeAt and are ignored here.)
-      if ((changes.theme || changes.m_theme) && !changes.m_themeAt && !changes.m_themeSrc) {
-        const nt = (changes.theme && changes.theme.newValue !== undefined) ? changes.theme.newValue : (changes.m_theme && changes.m_theme.newValue);
-        if (typeof nt === 'string' && nt) {
-          const at = Date.now();
-          try {
-            window.localStorage.setItem('m_theme', JSON.stringify(nt));
-            window.localStorage.setItem('m_themeAt', String(at));
-          } catch (e) {}
-          window.postMessage({ from: 'M2028_EXT', type: 'THEME_UPDATE', theme: nt, at: at }, '*');
-        }
-      }
       if (changes.m_stickers || changes.stickers) {
         const stk = (changes.m_stickers && changes.m_stickers.newValue !== undefined) ? changes.m_stickers.newValue : (changes.stickers && changes.stickers.newValue);
         if (stk !== undefined) {
@@ -245,7 +232,7 @@
   function initialSync() {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
 
-    chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pomSessions', 'm_pd', 'm_hubNotes', 'm_hubNotesTs', 'theme', 'm_theme', 'm_themeAt'], function (res) {
+    chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pomSessions', 'm_pd', 'm_hubNotes', 'm_hubNotesTs'], function (res) {
       let pageSt = null;
       try {
         const raw = window.localStorage.getItem('pom_state') || window.localStorage.getItem('m_pomLive');
@@ -311,21 +298,8 @@
         const syncObj = {};
         if (themeRaw) {
           const t = JSON.parse(themeRaw);
-          const extT = res.theme || res.m_theme || null;
-          const pageAt = Number(window.localStorage.getItem('m_themeAt')) || 0;
-          const extAt = Number(res.m_themeAt) || 0;
-          if (extT && extT !== t && extAt > pageAt) {
-            // The theme was changed in the extension after the website last changed it: the extension wins.
-            try {
-              window.localStorage.setItem('m_theme', JSON.stringify(extT));
-              window.localStorage.setItem('m_themeAt', String(extAt));
-            } catch (e) {}
-            window.postMessage({ from: 'M2028_EXT', type: 'THEME_UPDATE', theme: extT, at: extAt }, '*');
-          } else {
-            syncObj.theme = t;
-            syncObj.m_theme = t;
-            if (extT !== t) { syncObj.m_themeAt = pageAt || Date.now(); syncObj.m_themeSrc = 'page'; }
-          }
+          syncObj.theme = t;
+          syncObj.m_theme = t;
         }
         if (customRaw) {
           const cc = JSON.parse(customRaw);
@@ -584,10 +558,6 @@
           const v = JSON.parse(raw);
           setObj[k] = v;
           setObj['m_' + k] = v;
-          if (k === 'theme') {
-            setObj.m_themeAt = Number(readPage('themeAt')) || Date.now();
-            setObj.m_themeSrc = 'page';
-          }
         } catch (e) {}
       });
 
@@ -648,8 +618,53 @@
     }
   }
 
+  // Wallpaper + Journal paper background: the website keeps them in localStorage and never announces changes, so mirror them here.
+  // Stored under the account id (the key names the popup reads), and only when the page tags the wallpaper as that account's.
+  const wpSig = { wp: null, jbg: null };
+  let wpEmptyPolls = 0;
+  function mirrorWallpaper() {
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
+    try {
+      let uid = '';
+      try {
+        const t = JSON.parse(window.localStorage.getItem(SUPA_TOKEN_KEY) || 'null');
+        if (t && t.user && t.user.id) uid = String(t.user.id);
+      } catch (e) {}
+      if (!uid) uid = window.localStorage.getItem('m2028_uid') || '';
+
+      const jbg = window.localStorage.getItem('m_journalBg') || 'plain';
+      if (jbg !== wpSig.jbg) { wpSig.jbg = jbg; chrome.storage.local.set({ m_journalBg: jbg, journalBg: jbg }); }
+
+      if (!uid) return;
+      const wp = window.localStorage.getItem('m_wallpaper') || '';
+      const dimRaw = window.localStorage.getItem('m_wpDim');
+      const owner = window.localStorage.getItem('m2028_wp_owner') || '';
+      const okWp = /^data:image\//.test(wp) && owner === uid;
+      const sig = okWp ? (wp.length + ':' + wp.slice(-48) + '|' + dimRaw) : '';
+      if (sig === wpSig.wp) { wpEmptyPolls = 0; return; }
+      const d = parseFloat(dimRaw);
+      const dim = isNaN(d) ? 0.3 : d;
+      if (okWp) {
+        wpEmptyPolls = 0;
+        wpSig.wp = sig;
+        const o = {}; o['m2028_wallpaper_' + uid] = wp; o['m2028_wpDim_' + uid] = dim;
+        chrome.storage.local.set(o);
+      } else if (wpSig.wp && !wp && (owner === uid || owner === '')) {
+        // the wallpaper was removed on the website (wait two polls so an account switch in progress does not erase it)
+        if (++wpEmptyPolls >= 2) {
+          wpEmptyPolls = 0; wpSig.wp = '';
+          chrome.storage.local.remove(['m2028_wallpaper_' + uid, 'm2028_wpDim_' + uid]);
+        }
+      } else {
+        wpSig.wp = sig === '' ? (wpSig.wp || '') : wpSig.wp;
+      }
+    } catch (e) {}
+  }
+
   setInterval(mirrorFromPage, 2000);
   mirrorFromPage();
+  setInterval(mirrorWallpaper, 2000);
+  mirrorWallpaper();
 
   // 7. Local backup so uninstalling/reinstalling the extension does not lose tracker history
   // or "Tasks of Today". The copy lives in the website's localStorage, which Chrome keeps.

@@ -4462,3 +4462,8 @@ body.journal, [data-theme="journal"] {
   --wdot: transparent;
 }
 body.journal { background: var(--bg); color: var(--tx); }
+
+/* Journal paper page (follows the website's Journal background choice) */
+body.journal.jbg-dots { background-image: radial-gradient(var(--b2) 1px, transparent 1.3px); background-size: 9px 9px; background-color: var(--bg); }
+body.journal.jbg-grid { background-image: linear-gradient(var(--b2) 1px, transparent 1px), linear-gradient(90deg, var(--b2) 1px, transparent 1px); background-size: 7px 7px; background-color: var(--bg); }
+body.journal.jbg-lines { background-image: repeating-linear-gradient(180deg, transparent 0 8px, var(--b2) 8px 9px); background-color: var(--bg); }

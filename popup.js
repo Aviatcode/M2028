@@ -379,6 +379,8 @@
     }
     }
 
+    if (themeChanged) { try { initWallpaperSync(); } catch (e) {} }
+
     // Check account holder's custom palette
     S.get('customColors', null, function (custom) {
       if (typeof custom === 'string') {
@@ -2909,8 +2911,24 @@
     });
   }
 
+  const JBG_IDS = ['plain', 'dots', 'grid', 'lines', 'quote1', 'quote2'];
+  function applyJournalPaper(on) {
+    const b = document.body;
+    JBG_IDS.forEach(function (id) { b.classList.remove('jbg-' + id); });
+    if (!on) return;
+    S.get('journalBg', 'plain', function (v) {
+      if (document.documentElement.getAttribute('data-theme') !== 'journal') return;
+      v = (typeof v === 'string' && JBG_IDS.indexOf(v) >= 0) ? v : 'plain';
+      JBG_IDS.forEach(function (id) { b.classList.remove('jbg-' + id); });
+      b.classList.add('jbg-' + v);
+    });
+  }
   function initWallpaperSync() {
     clearLegacyWallpaper();
+    // Same rules as the website: a photo wallpaper only in Dark / Light, a paper page in Journal, nothing in Girl mode.
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    applyJournalPaper(theme === 'journal');
+    if (theme === 'pink' || theme === 'journal') { applyWallpaperSync('', 0.3); return; }
     const uid = wallpaperUid();
     if (!uid) { applyWallpaperSync('', 0.3); return; }
     S.get(wallpaperKey(uid), '', function (wp) {
@@ -3025,7 +3043,7 @@
             renderPomSubList();
           }
         }
-        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim || Object.keys(changes).some(function (k) { return k.indexOf('m2028_wallpaper_') === 0 || k.indexOf('m2028_wpDim_') === 0; })) {
+        if (changes.m_journalBg || changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim || Object.keys(changes).some(function (k) { return k.indexOf('m2028_wallpaper_') === 0 || k.indexOf('m2028_wpDim_') === 0; })) {
           initWallpaperSync();
         }
       });
@@ -3047,7 +3065,7 @@
             renderPomSubList();
           }
         } catch (_) {}
-      } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim' || (e.key && (e.key.indexOf('m2028_wallpaper_') === 0 || e.key.indexOf('m2028_wpDim_') === 0))) {
+      } else if (e.key === 'm_journalBg' || e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim' || (e.key && (e.key.indexOf('m2028_wallpaper_') === 0 || e.key.indexOf('m2028_wpDim_') === 0))) {
         initWallpaperSync();
       }
     });
@@ -4437,7 +4455,7 @@
   window.addEventListener('storage', function (e) {
     if (e.key === 'm_theme' || e.key === 'm_customColors' || e.key === 'theme') {
       initTheme();
-    } else if (e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim' || (e.key && (e.key.indexOf('m2028_wallpaper_') === 0 || e.key.indexOf('m2028_wpDim_') === 0))) {
+    } else if (e.key === 'm_journalBg' || e.key === 'm_wallpaper' || e.key === 'wallpaper' || e.key === 'm_wpDim' || e.key === 'wpDim' || (e.key && (e.key.indexOf('m2028_wallpaper_') === 0 || e.key.indexOf('m2028_wpDim_') === 0))) {
       initWallpaperSync();
     } else if (e.key === 'm_habs' || e.key === 'm_hd') {
       renderHabits();
@@ -4460,7 +4478,7 @@
         if (changes.m_theme || changes.theme || changes.m_customColors || changes.customColors) {
           initTheme();
         }
-        if (changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim || Object.keys(changes).some(function (k) { return k.indexOf('m2028_wallpaper_') === 0 || k.indexOf('m2028_wpDim_') === 0; })) {
+        if (changes.m_journalBg || changes.m_wallpaper || changes.wallpaper || changes.m_wpDim || changes.wpDim || Object.keys(changes).some(function (k) { return k.indexOf('m2028_wallpaper_') === 0 || k.indexOf('m2028_wpDim_') === 0; })) {
           initWallpaperSync();
         }
         if (changes.m_habs || changes.m_hd) {

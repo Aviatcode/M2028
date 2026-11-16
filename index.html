@@ -3386,19 +3386,18 @@ if(r){new MutationObserver(clean).observe(r,{childList:true,subtree:true});clean
 <script id="m2028-stickers-js">
 (function(){
 var L=document.createElement("div");L.id="stkLayer";L.setAttribute("aria-hidden","true");document.body.appendChild(L);
-var imgs=null,key="",tm=null,failed=false,usingFB=false,FB=[["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCc+PGNpcmNsZSBjeD0nNTAnIGN5PScyMicgcj0nMTUnIGZpbGw9JyNmN2E4YzQnLz48Y2lyY2xlIGN4PSc3NycgY3k9JzQyJyByPScxNScgZmlsbD0nI2Y3YThjNCcvPjxjaXJjbGUgY3g9JzY3JyBjeT0nNzQnIHI9JzE1JyBmaWxsPScjZjdhOGM0Jy8+PGNpcmNsZSBjeD0nMzMnIGN5PSc3NCcgcj0nMTUnIGZpbGw9JyNmN2E4YzQnLz48Y2lyY2xlIGN4PScyMycgY3k9JzQyJyByPScxNScgZmlsbD0nI2Y3YThjNCcvPjxjaXJjbGUgY3g9JzUwJyBjeT0nNTInIHI9JzEzJyBmaWxsPScjZmZkMzZiJy8+PC9nPjwvc3ZnPg==", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PHBhdGggc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgZmlsbD0nI2ZmZDM2YicgZD0nTTUwIDhsMTIgMjggMzAgMy0yMyAyMCA3IDMwLTI2LTE2LTI2IDE2IDctMzAtMjMtMjAgMzAtM3onLz48L3N2Zz4=", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PHBhdGggc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgZmlsbD0nI2VmNmY4ZicgZD0nTTUwIDg4QzE0IDYyIDggNDAgMjIgMjRjMTEtMTIgMjQtNiAyOCA2IDQtMTIgMTctMTggMjgtNiAxNCAxNiA4IDM4LTI4IDY0eicvPjwvc3ZnPg==", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCc+PHBhdGggZmlsbD0nIzhmYzk4YScgZD0nTTE4IDgyQzE0IDQwIDQwIDE0IDg2IDE0YzQgNDYtMjIgNzItNjAgNzB6Jy8+PHBhdGggZD0nTTIyIDc4QzQyIDU2IDU4IDQwIDc4IDIyJyBzdHJva2U9JyM0ZjlhNTgnIHN0cm9rZS13aWR0aD0nNCcgZmlsbD0nbm9uZScvPjwvZz48L3N2Zz4=", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PHBhdGggc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgZmlsbD0nIzliZDNmZicgZD0nTTUwIDZjNCAyNCAxNCAzNCA0NCA0NC0zMCAxMC00MCAyMC00NCA0NC00LTI0LTE0LTM0LTQ0LTQ0IDMwLTEwIDQwLTIwIDQ0LTQ0eicvPjwvc3ZnPg==", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PHBhdGggc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgZmlsbD0nI2Y2ZGQ4YycgZD0nTTY0IDEwQzQwIDEwIDIyIDI4IDIyIDUyczE4IDQyIDQyIDQyYzggMCAxNS0yIDIyLTZDNTggODggNDQgNzIgNDQgNTJTNTggMTYgNjQgMTB6Jy8+PC9zdmc+", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgZmlsbD0nI2VhZjNmZic+PGNpcmNsZSBjeD0nMzQnIGN5PSc1OCcgcj0nMjAnLz48Y2lyY2xlIGN4PSc1NicgY3k9JzQ2JyByPScyNicvPjxjaXJjbGUgY3g9Jzc4JyBjeT0nNjAnIHI9JzE4Jy8+PHJlY3QgeD0nMzAnIHk9JzU4JyB3aWR0aD0nNTAnIGhlaWdodD0nMjAnIHJ4PSc4Jy8+PC9nPjwvc3ZnPg==", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCc+PGVsbGlwc2UgY3g9JzMwJyBjeT0nMzgnIHJ4PScyNCcgcnk9JzIyJyBmaWxsPScjYzlhN2YwJy8+PGVsbGlwc2UgY3g9JzcwJyBjeT0nMzgnIHJ4PScyNCcgcnk9JzIyJyBmaWxsPScjYzlhN2YwJy8+PGVsbGlwc2UgY3g9JzM0JyBjeT0nNjgnIHJ4PScxNycgcnk9JzE2JyBmaWxsPScjOWJkM2ZmJy8+PGVsbGlwc2UgY3g9JzY2JyBjeT0nNjgnIHJ4PScxNycgcnk9JzE2JyBmaWxsPScjOWJkM2ZmJy8+PHJlY3QgeD0nNDYnIHk9JzI0JyB3aWR0aD0nOCcgaGVpZ2h0PSc1Nicgcng9JzQnIGZpbGw9JyM1YTQ2MzYnLz48L2c+PC9zdmc+", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCc+PHBhdGggZmlsbD0nI2Y0ZWZlNicgZD0nTTE4IDM2aDU2djMwYTIwIDIwIDAgMCAxLTIwIDIwSDM4YTIwIDIwIDAgMCAxLTIwLTIweicvPjxwYXRoIGZpbGw9J25vbmUnIGQ9J003NCA0NGg4YTEwIDEwIDAgMCAxIDAgMjJoLTgnLz48cGF0aCBmaWxsPSdub25lJyBzdHJva2U9JyNjODliNmQnIGQ9J00zNCAyMmMtNC02IDQtOCAwLTE0TTUwIDIyYy00LTYgNC04IDAtMTQnLz48L2c+PC9zdmc+", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcgdHJhbnNmb3JtPSdyb3RhdGUoNDAgNTAgNTApJz48cmVjdCB4PSczOCcgeT0nNicgd2lkdGg9JzI0JyBoZWlnaHQ9JzY2JyByeD0nNCcgZmlsbD0nI2ZmZDM2YicvPjxwYXRoIGZpbGw9JyNmMmM5YTAnIGQ9J00zOCA3MmgyNGwtMTIgMjJ6Jy8+PHJlY3QgeD0nMzgnIHk9JzYnIHdpZHRoPScyNCcgaGVpZ2h0PScxMicgcng9JzQnIGZpbGw9JyNlZjhmOGYnLz48L2c+PC9zdmc+", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJyB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCc+PGcgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzknIHBhaW50LW9yZGVyPSdzdHJva2UnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCc+PHBhdGggZmlsbD0nI2I4ZTZiMCcgZD0nTTEwIDIyaDM4djYySDEweicvPjxwYXRoIGZpbGw9JyM4ZmM5OGEnIGQ9J001MiAyMmgzOHY2Mkg1MnonLz48cGF0aCBmaWxsPSdub25lJyBkPSdNMzAgMzRoMTBNMzAgNDZoMTBNNjIgMzRoMTBNNjIgNDZoMTAnLz48L2c+PC9zdmc+", 1], ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMjAgNTYnIHdpZHRoPScxMjAnIGhlaWdodD0nNTYnPjxnIHN0cm9rZT0nI2ZmZicgc3Ryb2tlLXdpZHRoPSc5JyBwYWludC1vcmRlcj0nc3Ryb2tlJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJyBzdHJva2UtbGluZWNhcD0ncm91bmQnIHRyYW5zZm9ybT0ncm90YXRlKC04IDYwIDI4KSc+PHJlY3QgeD0nNicgeT0nMTQnIHdpZHRoPScxMDgnIGhlaWdodD0nMjgnIHJ4PSczJyBmaWxsPScjZjdhOGM0Jy8+PHBhdGggZmlsbD0nbm9uZScgc3Ryb2tlPScjZmZmJyBzdHJva2Utd2lkdGg9JzUnIHN0cm9rZS1kYXNoYXJyYXk9JzggMTAnIGQ9J00xMiAyOGg5NicvPjwvZz48L3N2Zz4=", 2.1429]];
+var imgs=null,key="",tm=null;
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function load(){var real=window.__STK&&window.__STK.length;if(imgs&&!(usingFB&&real))return imgs;var d=real?window.__STK:FB;usingFB=!real;
+function load(){if(imgs)return imgs;var d=window.__STK||[];
 imgs=d.map(function(x){var i=new Image();i.src=x[0];i.alt="";i.decoding="async";i.draggable=false;i._a=x[1];return i});return imgs}
 var asked=0;
-function need(){if(asked)return;asked=1;function fail(){if(window.__STK&&window.__STK.length)return;failed=true;sched();try{if(!window.__stkFBwarn){window.__stkFBwarn=1;banner("stickers.js could not be loaded — showing built-in stickers")}}catch(e){}}
-function go(){var x=document.createElement("script");x.src="stickers.js";x.async=true;x.onload=function(){key="";imgs=null;sched()};x.onerror=fail;document.head.appendChild(x);setTimeout(fail,6000)}
+function need(){if(asked)return;asked=1;function go(){var x=document.createElement("script");x.src="stickers.js";x.async=true;x.onload=sched;document.head.appendChild(x)}
 function idle(){window.requestIdleCallback?requestIdleCallback(go,{timeout:2500}):setTimeout(go,300)}
 document.readyState==="complete"?idle():addEventListener("load",idle)}
 function build(){
 var pink=document.body.classList.contains("pink")||document.body.classList.contains("journal"),wp=document.documentElement.classList.contains("haswp");
 var W=innerWidth,H=innerHeight,k=pink?(wp?"w":"d")+W+"x"+Math.round(H/120):"";
-if(k===key)return;if(pink&&!window.__STK&&!failed){need();return}key=k;L.textContent="";if(!pink)return;
+if(k===key)return;if(pink&&!window.__STK){need();return}key=k;L.textContent="";if(!pink)return;
 var I=load();if(!I.length)return;
 var R=rng(2028),N=Math.max(22,Math.min(80,Math.round(W*H/25000)));
 var cell=Math.sqrt(W*H/N),cols=Math.ceil(W/cell)+1,rows=Math.ceil(H/cell)+1,deck=[],items=[],f=document.createDocumentFragment();
@@ -3406,7 +3405,7 @@ function next(){if(!deck.length){deck=I.slice();for(var i=deck.length-1;i>0;i--)
 for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
 var cx=c*cell+(R()-.5)*cell*.7,cy=r*cell+(R()-.5)*cell*.7;
 
-var im=next(),a=im._a,m=Math.min(cell*.96*(.8+R()*.4),168)*(usingFB?.56:1),w=a>=1?m:m*a,h=w/a,el=im.cloneNode();
+var im=next(),a=im._a,m=Math.min(cell*.96*(.8+R()*.4),168),w=a>=1?m:m*a,h=w/a,el=im.cloneNode();
 el.style.cssText="left:"+(cx-w/2).toFixed(1)+"px;top:"+(cy-h/2).toFixed(1)+"px;width:"+w.toFixed(1)+"px;--r:"+((R()-.5)*32).toFixed(1)+"deg";
 items.push([Math.hypot(cx-W/2,cy-H/2),el])}
 if(wp)items.sort(function(a,b){return a[0]-b[0]}).splice(0,5);items.forEach(function(x){f.appendChild(x[1])});L.appendChild(f)}
@@ -14502,84 +14501,96 @@ function drawFileCard(g,e){
 })();
 
 </script>
-<style id="m2028-journal-paper">
-/* ===== Journal · soft-touch, high-GSM paper =====
-   Everything in the Journal theme is made of the same stock: a fine matte tooth, faint fibres, a soft sheen, and edges that
-   have real thickness (a lit top edge, a shaded bottom edge, layered contact shadows). Raised things are sheets lying on the
-   page, pressed things (inputs, switches, pressed buttons) are debossed into it.                                            */
-html body.journal{
-  --pp-raise:color-mix(in srgb,var(--bg,#16161a) 90%,#fff 10%);
-  --pp-sunk:color-mix(in srgb,var(--bg,#16161a) 83%,#000 17%);
-  --pp-line:color-mix(in srgb,var(--tx,#eee) 17%,transparent);
-  --pp-hi:rgba(255,255,255,.13);
-  --pp-lo:rgba(0,0,0,.30);
-  --pp-sheen:linear-gradient(158deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,0) 44%,rgba(0,0,0,.09) 100%);
-  --pp-tex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .18' numOctaves='2' seed='23' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .32 0 0 0 -.165'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0/320px 320px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .18' numOctaves='2' seed='31' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 .32 0 0 -.17'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 90px 60px/320px 320px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.62 0 0 0 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0/180px 180px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0.62 0 0 -.33'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 70px 50px/180px 180px;
-  --pp-grains:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.62 0 0 0 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0/180px 180px,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0.62 0 0 -.33'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 70px 50px/180px 180px;
-  --pp-paper:var(--pp-sheen),var(--pp-tex);
-  --pp-img:var(--pp-sheen),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .18' numOctaves='2' seed='23' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .32 0 0 0 -.165'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .18' numOctaves='2' seed='31' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 .32 0 0 -.17'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.62 0 0 0 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0.62 0 0 -.33'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --pp-size:auto,320px 320px,320px 320px,180px 180px,180px 180px;
-  --pp-pos:0 0,0 0,90px 60px,0 0,70px 50px;
-  --pp-gimg:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.62 0 0 0 -.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0.62 0 0 -.33'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  --pp-gsize:180px 180px,180px 180px;
-  --pp-gpos:0 0,70px 50px;
-  --pp-shadow:0 1px 1px rgba(0,0,0,.30),0 3px 6px rgba(0,0,0,.20),0 12px 26px -8px rgba(0,0,0,.45);
-  --pp-btn:0 1px 1px rgba(0,0,0,.38),0 3px 7px -2px rgba(0,0,0,.42);
+<style id="m2028-journal-hand2">
+/* ===== Journal · hand-drawn menus and controls =====
+   The cards already have an uneven pen outline, a pencil-offset shadow and wobbly corners. This gives the same hand-made line
+   work to everything else in the theme: menus, modals, buttons, chips, toasts, the notes composer and the Draw tools.
+   Uses the theme's own variables (--jpen, --jshadow, --jwob, --wave), so it follows every paper colour. */
+
+/* ---- menus & modals: pen outline, uneven corners, pencil offset ---- */
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.mo,.tnb-menu,.collapse-nav-list,#moreGrid,.pv-menu){
+  border:2px solid var(--jpen)!important;
+  border-radius:15px 9px 16px 8px/9px 15px 8px 16px!important;
+  box-shadow:2px 3px 0 var(--jshadow),0 18px 44px rgba(0,0,0,.36)!important;
 }
-html body.journal.jlight{
-  --pp-hi:rgba(255,255,255,.8);
-  --pp-lo:rgba(80,55,25,.20);
-  --pp-sheen:linear-gradient(158deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 44%,rgba(120,90,50,.07) 100%);
-  --pp-shadow:0 1px 1px rgba(70,50,30,.24),0 3px 6px rgba(70,50,30,.15),0 12px 26px -8px rgba(70,50,30,.32);
-  --pp-btn:0 1px 1px rgba(70,50,30,.30),0 3px 7px -2px rgba(70,50,30,.28);
+html body.journal:not(.x):not(.xx):not(.xxx) .mo{position:relative}
+/* a second, wobbly pass of the pen over the outline, like the dashboard widgets */
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.mo,.tnb-menu)::after{
+  content:"";position:absolute;inset:-1px;z-index:0;pointer-events:none;
+  border:2.2px solid var(--jpen,var(--tx));border-radius:15px 9px 16px 8px/9px 15px 8px 16px;
+  filter:url(#jnRough);
 }
-@keyframes ppLand{0%{opacity:0;transform:translateY(16px) rotate(-.7deg) scale(.985)}55%{opacity:1}100%{opacity:1;transform:none}}
-@keyframes ppDrop{0%{opacity:0;transform:translateY(-8px) scale(.97,.93)}100%{opacity:1;transform:none}}
+/* modal title: a wavy pen line instead of a plain rule */
+html body.journal:not(.x):not(.xx):not(.xxx) .mo>div:first-child{
+  border-bottom:0!important;
+  background:var(--wave) repeat-x left bottom/48px 8px;
+  padding-bottom:16px!important;
+}
+/* menu entries get a marker-pen highlight */
+html body.journal:not(.x):not(.xx):not(.xxx) .tnb-item{border-radius:0!important;transition:background .12s}
+html body.journal:not(.x):not(.xx):not(.xxx) .tnb-item:hover,
+html body.journal:not(.x):not(.xx):not(.xxx) .tnb-item.on{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--ai,#e8a0b4) 42%,transparent) 58%)!important}
+/* a strip of washi tape holding the More menu to the page */
+html body.journal:not(.x):not(.xx):not(.xxx) .tnb-menu::before{
+  content:"";position:absolute;top:-9px;right:26px;width:66px;height:17px;transform:rotate(3deg);z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--ai,#e8a0b4) 70%,transparent) 0 6px,color-mix(in srgb,var(--ai,#e8a0b4) 40%,transparent) 6px 12px);
+  opacity:.8;box-shadow:0 1px 2px rgba(0,0,0,.25);
+}
 
-/* the page itself: a faint tooth laid over everything, like looking at the sheet in raking light */
-#ppGrain{display:none}
-html body.journal #ppGrain{display:block;position:fixed;inset:0;z-index:3;pointer-events:none;background:var(--pp-tex);opacity:.42}
-body:has(#v-draw.on) #ppGrain{display:none!important}
+/* ---- toasts, notes composer and note cards ---- */
+html body.journal:not(.x):not(.xx):not(.xxx) :is(#nbar,#xdlToast,.nt-toast,.nt-quick,.nt-card){
+  border:2px solid var(--jpen)!important;
+  border-radius:15px 9px 16px 8px/9px 15px 8px 16px!important;
+  box-shadow:2px 3px 0 var(--jshadow)!important;
+}
 
-/* ---- sheets: modals, menus, composer, toasts ---- */
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .ov{background:radial-gradient(120% 90% at 50% 35%,rgba(34,24,14,.40),rgba(8,5,3,.78))!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .mo{background:var(--pp-paper),var(--pp-raise)!important;border:1px solid var(--pp-line)!important;
-  box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important;animation:ppLand .34s cubic-bezier(.2,.85,.25,1) backwards}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.tnb-menu,.collapse-nav-list,#moreGrid,.pv-menu){background:var(--pp-paper),var(--pp-raise)!important;border:1px solid var(--pp-line)!important;
-  border-radius:15px 9px 16px 10px/10px 15px 9px 16px!important;
-  box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important;animation:ppDrop .22s cubic-bezier(.2,.85,.25,1) backwards;transform-origin:top right}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.tnb-menu,.collapse-nav-list,#moreGrid) :is(a,button,.nb):hover{background:var(--pp-sunk)!important;box-shadow:inset 0 2px 4px rgba(0,0,0,.30)!important;border-radius:9px}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(#nbar,#xdlToast,.nt-toast){background:var(--pp-paper),var(--pp-raise)!important;color:var(--tx)!important;border:1px solid var(--pp-line)!important;
-  box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .nt-quick{background:var(--pp-paper),var(--pp-raise)!important;border:1px solid var(--pp-line)!important;box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .bnb{background:var(--pp-paper),var(--pp-raise)!important;border-top:1px solid var(--pp-line)!important;box-shadow:inset 0 1px 0 var(--pp-hi),0 -8px 16px -8px rgba(0,0,0,.40)!important}
+/* ---- buttons, chips, switches: the same pen line, with the offset shadow that "presses flat" when tapped ---- */
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.btn:not(.b-ai),.nt-pill,.mn-pill,.nt-ib,.mn-nb,.cal-n,.ssr-play,.ssr-rs,.tnb-burger){
+  border:1.5px solid var(--jpen)!important;border-radius:var(--jwob)!important;box-shadow:1.5px 2px 0 var(--jshadow)!important;
+  transition:transform .1s ease,box-shadow .1s ease;
+}
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.btn,.nt-pill,.mn-pill,.nt-ib,.mn-nb,.cal-n,.ssr-play,.ssr-rs,.tnb-burger):active{
+  transform:translate(1.5px,2px);box-shadow:0 0 0 var(--jshadow)!important;
+}
+html body.journal:not(.x):not(.xx):not(.xxx) .m2sw{border:1.5px solid var(--jpen)!important}
 
-/* ---- cards and notes: sheets lying on the page (colours the app sets itself are kept) ---- */
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.card,.wc,.st){background-color:color-mix(in srgb,var(--pp-raise) 94%,transparent)!important;background-image:var(--pp-img)!important;background-size:var(--pp-size)!important;background-position:var(--pp-pos)!important;background-repeat:repeat!important;
-  box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .nt-card{background-image:var(--pp-img)!important;background-size:var(--pp-size)!important;background-position:var(--pp-pos)!important;background-repeat:repeat!important;box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important;transition:transform .18s ease,box-shadow .18s ease}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .nt-card:hover{transform:translateY(-3px) rotate(-.3deg)}
+/* ---- bottom bar (phones): the same wavy line as the top bar ---- */
+html body.journal:not(.x):not(.xx):not(.xxx) .bnb{
+  border-top:0!important;background-image:var(--wave)!important;background-repeat:repeat-x!important;background-position:left top!important;background-size:48px 8px!important;
+}
 
-/* ---- buttons: raised card-stock chips that press into the page ---- */
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.btn,.nt-pill,.mn-pill,.nt-ib,.mn-nb,.cal-n,.ssr-play,.ssr-rs){background-image:var(--pp-img)!important;background-size:var(--pp-size)!important;background-position:var(--pp-pos)!important;background-repeat:repeat!important;border:1px solid var(--pp-line)!important;
-  box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -1px 0 var(--pp-lo),var(--pp-btn)!important;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.btn.b-gh,.btn.b-bd,.nt-pill,.mn-pill,.nt-ib,.mn-nb,.cal-n):not(.on):not(.sel):not(.active):not(.cur):not([aria-pressed=true]):not([aria-selected=true]){background-color:var(--pp-raise)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.btn,.nt-pill,.mn-pill,.nt-ib,.mn-nb,.cal-n,.ssr-play,.ssr-rs):hover{transform:translateY(-1px);filter:brightness(1.06)}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.btn,.nt-pill,.mn-pill,.nt-ib,.mn-nb,.cal-n,.ssr-play,.ssr-rs):active{transform:translateY(1px);filter:none;box-shadow:inset 0 2px 5px rgba(0,0,0,.42),inset 0 -1px 0 var(--pp-hi)!important}
-
-/* ---- inputs and switches: pressed into the page ---- */
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.inp,.ta,select.inp){background-color:var(--pp-sunk)!important;background-image:var(--pp-gimg)!important;background-size:var(--pp-gsize)!important;background-position:var(--pp-gpos)!important;background-repeat:repeat!important;border:1px solid var(--pp-line)!important;
-  box-shadow:inset 0 2px 4px rgba(0,0,0,.34),inset 0 -1px 0 var(--pp-hi)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .m2sw{box-shadow:inset 0 2px 4px rgba(0,0,0,.42),inset 0 -1px 0 var(--pp-hi)!important}
-
-/* ---- the Draw tab's tools are paper too ---- */
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.dr-btn,.dr-tb,.dr-grp,.dr-props,.dr-pop,.dr-card,.dr-side,.dr-toast){background:var(--pp-paper),var(--pp-raise)!important;border-color:var(--pp-line)!important;
-  box-shadow:inset 0 1px 0 var(--pp-hi),inset 0 -2px 0 var(--pp-lo),var(--pp-shadow)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .dr-in{background-color:var(--pp-sunk)!important;background-image:var(--pp-gimg)!important;background-size:var(--pp-gsize)!important;background-position:var(--pp-gpos)!important;background-repeat:repeat!important;box-shadow:inset 0 2px 4px rgba(0,0,0,.34)!important}
-html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) .dr-btn:hover{filter:brightness(1.07)}
-
-@media (prefers-reduced-motion:reduce){html#ppRoot#ppRoot#ppRoot body.journal.journal:not(.x):not(.xx):not(.xxx) :is(.mo,.tnb-menu,.collapse-nav-list,#moreGrid,.pv-menu){animation:none!important}}
+/* ---- Draw tab tools ---- */
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.dr-btn,.dr-tb,.dr-grp,.dr-props,.dr-pop,.dr-card,.dr-side,.dr-toast){
+  border:2px solid var(--jpen)!important;
+  border-radius:15px 9px 16px 8px/9px 15px 8px 16px!important;
+  box-shadow:2px 3px 0 var(--jshadow)!important;
+}
+html body.journal:not(.x):not(.xx):not(.xxx) .dr-side{border-radius:0!important;box-shadow:-3px 0 0 var(--jshadow)!important}
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.dr-tbtn,.dr-opts button,.dr-pri,.dr-ghost,.dr-grp button){border-radius:var(--jwob)!important}
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.dr-tbtn.on,.dr-opts button.on,.dr-sw.on){outline:1.5px solid var(--jpen);outline-offset:1px}
+html body.journal:not(.x):not(.xx):not(.xxx) :is(.dr-pri,.dr-ghost){border:1.5px solid var(--jpen)!important;box-shadow:1.5px 2px 0 var(--jshadow)!important}
+html body.journal:not(.x):not(.xx):not(.xxx) .dr-in{border:0!important;border-bottom:1.5px dashed var(--jpen)!important;border-radius:0!important;background:transparent!important}
+html body.journal:not(.x):not(.xx):not(.xxx) .dr-drop{border-color:var(--jpen)}
 </style>
-<script id="m2028-journal-paper-js">(function(){document.documentElement.id=document.documentElement.id||"ppRoot";if(document.getElementById("ppGrain"))return;var d=document.createElement("div");d.id="ppGrain";d.setAttribute("aria-hidden","true");document.body.appendChild(d)})();</script>
+<script id="m2028-ext-theme">
+/* Theme <-> extension. Each time YOU change the theme on the website the time is recorded (m_themeAt), so the extension can tell
+   whose choice is newer. A theme chosen in the extension arrives as THEME_UPDATE and is applied right away. */
+(function(){
+ function stamp(){try{localStorage.setItem("m_themeAt",String(Date.now()))}catch(e){}}
+ var tt=window.toggleTheme;
+ if(typeof tt==="function"&&!tt.__ext){var w=function(){stamp();return tt.apply(this,arguments)};w.__ext=1;window.toggleTheme=w}
+ window.addEventListener("message",function(e){
+  var d=e.data;if(!d||d.from!=="M2028_EXT"||d.type!=="THEME_UPDATE")return;
+  var t=d.theme;
+  try{
+   if(typeof THEME_NEXT==="undefined"||!Object.prototype.hasOwnProperty.call(THEME_NEXT,t))return;   /* only themes this version knows */
+   if(S.go("theme","dark")===t)return;
+   S.s("theme",t);
+   try{localStorage.setItem("m_themeAt",String(d.at||Date.now()))}catch(_){}
+   if(typeof paintTheme==="function")paintTheme(t);
+  }catch(err){}
+ });
+})();
+</script>
 </body>
 </html>

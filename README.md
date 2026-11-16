@@ -27,19 +27,15 @@ Tabs can be hidden and reordered from the customize window. On phones the bottom
 * **Stickers** (Customize → 🌸 Stickers) scatter a collage of stickers behind the page.
   * **Girl** mode: as before.
   * **Journal** mode: the same stickers at **50% opacity**, lying behind the paper sheets so text stays readable. The switch turns them on and off.
-  * If `stickers.js` is missing, slow or broken, a built-in set of 12 stickers is shown instead and a one-time notice tells you the file didn't load. When the real file loads it takes over.
 * The Draw tab keeps its own clean canvas, so stickers don't show through it.
 
-### Journal: soft-touch paper
-Everything in Journal is made of the same high-GSM, matte stock, drawn from the theme's own paper colour so it works on dark and light papers alike:
+### Journal: hand-drawn everywhere
+The cards' hand-made line work is now used on everything else in Journal, in the theme's own pen colour so it follows every paper colour:
 
-* a fine tooth and faint fibres over the page and on every sheet, plus a soft matte sheen
-* edges with thickness: a lit top edge, a shaded bottom edge and layered contact shadows
-* **sheets** (cards, modals, the More menu, the notes composer, toasts, the bottom bar, the Draw toolbars) lie on the page; modals settle onto it and menus drop in
-* **buttons and chips** are raised card-stock, lift slightly on hover and press into the page when tapped
-* **inputs and switches** are pressed into the paper
-* colours the app sets itself (selected pills, coloured notes, accent buttons) are kept
-* it respects "reduce motion"
+* **menus and modals** (More menu, Customize, profile…) get the uneven pen outline, a second wobbly pass of the pen, the pencil-offset shadow and uneven corners; the More menu is held up by a strip of washi tape
+* modal titles get a wavy pen line instead of a plain rule, and menu entries get a marker-pen highlight
+* **buttons, chips and switches** share the same pen line and offset shadow, which "presses flat" when tapped
+* the notes composer, note cards, toasts, the bottom bar (phones) and the Draw tools use the same style
 
 The Draw canvas itself stays a clean drawing surface.
 
@@ -163,6 +159,21 @@ Excalidraw's AI tools (Text to diagram, Wireframe to code), live collaboration a
 
 Tested by simulating the worker restarting before every heartbeat: 10 minutes on a limited site counted as **0 s before** and **600 s after**, the limit triggered at the right moment, 45 minutes of sleep counted as nothing, and an unfocused browser counted as nothing. `manifest.json` is now **2.5.7**. Reload the extension (or run the installer) after updating the files.
 
+### Theme sync between the extension and the website (2.5.8)
+**Symptom:** choosing a theme in the extension did nothing on the website, and was undone the next time the website opened.
+
+**Cause:** the extension only copied the theme *from* the website, and did so every time the site loaded, so the website's old theme always overwrote the extension's. An open website was never told about the change, and the extension's two theme keys (`theme` / `m_theme`) could end up disagreeing.
+
+**Fix:** each side now records when the theme was changed; the newer choice wins.
+* a theme chosen in the extension is applied to an open website straight away, and wins when the website is opened later
+* a theme changed on the website is copied to the extension as before
+* the two extension keys are kept identical
+* with no timestamps (old data) it behaves as before
+
+Tested with the real `background.js` and `content.js` running together: a popup toggle with the site open, a toggle with the site closed and then opened, the website being newer, a toggle on the website, and old data.
+
+> Two things in the popup can't be fixed from these files: how its theme button cycles (it must include **journal**) and the dot on the profile picture; both live in `popup.html / popup.js / popup.css`.
+
 ## Files the app expects next to `index.html`
 
 `manifest.json`, `push.js`, `ios-share.js`, `stickers.js` (the sticker artwork), `leaf-icons.css`, `pom-duo.webp`, `sussurus1.mp3`, icons (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon-32.png`), `save-to-notes.shortcut`. The browser extension (popup, options, offscreen page) is an optional companion for Pomodoro and screen-time sync.
@@ -180,8 +191,9 @@ Tested by simulating the worker restarting before every heartbeat: 10 minutes on
 
 ### This release
 * **Fixed** extension usage limits not counting minutes (extension 2.5.7, see above).
-* **New** Journal theme paper feel: every menu, modal, card, button, input and toolbar.
-* **Fixed** Journal stickers: built-in fallback set when `stickers.js` can't be loaded, a load-failure notice, and smaller sticker sizing.
+* **Fixed** extension theme toggle (extension 2.5.8, see above).
+* **Changed** Journal: menus, modals, buttons and tools now use the same hand-drawn pen line, wobble, pencil-offset shadow, wavy rules and washi tape as the cards (the paper-texture experiment was removed).
+* **Changed** Journal stickers use only the Girl-theme sticker layer at 50% (the built-in fallback set was removed).
 * **New** Draw: paste and drag-and-drop of images, text, links, SVG, code and any file; add-or-replace for dropped drawings; copy as image.
 
 ### Earlier

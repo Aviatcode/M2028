@@ -1682,6 +1682,18 @@ syncBlocking();
 // Sync storage changes with background alarms and extension badges
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
+  // Theme changed from the extension itself (popup / options), not copied from the website: stamp it, and keep the two
+  // key names the extension files read ('theme' and 'm_theme') identical. The website uses the stamp to see that the
+  // extension's choice is newer than its own, so opening or reloading the site no longer puts the old theme back.
+  if ((changes.theme || changes.m_theme) && !changes.m_themeAt && !changes.m_themeSrc) {
+    const nv = (changes.theme && changes.theme.newValue !== undefined) ? changes.theme.newValue : (changes.m_theme && changes.m_theme.newValue);
+    if (nv) {
+      const upd = { m_themeAt: Date.now(), m_themeSrc: 'ext' };
+      if (!changes.theme || changes.theme.newValue !== nv) upd.theme = nv;
+      if (!changes.m_theme || changes.m_theme.newValue !== nv) upd.m_theme = nv;
+      chrome.storage.local.set(upd);
+    }
+  }
   if (changes[STORAGE_KEY_LIMITS] || changes[STORAGE_KEY_BLOCKLIST] || changes[STORAGE_KEY_REDIRECTS] ||
       changes[STORAGE_KEY_LOCK] || changes[STORAGE_KEY_LOCK_MIRROR]) {
     syncBlocking();

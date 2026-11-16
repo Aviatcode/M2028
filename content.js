@@ -215,6 +215,19 @@
           window.postMessage({ from: 'M2028_EXT', type: 'REFRESH_PROFILE' }, '*');
         }
       }
+      // Theme chosen in the extension (popup / options): show it on the open website right away.
+      // (Changes copied from a website tab carry m_themeSrc / m_themeAt and are ignored here.)
+      if ((changes.theme || changes.m_theme) && !changes.m_themeAt && !changes.m_themeSrc) {
+        const nt = (changes.theme && changes.theme.newValue !== undefined) ? changes.theme.newValue : (changes.m_theme && changes.m_theme.newValue);
+        if (typeof nt === 'string' && nt) {
+          const at = Date.now();
+          try {
+            window.localStorage.setItem('m_theme', JSON.stringify(nt));
+            window.localStorage.setItem('m_themeAt', String(at));
+          } catch (e) {}
+          window.postMessage({ from: 'M2028_EXT', type: 'THEME_UPDATE', theme: nt, at: at }, '*');
+        }
+      }
       if (changes.m_stickers || changes.stickers) {
         const stk = (changes.m_stickers && changes.m_stickers.newValue !== undefined) ? changes.m_stickers.newValue : (changes.stickers && changes.stickers.newValue);
         if (stk !== undefined) {
@@ -232,7 +245,7 @@
   function initialSync() {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return;
 
-    chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pomSessions', 'm_pd', 'm_hubNotes', 'm_hubNotesTs'], function (res) {
+    chrome.storage.local.get(['pom_state', 'm_pomLive', 'm_pomSessions', 'm_pd', 'm_hubNotes', 'm_hubNotesTs', 'theme', 'm_theme', 'm_themeAt'], function (res) {
       let pageSt = null;
       try {
         const raw = window.localStorage.getItem('pom_state') || window.localStorage.getItem('m_pomLive');
@@ -298,8 +311,21 @@
         const syncObj = {};
         if (themeRaw) {
           const t = JSON.parse(themeRaw);
-          syncObj.theme = t;
-          syncObj.m_theme = t;
+          const extT = res.theme || res.m_theme || null;
+          const pageAt = Number(window.localStorage.getItem('m_themeAt')) || 0;
+          const extAt = Number(res.m_themeAt) || 0;
+          if (extT && extT !== t && extAt > pageAt) {
+            // The theme was changed in the extension after the website last changed it: the extension wins.
+            try {
+              window.localStorage.setItem('m_theme', JSON.stringify(extT));
+              window.localStorage.setItem('m_themeAt', String(extAt));
+            } catch (e) {}
+            window.postMessage({ from: 'M2028_EXT', type: 'THEME_UPDATE', theme: extT, at: extAt }, '*');
+          } else {
+            syncObj.theme = t;
+            syncObj.m_theme = t;
+            if (extT !== t) { syncObj.m_themeAt = pageAt || Date.now(); syncObj.m_themeSrc = 'page'; }
+          }
         }
         if (customRaw) {
           const cc = JSON.parse(customRaw);
@@ -558,6 +584,10 @@
           const v = JSON.parse(raw);
           setObj[k] = v;
           setObj['m_' + k] = v;
+          if (k === 'theme') {
+            setObj.m_themeAt = Number(readPage('themeAt')) || Date.now();
+            setObj.m_themeSrc = 'page';
+          }
         } catch (e) {}
       });
 

@@ -580,7 +580,11 @@
   function openPomoIfRunning() {
     const check = function (copies) {
       const st = freshestPomo(copies);
-      if (!st || !st.run) return;
+      if (!st) return;
+      // Running, or paused part-way through a session / break: reopen straight on the Pomodoro tab.
+      // (A finished or ended session resets to a full 50:00 with 0 sessions done, so that opens the normal tab.)
+      const paused = !st.run && ((Number(st.phaseLen) > 0 && Number(st.rem) < Number(st.phaseLen)) || Number(st.cur) > 0 || st.mode === 'break');
+      if (!st.run && !paused) return;
       if (getHiddenNavTabs().includes('pomo')) return;
       if (activeTabName !== 'pomo') switchTab('pomo');
     };

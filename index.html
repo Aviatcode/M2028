@@ -3037,7 +3037,18 @@ h+='<g class="gneedle"><polygon points="150,36 154,150 152,178 148,178 146,150" 
 '<text class="gunit" x="150" y="252">MIN</text></svg>';
 ring.insertAdjacentHTML("afterbegin",h);
 var needle=ring.querySelector(".gneedle"),trail=ring.querySelector(".gtrail"),labs=ring.querySelectorAll(".gn"),key=null,last=null;
+var lastRun=null,sweeping=false;
+function sweep(){
+sweeping=true;
+needle.style.transition="transform .8s cubic-bezier(.25,.1,.2,1)";trail.style.transition="stroke-dasharray .8s cubic-bezier(.25,.1,.2,1)";
+needle.style.transform="rotate("+(A0+SW)+"deg)";trail.style.strokeDasharray="1 2";
+setTimeout(function(){needle.style.transition="transform .9s cubic-bezier(.5,0,.3,1)";trail.style.transition="stroke-dasharray .9s cubic-bezier(.5,0,.3,1)";needle.style.transform="rotate("+A0+"deg)";trail.style.strokeDasharray="0 2"},850);
+setTimeout(function(){sweeping=false;needle.style.transition="";trail.style.transition="";last=A0;try{paint()}catch(e){}},1800);
+}
 function paint(){
+if(sweeping)return;
+var run=!!pomRun,go=lastRun===false&&run;lastRun=run;
+if(go&&!document.body.classList.contains("pink")&&!document.body.classList.contains("journal")&&!(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)){sweep();return}
 var a=pomPhaseLen||(pomMode==="focus"?PF:PB),rem=Math.max(0,Math.min(a,pomRem)),t=a>0?(a-rem)/a:0,deg=A0+SW*t;
 if(key!==a){key=a;var st=a/60/10;for(var i=0;i<labs.length;i++)labs[i].textContent=String(Math.round(st*i*10)/10)}
 var big=last!==null&&Math.abs(deg-last)>12;

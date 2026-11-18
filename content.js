@@ -144,7 +144,7 @@
         };
         // Habits / ticks / countdowns: if the extension has a change it has not sent to the cloud yet, do not
         // overwrite it with this page copy. The popup merges both sides and sends the result (see popup.js).
-        if (key === 'habs' || key === 'hd' || key === 'cd' || key === 'customWidgets') {
+        if (key === 'habs' || key === 'hd' || key === 'cd' || key === 'customWidgets' || key === 'pomSubjects') {
           chrome.storage.local.get(['m2028_sync_meta'], function (r) {
             const m = r && r.m2028_sync_meta;
             if (m && m.dirty && m.dirty[key]) return;

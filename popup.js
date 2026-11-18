@@ -703,7 +703,7 @@
     if (tab === 'time') loadTrackerData();
     else if (tab === 'habits') { renderHabits(); if (_authSession) pullCloudData(true, ['habs', 'hd']); }
     else if (tab === 'tasks') renderTasks();
-    else if (tab === 'pomo') syncPomoFromStorage();
+    else if (tab === 'pomo') { syncPomoFromStorage(); if (_authSession) pullCloudData(true, ['pomLive', 'pomSessions', 'pd', 'pomSubjects', 'pomSoundStyle']); }
     else if (tab === 'countdown') renderCountdowns();
     else if (tab === 'notes') initNotes();
     else if (tab === 'search') loadOpenTabs();
@@ -2037,6 +2037,7 @@
     st.endTs = Date.now() + st.rem * 1000;
     st.pausedAt = null;
     savePomoState(st);
+    pomNeedleSweep();
     startPomoInterval();
     updatePomoDisplay(st);
   }
@@ -2426,6 +2427,7 @@
     closePomSubModal();
     warmAudio();
     savePomoState(st);
+    pomNeedleSweep();
     startPomoInterval();
     updatePomoDisplay(st);
   }
@@ -2436,6 +2438,36 @@
   const GAUGE_CX = 150;
   const GAUGE_CY = 150;
   let _lastGaugeDeg = null;
+  let _gaugeSweeping = false;
+
+  // Speedometer start-up sweep (dark / white / journal): needle swings to full scale, drops back to 0, then settles
+  function pomNeedleSweep() {
+    if (document.body.classList.contains('pink') || _gaugeSweeping) return;
+    try { if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+    ensureGaugeSvg();
+    const ring = document.getElementById('pomRing');
+    const needle = ring && ring.querySelector('.gneedle');
+    const trail = ring && ring.querySelector('.gtrail');
+    if (!needle) return;
+    _gaugeSweeping = true;
+    needle.style.transition = 'transform 0.8s cubic-bezier(.25,.1,.2,1)';
+    if (trail) trail.style.transition = 'stroke-dasharray 0.8s cubic-bezier(.25,.1,.2,1)';
+    needle.style.transform = 'rotate(' + (GAUGE_A0 + GAUGE_SW) + 'deg)';
+    if (trail) trail.style.strokeDasharray = '1 2';
+    setTimeout(function () {
+      needle.style.transition = 'transform 0.9s cubic-bezier(.5,0,.3,1)';
+      if (trail) trail.style.transition = 'stroke-dasharray 0.9s cubic-bezier(.5,0,.3,1)';
+      needle.style.transform = 'rotate(' + GAUGE_A0 + 'deg)';
+      if (trail) trail.style.strokeDasharray = '0 2';
+    }, 850);
+    setTimeout(function () {
+      _gaugeSweeping = false;
+      needle.style.transition = '';
+      if (trail) trail.style.transition = '';
+      _lastGaugeDeg = GAUGE_A0;
+      paintGauge(getPomoSavedState());
+    }, 1800);
+  }
 
   function ensureGaugeSvg() {
     const ring = document.getElementById('pomRing');
@@ -2495,6 +2527,7 @@
 
   function paintGauge(st) {
     ensureGaugeSvg();
+    if (_gaugeSweeping) return; // let the start-up sweep finish
     const ring = document.getElementById('pomRing');
     if (!ring) return;
 
@@ -3441,10 +3474,10 @@
 
   let _authSession = null;
   let _lastPull = 'not yet';
-  const SYNC_KEYS = ['habs', 'hd', 'hubNotes', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'theme', 'customColors', 'profilePic'];
+  const SYNC_KEYS = ['habs', 'hd', 'hubNotes', 'cd', 'customWidgets', 'pomSessions', 'pd', 'pomLive', 'pomSubjects', 'pomSoundStyle', 'theme', 'customColors', 'profilePic'];
   const _pushTimers = {};
   const _lastSync = {};
-  const THREEWAY = ['habs', 'hd', 'cd', 'customWidgets'];
+  const THREEWAY = ['habs', 'hd', 'cd', 'customWidgets', 'pomSubjects'];
   const META_KEY = 'm2028_sync_meta';
   let _meta = { base: {}, dirty: {} };
   const _metaReady = new Promise(function (res) {
@@ -3959,7 +3992,7 @@
       }
 
       // 1. Habits + habit ticks (the daily streak is calculated from the ticks): merged, never overwritten
-      await Promise.all(['habs', 'hd'].filter(function (k) { return dataMap[k] !== undefined; }).map(function (k) {
+      await Promise.all(['habs', 'hd', 'pomSubjects'].filter(function (k) { return dataMap[k] !== undefined; }).map(function (k) {
         return new Promise(function (res) { applyRemoteValue(k, dataMap[k], { fromCloud: true }, res); });
       }));
 
@@ -3990,13 +4023,20 @@
         if (dataMap[k] === undefined) return;
         readExtValue(k, function (loc) {
           const merged = mergeKeyValue(k, loc, dataMap[k]);
-          try { localStorage.setItem('m_' + k, JSON.stringify(merged)); } catch (e) {}
-          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            const o = {}; o['m_' + k] = merged; o[k] = merged;
-            chrome.storage.local.set(o);
-          }
+          if (_canon(merged) !== _canon(loc)) writeLocalKey(k, merged);
+          // Sessions logged here while the popup was closed (or offline) that the cloud has not got yet
+          if (_canon(merged) !== _canon(dataMap[k])) pushCloudData(k, merged);
         });
       });
+      // Alert sound: plain value, shared with the website
+      if (typeof dataMap.pomSoundStyle === 'string' && /^(bell|chime|digital|marimba|pulse)$/.test(dataMap.pomSoundStyle)) {
+        readExtValue('pomSoundStyle', function (loc) {
+          if (loc === dataMap.pomSoundStyle) return;
+          writeLocalKey('pomSoundStyle', dataMap.pomSoundStyle);
+          const sel = document.getElementById('pomSoundStyleSel');
+          if (sel) sel.value = dataMap.pomSoundStyle;
+        });
+      }
       // Timer state: take the cloud copy only if it is newer than the one running here
       if (dataMap.pomLive && typeof dataMap.pomLive === 'object') {
         readExtValue('pomLive', function (loc) {
@@ -4533,9 +4573,13 @@
     setInterval(function () {
       adoptWebAppData();
       adoptWallpaperFromWebTab();
-      if (_authSession) pullCloudData(true, ['habs', 'hd', 'hubNotes']);
+      if (_authSession) pullCloudData(true, ['habs', 'hd', 'hubNotes', 'pomSubjects', 'pomSessions', 'pd', 'pomSoundStyle', 'pomLive']);
     }, 10000);
     initPomo();
+    setInterval(function () {
+      // Timer started / paused on the website or phone: pick it up within seconds while the Pomo tab is open
+      if (_authSession && activeTabName === 'pomo' && !document.hidden) pullCloudData(true, ['pomLive']);
+    }, 3000);
     initTimeTracker();
     renderHabits();
     renderTasks();

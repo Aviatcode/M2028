@@ -13281,8 +13281,10 @@ function onUp(e){
       if(f.points.length<2)f.points.push([.01,.01]);
       if(A.shapify){var sh=recognizeShape(f);if(sh){var i=S.els.indexOf(f);S.els[i]=sh;f=sh}}
       else if(f.points.length>5)smoothFree(f);
-      if(f.points)renorm(f);S.sel=new Set([f.id]);commit();if(!S.lock&&!A.shapify)S.tool='select';
-      if(A.shapify&&!S.lock)S.tool='select';rebuildToolbar();onSel();setCursor();break}
+      if(f.points)renorm(f);S.sel=new Set([f.id]);commit();
+      /* pen/pencil stays active after lifting; only the draw-to-shape tool returns to Select */
+      if(A.shapify){if(!S.lock)S.tool='select'}else{S.sel=new Set()}
+      rebuildToolbar();onSel();setCursor();break}
     case 'text':{
       if(moved>8)break;
       if(A.hit&&(A.hit.type==='rectangle'||A.hit.type==='diamond'||A.hit.type==='ellipse')){editText(A.hit,false,'label');break}

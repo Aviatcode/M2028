@@ -221,6 +221,29 @@ const STORAGE_KEY_LOCK = 'm2028_lock';
 const STORAGE_KEY_LOCK_MIRROR = 'm2028_lock_mirror';
 const STORAGE_KEY_USAGE_TRACK = 'm2028_usage_track';
 const STORAGE_KEY_LIMIT_USAGE = 'm2028_limit_usage';
+const STORAGE_KEY_LIMIT_TIMES = 'm2028_limit_times';   // per limit: when it started counting today, when it ran out, seconds used
+let limitedHostsCache = null;                          // every domain covered by some daily limit (null = not loaded yet)
+let _limitBadge = { text: '', bg: '#35c48f' };         // what the toolbar badge shows for the limit on the current tab
+let _limitTimer = null;
+function domainInSet(d, set) {
+  if (!d || !set) return false;
+  let p = d;
+  while (true) {
+    if (set.has(p)) return true;
+    const i = p.indexOf('.');
+    if (i < 0) return false;
+    p = p.slice(i + 1);
+  }
+}
+async function ensureLimitedHosts() {
+  if (limitedHostsCache) return;
+  try {
+    const r = await chrome.storage.local.get([STORAGE_KEY_LIMITS, 'm2028_custom_rules']);
+    const s = new Set();
+    for (const l of (r[STORAGE_KEY_LIMITS] || [])) expandTargetDomains(l.target, r.m2028_custom_rules || {}).forEach(d => s.add(d));
+    limitedHostsCache = s;
+  } catch (e) { limitedHostsCache = new Set(); }
+}
 const COOLOFF_MS = 72 * 60 * 60 * 1000; // how long a removal / loosening request must wait
 const LOCK_MAX_ITEMS = 10;
 const LOCK_CATEGORIES = ['adult', 'gambling', 'social', 'entertainment', 'communication'];
@@ -480,24 +503,34 @@ async function doSyncBlocking() {
     let track = data[STORAGE_KEY_USAGE_TRACK];
     if (!track || track.day !== today) track = { day: today, t: {} };
     const usageOut = {};
+    const timesOut = {};
+    const allLimited = new Set();
     const overLimitDomains = new Set();
     for (const limit of limits) {
       const limitSeconds = (Number(limit.minutes) || 0) * 60;
       if (limitSeconds <= 0) continue;
       const domains = expandTargetDomains(limit.target, customRules);
       // Count every host that is the target or one of its subdomains (m.youtube.com, music.youtube.com, old.reddit.com ...).
-      let computed = 0;
+      let computed = 0, cFirst = 0, cLast = 0;
       const dset = new Set(domains);
+      domains.forEach(d => allLimited.add(d));
       for (const [rd, rec] of Object.entries(todayData.domains || {})) {
         let hit = dset.has(rd), p = rd;
         while (!hit && p.indexOf('.') > -1) { p = p.slice(p.indexOf('.') + 1); hit = dset.has(p); }
-        if (hit && rec) computed += Number(rec.seconds) || 0;
+        if (hit && rec) {
+          computed += Number(rec.seconds) || 0;
+          if (rec.first && (!cFirst || rec.first < cFirst)) cFirst = rec.first;
+          if (rec.last && rec.last > cLast) cLast = rec.last;
+        }
       }
       const prev = track.t[limit.target] || { last: 0, cum: 0 };
       prev.cum += computed >= prev.last ? computed - prev.last : computed;
       prev.last = computed;
       track.t[limit.target] = prev;
       usageOut[limit.target] = prev.cum;
+      if (prev.cum > 0 && !prev.s) prev.s = cFirst || (Date.now() - prev.cum * 1000);   // when today's time on it began
+      if (prev.cum >= limitSeconds && !prev.e) prev.e = cLast || Date.now();             // when the limit ran out
+      timesOut[limit.target] = { start: prev.s || 0, end: prev.e || 0, last: cLast, used: prev.cum, limit: limitSeconds, at: Date.now() };
       if (prev.cum >= limitSeconds) domains.forEach(d => overLimitDomains.add(d));
     }
     // Permanent blocks take priority — don't double-handle as a "limit" redirect
@@ -516,8 +549,11 @@ async function doSyncBlocking() {
       [STORAGE_KEY_BLOCK_CACHE]: [...blockedDomains, ...(adultKeywords ? ['#adult-keywords'] : [])],
       [STORAGE_KEY_LIMIT_CACHE]: [...overLimitDomains],
       [STORAGE_KEY_USAGE_TRACK]: track,
-      [STORAGE_KEY_LIMIT_USAGE]: usageOut
+      [STORAGE_KEY_LIMIT_USAGE]: usageOut,
+      [STORAGE_KEY_LIMIT_TIMES]: timesOut
     });
+    limitedHostsCache = allLimited;
+    refreshLimitBadge();
 
     // 4. Rebuild our managed dynamic rules
     const existing = await chrome.declarativeNetRequest.getDynamicRules();
@@ -694,7 +730,12 @@ async function flushTime() {
       isUserActive = liveIdle === 'active';
     }
   } catch (e) {}
-  const counting = (liveIdle === 'active' && isUserActive) || (activeTabAudible && liveIdle !== 'locked' && idleState !== 'locked');
+  // A site with a daily limit keeps counting while the window is focused, even if you stop moving the mouse (reading, a
+  // silent video). Before, 60 s without input stopped the clock, so a 7-minute limit could take far longer than 7 minutes.
+  await ensureLimitedHosts();
+  const onLimited = !!currentDomain && domainInSet(currentDomain, limitedHostsCache);
+  const counting = (liveIdle === 'active' && isUserActive) || (activeTabAudible && liveIdle !== 'locked' && idleState !== 'locked') ||
+    (onLimited && liveIdle !== 'locked' && idleState !== 'locked');
   if (!currentDomain || !isWindowFocused || !counting) {
     sessionStartTime = Date.now();
     persistTracker();
@@ -740,6 +781,8 @@ async function flushTime() {
     }
 
     stats[today].domains[domain].seconds += deltaSeconds;
+    if (!stats[today].domains[domain].first) stats[today].domains[domain].first = now - deltaSeconds * 1000;
+    stats[today].domains[domain].last = now;
     stats[today].domains[domain].category = category;   // keep it current: category fixes now apply to sites already seen today
     if (currentTitle) stats[today].domains[domain].title = currentTitle;
     if (currentFavicon) stats[today].domains[domain].favicon = currentFavicon;
@@ -771,6 +814,46 @@ async function flushTime() {
   }
 }
 
+// Time left on the daily limit of the site in the focused tab, shown on the toolbar badge like the Pomodoro minutes.
+// It also arms a timer for the exact moment the limit runs out, so an open tab is closed on time instead of at the next 30 s check.
+async function refreshLimitBadge() {
+  try {
+    if (!chrome.action) return;
+    await restoreTrackerOnce();
+    const r = await chrome.storage.local.get([STORAGE_KEY_LIMITS, STORAGE_KEY_LIMIT_TIMES, 'm2028_custom_rules', 'pom_state', 'm_pomLive']);
+    const limits = r[STORAGE_KEY_LIMITS] || [], times = r[STORAGE_KEY_LIMIT_TIMES] || {};
+    const pom = r.pom_state || r.m_pomLive;
+    let best = null;
+    if (currentDomain && isWindowFocused) {
+      for (const l of limits) {
+        const limSec = (Number(l.minutes) || 0) * 60;
+        if (limSec <= 0) continue;
+        const doms = expandTargetDomains(l.target, r.m2028_custom_rules || {});
+        if (!doms.some(d => currentDomain === d || currentDomain.endsWith('.' + d))) continue;
+        const t = times[l.target];
+        let used = t ? (Number(t.used) || 0) : 0;
+        if (t && t.at) used += Math.max(0, Math.min(90, (Date.now() - t.at) / 1000));   // time since the last sync
+        const rem = limSec - used;
+        if (!best || rem < best.rem) best = { rem: rem, target: l.target };
+      }
+    }
+    clearTimeout(_limitTimer);
+    if (best && best.rem > 0) {
+      const secs = Math.ceil(best.rem);
+      _limitBadge = { text: secs >= 60 ? Math.ceil(secs / 60) + 'm' : secs + 's', bg: secs <= 60 ? '#d7574f' : secs <= 300 ? '#f2b544' : '#35c48f' };
+      try { chrome.alarms.create('m2028_limit_hit', { when: Date.now() + Math.max(1000, secs * 1000) }); } catch (e) {}
+      // close to the limit: re-check every few seconds so it cuts off on time even between alarms
+      if (secs <= 120) {
+        _limitTimer = setTimeout(async () => { try { await flushTime(); await syncBlocking(); } catch (e) {} }, Math.max(1500, Math.min(secs, 15) * 1000));
+      }
+    } else {
+      _limitBadge = { text: '', bg: _limitBadge.bg };
+      try { chrome.alarms.clear('m2028_limit_hit'); } catch (e) {}
+    }
+    if (!(pom && pom.run && pom.endTs)) updatePomoBadge(null);   // the Pomodoro owns the badge while it is running
+  } catch (e) {}
+}
+
 // Switch active tracking target
 async function updateActiveTarget(url, title, favicon) {
   await flushTime();
@@ -781,6 +864,7 @@ async function updateActiveTarget(url, title, favicon) {
   currentFavicon = favicon || '';
   sessionStartTime = Date.now();
   persistTracker();
+  refreshLimitBadge();
 
   try {
     if (currentDomain) {
@@ -1022,6 +1106,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     isWindowFocused = false;
     sessionStartTime = Date.now();
     persistTracker();
+    refreshLimitBadge();
   } else {
     // Don't count the time the browser spent unfocused: reset the
     // session clock before flushing/rebasing on the newly focused tab.
@@ -1108,7 +1193,11 @@ function updatePomoBadge(st) {
   try {
     if (!chrome.action) return;
     if (!st || !st.run || !st.endTs) {
-      chrome.action.setBadgeText({ text: '' });
+      chrome.action.setBadgeText({ text: _limitBadge.text || '' });
+      if (_limitBadge.text) {
+        chrome.action.setBadgeBackgroundColor({ color: _limitBadge.bg });
+        if (chrome.action.setBadgeTextColor) chrome.action.setBadgeTextColor({ color: pomoBadgeTextColor(_limitBadge.bg) });
+      }
       return;
     }
     const remSec = Math.max(0, Math.round((st.endTs - Date.now()) / 1000));
@@ -1257,7 +1346,10 @@ ensureAlarm('m2028_tracker_flush', { periodInMinutes: 0.5 });
 ensureAlarm('m2028_pomo_tick', { periodInMinutes: 0.5 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === 'm2028_tracker_flush') {
+  if (alarm.name === 'm2028_limit_hit') {
+    // the limit should be used up about now: credit the time and block, no waiting for the heartbeat
+    try { await checkCurrentTab(); await flushTime(); await syncBlocking(); } catch (e) {}
+  } else if (alarm.name === 'm2028_tracker_flush') {
     // Re-read the active tab every heartbeat so the tracker can never stay
     // stuck on a stale tab if a tab/window event was missed.
     await checkCurrentTab();

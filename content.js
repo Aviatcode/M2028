@@ -363,6 +363,7 @@
   //    Page -> extension : { from:'M2028_PAGE', type:'BLOCK_REQUEST' }  (ask for the current state)
   //    Extension -> page : { from:'M2028_EXT',  type:'BLOCK_UPDATE', limits, blocklist, redirects, usage }
   const BLOCK_KEYS = ['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock'];
+  const TIMES_KEY = 'm2028_limit_times';
   const BLOCK_MAX = 10;
   const DEF_LIMIT_REDIRECT = 'https://en.wikipedia.org/wiki/Special:Random';
   const DEF_BLOCK_REDIRECT = 'https://theuselessweb.com';
@@ -427,13 +428,14 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function readBlockState(cb) {
-    chrome.storage.local.get(BLOCK_KEYS.concat(['m2028_limit_usage', 'm2028_block_attempts']), function (res) {
+    chrome.storage.local.get(BLOCK_KEYS.concat(['m2028_limit_usage', TIMES_KEY, 'm2028_block_attempts']), function (res) {
       cb({
         limits: res.m2028_limits || [],
         blocklist: res.m2028_blocklist || [],
         redirects: res.m2028_redirect_settings || {},
         lock: res.m2028_lock || null,
         usage: res.m2028_limit_usage || {},
+        times: res[TIMES_KEY] || {},
         attempts: res.m2028_block_attempts || null
       });
     });
@@ -444,7 +446,7 @@
       const sig = JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, s.attempts && s.attempts.all && s.attempts.all.total]);
       if (skipIfSame && sig === lastBlockSig) return;
       lastBlockSig = sig;
-      window.postMessage({ from: 'M2028_EXT', type: 'BLOCK_UPDATE', limits: s.limits, blocklist: s.blocklist, redirects: s.redirects, lock: s.lock, usage: s.usage, attempts: s.attempts }, '*');
+      window.postMessage({ from: 'M2028_EXT', type: 'BLOCK_UPDATE', limits: s.limits, blocklist: s.blocklist, redirects: s.redirects, lock: s.lock, usage: s.usage, times: s.times, attempts: s.attempts }, '*');
     });
   }
 
@@ -488,7 +490,7 @@
         pushBlockToPage(true); // changed from the popup / options page / lock engine
       } else if (changes.m2028_block_attempts) {
         pushBlockToPage(true); // someone just tried a blocked site: refresh the counters
-      } else if (changes.m2028_limit_usage && Date.now() - lastUsagePush > 15000) {
+      } else if ((changes.m2028_limit_usage || changes[TIMES_KEY]) && Date.now() - lastUsagePush > 15000) {
         lastUsagePush = Date.now();
         pushBlockToPage(false); // refresh today's usage numbers
       }
@@ -784,22 +786,29 @@
       chrome.storage.local.get([TIME_KEY], function (res) {
         if (chrome.runtime && chrome.runtime.lastError) return;
         const key = timeDayKey();
-        const day = res && res[TIME_KEY] && res[TIME_KEY][key];
-        if (!day || !day.totalSeconds) return;
-        if (!force && day.totalSeconds === lastTimeTotal) return;
-        lastTimeTotal = day.totalSeconds;
+        const all = (res && res[TIME_KEY]) || {};
+        const today = all[key];
+        const total = (today && today.totalSeconds) || 0;
+        if (!force && total && total === lastTimeTotal) return;
+        lastTimeTotal = total;
         lastTimePush = Date.now();
-        const doms = {};
-        Object.keys(day.domains || {})
-          .sort(function (a, b) { return (day.domains[b].seconds || 0) - (day.domains[a].seconds || 0); })
-          .slice(0, 15)
-          .forEach(function (d) {
-            const x = day.domains[d] || {};
-            doms[d] = { seconds: x.seconds || 0, title: x.title || d, category: x.category || 'other' };
-          });
+        // today + the 7 days before it: the website shows Yesterday / Today / 7 days
+        const stats = {};
+        Object.keys(all).filter(function (k) { return /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= key; }).sort().slice(-8).forEach(function (k) {
+          const day = all[k];
+          if (!day || !day.totalSeconds) return;
+          const doms = {};
+          Object.keys(day.domains || {})
+            .sort(function (a, b) { return (day.domains[b].seconds || 0) - (day.domains[a].seconds || 0); })
+            .slice(0, 15)
+            .forEach(function (d) {
+              const x = day.domains[d] || {};
+              doms[d] = { seconds: x.seconds || 0, title: x.title || d, category: x.category || 'other' };
+            });
+          stats[k] = { totalSeconds: day.totalSeconds, domains: doms };
+        });
+        if (!Object.keys(stats).length) return;
         ensureDevice(function (dev) {
-          const stats = {};
-          stats[key] = { totalSeconds: day.totalSeconds, domains: doms };
           window.postMessage({ from: 'M2028_EXT', type: 'TIME_STATS', stats: stats, device: dev }, '*');
         });
       });

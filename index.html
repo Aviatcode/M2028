@@ -399,9 +399,10 @@ html[data-navpos="right"] .sdbar{right:0;border-left:1px solid var(--b)}
 </div>
 </div>
 <div id="wScreenTimeContent">
+<div id="wStTabs" style="display:flex;gap:6px;margin-bottom:8px"><button class="btn b-gh sm" data-r="yesterday">Yesterday</button><button class="btn b-ai sm" data-r="today">Today</button><button class="btn b-gh sm" data-r="week">7 days</button></div>
 <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--s2);border-radius:10px;margin-bottom:10px">
 <div>
-<div style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:0.5px">Today's Active Time</div>
+<div id="wStLabel" style="font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:0.5px">Today's Active Time</div>
 <div style="font-size:18px;font-weight:700;color:var(--tx)" id="wScreenTimeVal">0m</div>
 </div>
 <div style="text-align:right">
@@ -6768,12 +6769,12 @@ document.addEventListener("click",function(e){
       if (!known && liveDeviceIds(map).length >= MAX_DEVICES) { window.__stDevFull = true; return; }
       window.__stDevFull = false;
       // Same number as before: only re-send every 5 minutes, so a bucket lost to a race heals itself.
-      if (known && cl.date === today && (cl.totalSeconds || 0) >= tot && now - (cl.at || 0) < 300000) { _stPushTot = tot; return; }
+      if (known && cl.date === today && (cl.totalSeconds || 0) >= tot && now - (cl.at || 0) < 300000 && cl.days) { _stPushTot = tot; return; }
       var doms = {}, ent = Object.entries(st.domains || {}).sort(function(a, b) { return (b[1].seconds || 0) - (a[1].seconds || 0); }).slice(0, 15);
       ent.forEach(function(x) { doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: effCat(x[0], x[1].category), title: x[1].title || '' }; });
       _stPushAt = now; _stPushTot = tot;
       map = Object.assign({}, map);
-      var e = { name: dev.name, date: today, totalSeconds: tot, domains: doms, at: now, first: (cl && cl.first) || now };
+      var e = { name: dev.name, date: today, totalSeconds: tot, domains: doms, at: now, first: (cl && cl.first) || now, days: st.days || (cl && cl.days) || {} };
       if (cl && cl.nm !== undefined) { e.nm = cl.nm; e.nmAt = cl.nmAt; }
       map[dev.id] = e;
       // Older versions put every computer into one shared bucket called 'legacy'. Now that this one has its own id, retire it.
@@ -6813,6 +6814,7 @@ document.addEventListener("click",function(e){
       .sort(function(a, b) { return ((a.first || 0) - (b.first || 0)) || (a.id < b.id ? -1 : 1); })
       .slice(0, MAX_DEVICES);
     all.forEach(function(d, i) { d.n = i + 1; d.todaySeconds = d.date === today ? (d.totalSeconds || 0) : 0; });
+    if (liveStats && liveStats.days && myId) all.forEach(function(d) { if (d.id === myId) d.days = Object.assign({}, d.days || {}, liveStats.days); });
     var totalSeconds = 0, domains = {};
     all.forEach(function(d) {
       if (d.date !== today) return;
@@ -6829,6 +6831,56 @@ document.addEventListener("click",function(e){
     return { totalSeconds: totalSeconds, domains: domains, all: all, myId: myId };
   }
   function deviceLabel(d) { return (d.nm && String(d.nm).trim()) || ('Device ' + d.n); }
+  // ---- Yesterday / Today / 7 days ----
+  function keyAgo(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function rangeKeys(r) { return r === 'yesterday' ? [keyAgo(1)] : r === 'week' ? [0, 1, 2, 3, 4, 5, 6].map(keyAgo) : [keyAgo(0)]; }
+  function compactDays(all, today) {
+    var out = {};
+    Object.keys(all || {}).filter(function(k) { return /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= today; }).sort().slice(-8).forEach(function(k) {
+      var day = all[k]; if (!day || !day.totalSeconds) return;
+      var doms = {};
+      Object.entries(day.domains || {}).sort(function(a, b) { return (b[1].seconds || 0) - (a[1].seconds || 0); }).slice(0, 15).forEach(function(x) {
+        doms[x[0]] = { seconds: Math.round(x[1].seconds || 0), category: effCat(x[0], x[1].category), title: x[1].title || '' };
+      });
+      out[k] = { t: Math.round(day.totalSeconds), d: doms };
+    });
+    return out;
+  }
+  function dayOf(d, key) {
+    if (d.date === key) return { t: d.totalSeconds || 0, d: d.domains || {} };
+    var x = d.days && d.days[key];
+    return x ? { t: x.t || 0, d: x.d || {} } : null;
+  }
+  function rangeStats(all, keys) {
+    var total = 0, domains = {}, per = {};
+    (all || []).forEach(function(d) {
+      var sum = 0;
+      keys.forEach(function(k) {
+        var x = dayOf(d, k); if (!x) return;
+        sum += x.t;
+        Object.entries(x.d).forEach(function(e) {
+          var cur = domains[e[0]] || { seconds: 0, title: (e[1] && e[1].title) || e[0], category: effCat(e[0], e[1] && e[1].category) };
+          cur.seconds += (e[1] && e[1].seconds) || 0; domains[e[0]] = cur;
+        });
+      });
+      per[d.id] = sum; total += sum;
+    });
+    return { total: total, domains: domains, per: per };
+  }
+  window.__stRange = window.__stRange || 'today';
+  function wireStWidget() {
+    var box = document.getElementById('dw-screentime');
+    if (!box || box.__stWired) return;
+    box.__stWired = true;
+    box.addEventListener('click', function(ev) {
+      var t = ev.target.closest ? ev.target.closest('[data-r]') : null;
+      if (t) window.__stRange = t.getAttribute('data-r');
+      else if (ev.target.closest && ev.target.closest('button,a,input,select')) return;
+      // any tap on the widget asks the extension for fresh numbers and redraws
+      try { window.postMessage({ from: 'M2028_PAGE', type: 'TIME_REQUEST' }, '*'); } catch (e) {}
+      window.renderScreenTimeWidget();
+    });
+  }
   function renderDeviceBreakdown(all, myId) {
     var el = document.getElementById('wDeviceBreakdown');
     if (!el) return;
@@ -6916,6 +6968,7 @@ document.addEventListener("click",function(e){
       try {
         var res = await new Promise(function(r) { chrome.storage.local.get(['m2028_time_stats', 'm2028_device'], r); });
         liveStats = (res && res.m2028_time_stats) ? res.m2028_time_stats[today] : null;
+        window.__stExtDays = (res && res.m2028_time_stats) || null;
         // This branch only runs when the page itself has direct chrome.storage access (loaded as the
         // extension's own page). m2028_time_stats has no device identity of its own — only content.js's
         // postMessage bridge (the normal hosted-website path) attaches one. Without this, every session
@@ -6952,12 +7005,26 @@ document.addEventListener("click",function(e){
       }
       liveStats = Object.assign({}, liveStats, { device: ld });
     }
+    var _allDays = null;
+    try { _allDays = JSON.parse(localStorage.getItem('m2028_time_stats') || '{}'); } catch (e) { _allDays = {}; }
+    if (window.__stExtDays) { _allDays = Object.assign({}, _allDays, window.__stExtDays); }
+    if (liveStats) liveStats = Object.assign({}, liveStats, { days: compactDays(_allDays, today) });
+    wireStWidget();
     if (liveStats && liveStats.totalSeconds) {
       pushScreenTime(today, liveStats);      // this device tracks time (laptop + extension): share its bucket with the account
     }
     // Combine every device's bucket for today (this one included) instead of showing just one device's number.
     var stats = combinedScreenTimeToday(today, liveStats);
     if (!stats) stats = { totalSeconds: 0, domains: {}, all: [], myId: null };
+    var range = window.__stRange || 'today';
+    if (range !== 'today') {
+      var ri = rangeStats(stats.all, rangeKeys(range));
+      stats = { totalSeconds: ri.total, domains: ri.domains, myId: stats.myId, all: (stats.all || []).map(function(d) { return Object.assign({}, d, { todaySeconds: ri.per[d.id] || 0 }); }) };
+    }
+    var lblEl = document.getElementById('wStLabel');
+    var lblTxt = range === 'yesterday' ? "Yesterday's Active Time" : range === 'week' ? 'Last 7 Days · avg ' + fmtSec(Math.round(stats.totalSeconds / 7)) + '/day' : "Today's Active Time";
+    if (lblEl && lblEl.textContent !== lblTxt) lblEl.textContent = lblTxt;
+    document.querySelectorAll('#wStTabs [data-r]').forEach(function(b) { b.className = 'btn sm ' + (b.getAttribute('data-r') === range ? 'b-ai' : 'b-gh'); });
 
     var totalEl = document.getElementById('wScreenTimeVal');
     var scoreEl = document.getElementById('wProdScoreVal');
@@ -6976,9 +7043,9 @@ document.addEventListener("click",function(e){
 
     if (listEl) {
       if (entries.length === 0) {
-        if (listEl.__dk !== '#empty') {
-          listEl.__dk = '#empty';
-          listEl.innerHTML = '<div style="font-size:11px;color:var(--mt);padding:6px 0;text-align:center">No active tab history recorded today.</div>';
+        if (listEl.__dk !== '#empty' + range) {
+          listEl.__dk = '#empty' + range;
+          listEl.innerHTML = '<div style="font-size:11px;color:var(--mt);padding:6px 0;text-align:center">No active tab history recorded ' + (range === 'today' ? 'today' : range === 'yesterday' ? 'yesterday' : 'in the last 7 days') + '.</div>';
         }
       } else {
         entries.sort(function(a, b) { return b[1].seconds - a[1].seconds; });
@@ -7469,7 +7536,7 @@ document.addEventListener("click",function(e){
   function mount(root, transport, opts) {
     opts = opts || {};
     injectStyle();
-    var state = { limits: [], blocklist: [], redirects: {}, lock: null, usage: {}, attempts: null };
+    var state = { limits: [], blocklist: [], redirects: {}, lock: null, usage: {}, times: {}, attempts: null };
     var ready = false;
     var ui = { confirm: null };
     var lastSig = '';          // what the screen currently shows (usage rounded to minutes)
@@ -7507,7 +7574,7 @@ document.addEventListener("click",function(e){
     function viewSig(s) {
       var u = {};
       Object.keys(s.usage || {}).forEach(function (k) { u[k] = Math.floor((Number(s.usage[k]) || 0) / 60); });
-      return JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, u, attSig(s)]);
+      return JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, u, attSig(s), Object.keys(s.times || {}).map(function (k) { var t = s.times[k] || {}; return [k, t.start || 0, t.end || 0]; })]);
     }
 
     function statusChip(e, r) {
@@ -7615,7 +7682,11 @@ document.addEventListener("click",function(e){
         var pct = Math.min(100, Math.round(used / mins * 100));
         var cls = pct >= 100 ? 'full' : pct >= 75 ? 'hot' : '';
         var raiseBtn = (e && !r) ? '<button class="mbk-btn s" data-act="ask-raise" data-target="' + esc(l.target) + '">Raise limit</button>' : '';
-        var sub = used + ' of ' + mins + ' min used today' + (r && r.op === 'raise' ? ' · rises to ' + r.minutes + ' min in ' + fmtLeft(r.left) : '');
+        var usedSec = Number(state.usage[l.target]) || 0, leftSec = Math.max(0, mins * 60 - usedSec), tm = (state.times || {})[l.target];
+        function clk(ts) { try { return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (x) { return ''; } }
+        var when = !(tm && tm.start) ? ' · not started today'
+          : ' · started ' + clk(tm.start) + (pct >= 100 ? ' · ended ' + clk(tm.end || tm.last || Date.now()) : ' · ' + Math.ceil(leftSec / 60) + ' min left');
+        var sub = used + ' of ' + mins + ' min used today' + when + (r && r.op === 'raise' ? ' · rises to ' + r.minutes + ' min in ' + fmtLeft(r.left) : '');
         var cat = catForTarget(l.target);
         return '<div class="mbk-row"><span class="mbk-ico accent">' + svg(cat ? cat.icon : 'clock') + '</span><div class="m"><div class="n">' + esc(label(l.target)) + '</div><div class="s">' + sub + '</div>' +
           '<div class="mbk-bar"><i class="' + cls + '" style="width:' + pct + '%"></i></div></div>' +
@@ -7813,6 +7884,7 @@ document.addEventListener("click",function(e){
         redirects: s.redirects || {},
         lock: s.lock || null,
         usage: s.usage || {},
+        times: s.times || {},
         attempts: s.attempts || null
       };
       var wasReady = ready;
@@ -10329,9 +10401,19 @@ html{scrollbar-gutter:stable}
     else if(d.type==='EXT_DATA'&&/time_?stats/i.test(String(d.key||'')))v=d.value;
     if(!v||typeof v!=='object')return;
     var t=today(),day=v[t]||(v.totalSeconds!=null?v:null);
-    if(!day||!day.totalSeconds)return;
-    if(d.device)day=Object.assign({},day,{device:d.device});
-    try{var m=JSON.parse(localStorage.getItem('m2028_time_stats')||'{}');m[t]=day;localStorage.setItem('m2028_time_stats',JSON.stringify(m));}catch(x){}
+    var got=false,m={};
+    try{m=JSON.parse(localStorage.getItem('m2028_time_stats')||'{}')||{};}catch(x){m={};}
+    Object.keys(v).forEach(function(k){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+      var dd=v[k];if(!dd||!dd.totalSeconds)return;
+      m[k]=(d.device&&k===t)?Object.assign({},dd,{device:d.device}):dd;got=true;
+    });
+    if(!got){
+      if(!day||!day.totalSeconds)return;
+      if(d.device)day=Object.assign({},day,{device:d.device});
+      m[t]=day;
+    }
+    try{Object.keys(m).sort().slice(0,-10).forEach(function(k){delete m[k];});localStorage.setItem('m2028_time_stats',JSON.stringify(m));}catch(x){}
     render();
   });
   function ask(){try{window.postMessage({from:'M2028_PAGE',type:'TIME_REQUEST'},'*');}catch(e){}}

@@ -608,7 +608,7 @@
   // =====================================================================
   // Block Sites & Daily Limits tab (UI lives in block-ui.js; background.js enforces the lock)
   // =====================================================================
-  const BLK_KEYS = ['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock', 'm2028_limit_usage'];
+  const BLK_KEYS = ['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock', 'm2028_limit_usage', 'm2028_limit_times'];
   let blkMounted = false;
   let blkListener = null;
   let blkPullTimer = null;
@@ -627,7 +627,8 @@
           blocklist: res.m2028_blocklist || [],
           redirects: res.m2028_redirect_settings || {},
           lock: res.m2028_lock || null,
-          usage: res.m2028_limit_usage || {}
+          usage: res.m2028_limit_usage || {},
+          times: res.m2028_limit_times || {}
         });
       });
     },

@@ -234,8 +234,9 @@ function wireTargetTypeToggle(typeSelId, domainInputId, categorySelId) {
 }
 
 async function loadBlockingSettings() {
-  const data = await Storage.get(['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock']);
+  const data = await Storage.get(['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock', 'm2028_limit_times']);
   currentLock = data.m2028_lock || null;
+  currentTimes = data.m2028_limit_times || {};
   currentLimits = Array.isArray(data.m2028_limits) ? data.m2028_limits : [];
   currentBlocklist = Array.isArray(data.m2028_blocklist) ? data.m2028_blocklist : [];
   const redirects = data.m2028_redirect_settings || {};
@@ -253,6 +254,14 @@ async function loadBlockingSettings() {
   applyLockUi();
 }
 
+let currentTimes = {};
+function clockText(ts) { try { return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } }
+function limitWhen(l) {
+  const t = currentTimes[l.target];
+  if (!t || !t.start) return '<span style="color:var(--mt)">Not started today</span>';
+  const used = Number(t.used) || 0, lim = (Number(l.minutes) || 0) * 60;
+  return 'Started ' + clockText(t.start) + '<br>' + (used >= lim ? 'Ended ' + clockText(t.end || t.last || Date.now()) : Math.max(1, Math.ceil((lim - used) / 60)) + ' min left');
+}
 function lockEntry(kind, target) {
   return currentLock && currentLock.entries ? currentLock.entries[kind + ':' + target] || null : null;
 }
@@ -280,13 +289,14 @@ function renderLimitsTable() {
   const tbody = document.getElementById('limitsTableBody');
   document.getElementById('limitCountHint').textContent = `${currentLimits.length} / ${MAX_LIMITS} used`;
   if (!currentLimits.length) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--mt);padding:16px">No time limits set yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--mt);padding:16px">No time limits set yet.</td></tr>';
     return;
   }
   tbody.innerHTML = currentLimits.map(l => `
     <tr>
       <td style="font-weight:600">${escapeHtml(targetLabel(l.target))}</td>
       <td>${escapeHtml(String(l.minutes))} min/day</td>
+      <td style="font-size:11.5px">${limitWhen(l)}</td>
       <td>${lockCell('limit', l.target)}</td>
     </tr>
   `).join('');
@@ -381,7 +391,7 @@ function sendLockRequest(req) {
 if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area !== 'local') return;
-    if (changes.m2028_limits || changes.m2028_blocklist || changes.m2028_lock) loadBlockingSettings();
+    if (changes.m2028_limits || changes.m2028_blocklist || changes.m2028_lock || changes.m2028_limit_times) loadBlockingSettings();
   });
 }
 

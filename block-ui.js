@@ -180,7 +180,7 @@
   function mount(root, transport, opts) {
     opts = opts || {};
     injectStyle();
-    var state = { limits: [], blocklist: [], redirects: {}, lock: null, usage: {} };
+    var state = { limits: [], blocklist: [], redirects: {}, lock: null, usage: {}, times: {} };
     var ready = false;
     var ui = { confirm: null };
     var lastSig = '';          // what the screen currently shows (usage rounded to minutes)
@@ -218,7 +218,7 @@
     function viewSig(s) {
       var u = {};
       Object.keys(s.usage || {}).forEach(function (k) { u[k] = Math.floor((Number(s.usage[k]) || 0) / 60); });
-      return JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, u]);
+      return JSON.stringify([s.limits, s.blocklist, s.redirects, s.lock, u, Object.keys(s.times || {}).map(function (k) { var t = s.times[k] || {}; return [k, t.start || 0, t.end || 0]; })]);
     }
 
     function statusChip(e, r) {
@@ -305,7 +305,11 @@
         var pct = Math.min(100, Math.round(used / mins * 100));
         var cls = pct >= 100 ? 'full' : pct >= 75 ? 'hot' : '';
         var raiseBtn = (e && !r) ? '<button class="mbk-btn s" data-act="ask-raise" data-target="' + esc(l.target) + '">Raise limit</button>' : '';
-        var sub = used + ' of ' + mins + ' min used today' + (r && r.op === 'raise' ? ' · rises to ' + r.minutes + ' min in ' + fmtLeft(r.left) : '');
+        var usedSec = Number(state.usage[l.target]) || 0, leftSec = Math.max(0, mins * 60 - usedSec), tm = (state.times || {})[l.target];
+        function clk(ts) { try { return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (x) { return ''; } }
+        var when = !(tm && tm.start) ? ' · not started today'
+          : ' · started ' + clk(tm.start) + (pct >= 100 ? ' · ended ' + clk(tm.end || tm.last || Date.now()) : ' · ' + Math.ceil(leftSec / 60) + ' min left');
+        var sub = used + ' of ' + mins + ' min used today' + when + (r && r.op === 'raise' ? ' · rises to ' + r.minutes + ' min in ' + fmtLeft(r.left) : '');
         var cat = catForTarget(l.target);
         return '<div class="mbk-row"><span class="mbk-ico accent">' + svg(cat ? cat.icon : 'clock') + '</span><div class="m"><div class="n">' + esc(label(l.target)) + '</div><div class="s">' + sub + '</div>' +
           '<div class="mbk-bar"><i class="' + cls + '" style="width:' + pct + '%"></i></div></div>' +
@@ -502,7 +506,8 @@
         blocklist: Array.isArray(s.blocklist) ? s.blocklist : [],
         redirects: s.redirects || {},
         lock: s.lock || null,
-        usage: s.usage || {}
+        usage: s.usage || {},
+        times: s.times || {}
       };
       var wasReady = ready;
       ready = true;

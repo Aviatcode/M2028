@@ -635,6 +635,9 @@ let activeTabAudible = false;    // video/music playing in the focused tab
 // variables above are then blank (no current site, a new start time), so the seconds since the last heartbeat were thrown
 // away and daily usage limits stopped counting. The tracker now saves where it is and picks up from there after a restart.
 const MAX_FLUSH_GAP_SEC = 120;
+// No keyboard/mouse for this long = away from the computer. It was 60 s, which stopped the clock while you were simply
+// reading or watching, so screen time came out too low. 5 minutes still stops the clock when you really walk away.
+const IDLE_AFTER_SEC = 300;
 const STORAGE_KEY_TRACKER = 'm2028_tracker_state';
 let _restoreP = null;
 function restoreTrackerOnce() {
@@ -724,7 +727,7 @@ async function flushTime() {
   let liveIdle = idleState;
   try {
     if (chrome.idle && chrome.idle.queryState) {
-      liveIdle = await chrome.idle.queryState(60);
+      liveIdle = await chrome.idle.queryState(IDLE_AFTER_SEC);
       // Chrome's answer is the truth: this also repairs a flag that went stale because an idle/active event was missed.
       idleState = liveIdle;
       isUserActive = liveIdle === 'active';
@@ -931,7 +934,7 @@ async function initTrackingState() {
   } catch (e) {}
   if (chrome.idle && chrome.idle.queryState) {
     try {
-      const state = await chrome.idle.queryState(60);
+      const state = await chrome.idle.queryState(IDLE_AFTER_SEC);
       idleState = state;
       isUserActive = state === 'active';
     } catch (e) {}
@@ -1118,7 +1121,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 
 // Idle state changed listener (pauses tracking when away from computer)
 if (chrome.idle) {
-  chrome.idle.setDetectionInterval(60); // 60 seconds
+  chrome.idle.setDetectionInterval(IDLE_AFTER_SEC);
   chrome.idle.onStateChanged.addListener(async (newState) => {
     await restoreTrackerOnce();
     if (newState === 'active') {

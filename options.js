@@ -56,6 +56,7 @@ const DEFAULT_LIMIT_REDIRECT = 'https://en.wikipedia.org/wiki/Special:Random';
 const DEFAULT_BLOCK_REDIRECT = 'https://theuselessweb.com';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  try { loadAiSettings(); } catch (e) {}
   // Sync Theme
   const themeData = await Storage.get(['m_theme', 'theme', 'm_customColors', 'customColors']);
   const activeTheme = themeData.m_theme || themeData.theme || 'dark';
@@ -233,6 +234,22 @@ function wireTargetTypeToggle(typeSelId, domainInputId, categorySelId) {
   });
 }
 
+// ---- Smart video classification settings ----
+async function loadAiSettings() {
+  const r = await Storage.get(['m2028_ai', 'm2028_ai_usage']);
+  const c = r.m2028_ai || {}, u = r.m2028_ai_usage || {};
+  const on = document.getElementById('aiOn'), key = document.getElementById('aiKey'), model = document.getElementById('aiModel'), st = document.getElementById('aiStatus');
+  if (!on) return;
+  on.checked = !!c.on; key.value = c.key || ''; model.value = c.model || 'claude-haiku-5-5';
+  const today = new Date(); const dk = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  st.textContent = c.on ? 'On. Titles checked today: ' + (u.day === dk ? (u.n || 0) : 0) + ' / 150.' : 'Off: the built-in check is used.';
+  document.getElementById('aiSave').onclick = async () => {
+    const k = key.value.trim();
+    if (on.checked && !k) { st.textContent = 'Enter an API key first.'; return; }
+    await Storage.set({ m2028_ai: { on: on.checked && !!k, key: k, model: model.value.trim() || 'claude-haiku-5-5' } });
+    st.textContent = on.checked ? 'Saved. Claude will be asked about unclear video titles.' : 'Saved. Using the built-in check only.';
+  };
+}
 async function loadBlockingSettings() {
   const data = await Storage.get(['m2028_limits', 'm2028_blocklist', 'm2028_redirect_settings', 'm2028_lock', 'm2028_limit_times']);
   currentLock = data.m2028_lock || null;

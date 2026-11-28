@@ -1177,7 +1177,12 @@
 
       let prodSec = 0, commSec = 0, socSec = 0, entSec = 0, othSec = 0;
       domainEntries.forEach(([_, item]) => {
-        const s = item.seconds || 0;
+        const s0 = item.seconds || 0;
+        // time on video sites that was classified from the video title (productive / time-waste) counts as such
+        const sp = item.sp || null;
+        const spP = sp ? Math.min(s0, sp.p || 0) : 0, spW = sp ? Math.min(s0 - spP, sp.w || 0) : 0;
+        const s = s0 - spP - spW;
+        prodSec += spP; entSec += spW;
         const cat = item.category || 'other';
         if (cat === 'productive') prodSec += s;
         else if (cat === 'communication') commSec += s;

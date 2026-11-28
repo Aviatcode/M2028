@@ -115,6 +115,39 @@
         </div>
       </section>
 
+      <!-- Smart video classification -->
+      <section class="opts-card">
+        <div class="card-head">
+          <span class="card-icon">🎬</span>
+          <div>
+            <h2>Smart Video Classification</h2>
+            <p class="card-desc">Time you spend watching video counts as screen time even when you are not touching the mouse. On video sites the title decides whether it was productive or wasted time. This works offline with no setup.</p>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="label-col">
+            <label for="aiOn">Let Claude judge titles the built-in check is unsure about</label>
+            <span class="field-hint">Optional. Only the video title text is sent to Anthropic, never the address, page or history. Each title is asked once and remembered (max 150 a day).</span>
+          </div>
+          <input type="checkbox" id="aiOn" class="opts-toggle">
+        </div>
+        <div class="form-row">
+          <div class="label-col">
+            <label for="aiKey">Anthropic API key</label>
+            <span class="field-hint">Stored only in this browser. Create one at console.anthropic.com.</span>
+          </div>
+          <input type="password" id="aiKey" class="opts-input" placeholder="sk-ant-..." autocomplete="off" style="width:220px">
+        </div>
+        <div class="form-row">
+          <div class="label-col"><label for="aiModel">Model</label></div>
+          <input type="text" id="aiModel" class="opts-input" value="claude-haiku-5-5" style="width:220px">
+        </div>
+        <div class="form-row">
+          <div class="label-col"><span class="field-hint" id="aiStatus"></span></div>
+          <button class="hub-btn primary sm" id="aiSave">Save</button>
+        </div>
+      </section>
+
       <!-- 2. Custom Domain Categorization -->
       <section class="opts-card">
         <div class="card-head">

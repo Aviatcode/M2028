@@ -804,6 +804,7 @@
             .forEach(function (d) {
               const x = day.domains[d] || {};
               doms[d] = { seconds: x.seconds || 0, title: x.title || d, category: x.category || 'other' };
+              if (x.sp) doms[d].sp = x.sp;
             });
           stats[k] = { totalSeconds: day.totalSeconds, domains: doms };
         });
